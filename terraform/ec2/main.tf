@@ -1,5 +1,3 @@
-# terraform/ec2/main.tf
-
 data "aws_ami" "ubuntu_pro" {
   most_recent = true
   owners      = ["amazon"] # Canonical's AWS account ID
@@ -25,7 +23,7 @@ resource "aws_security_group" "kafka_airflow_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.allowed_ip_range]
+    cidr_blocks = [var.allowed_cidr_blocks]
   }
 
   # Kafka Broker
@@ -57,7 +55,7 @@ resource "aws_security_group" "kafka_airflow_sg" {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = [var.allowed_ip_range]
+    cidr_blocks = [var.allowed_cidr_blocks]
   }
 
   # Airflow Flower
@@ -81,18 +79,6 @@ resource "aws_security_group" "kafka_airflow_sg" {
   }
 }
 
-resource "aws_ebs_volume" "kafka_data" {
-  availability_zone = var.availability_zone
-  size             = 64
-  type             = "gp3"
-  iops             = 3000
-  throughput       = 125
-
-  tags = {
-    Name = "kafka-data"
-  }
-}
-
 resource "aws_instance" "kafka_airflow_instance" {
   ami           = data.aws_ami.ubuntu_pro.id
   instance_type = "t3a.medium"
@@ -110,74 +96,20 @@ resource "aws_instance" "kafka_airflow_instance" {
     throughput  = 125
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              # Update system
-              sudo apt-get update
-              sudo apt-get upgrade -y
-
-              # Install Java
-              sudo apt-get install -y openjdk-11-jdk
-
-              # Create directories
-              sudo mkdir -p /data/kafka
-              sudo mkdir -p /data/airflow
-
-              # Mount EBS volume
-              sudo mkfs -t ext4 ${aws_ebs_volume.kafka_data.id}
-              sudo mount ${aws_ebs_volume.kafka_data.id} /data/kafka
-
-              # Add to fstab
-              echo "${aws_ebs_volume.kafka_data.id} /data/kafka ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
-
-              # Set correct permissions
-              sudo chown -R ubuntu:ubuntu /data
-              EOF
-
+  # Use template file for user data
+  user_data = templatefile("${path.module}/scripts/kafka_setup.sh", {
+    kafka_data_dir     = "/data/kafka"
+    kafka_version      = var.kafka_version
+    zookeeper_version  = var.zookeeper_version
+    broker_id          = "0"
+    kafka_heap_opts    = "-Xmx1G -Xms1G"
+    zookeeper_host     = "localhost:2181"
+  })
   tags = {
     Name = "kafka-airflow-server"
   }
 }
 
-# terraform/ec2/variables.tf
-
-variable "vpc_id" {
-  description = "VPC ID where the instance will be created"
-  type        = string
-}
-
-variable "subnet_id" {
-  description = "Subnet ID where the instance will be created"
-  type        = string
-}
-
-variable "availability_zone" {
-  description = "Availability zone for the instance"
-  type        = string
-}
-
-variable "key_pair_name" {
-  description = "Name of the existing key pair"
-  type        = string
-}
-
-variable "iam_role_name" {
-  description = "Name of the existing IAM role"
-  type        = string
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block of the VPC"
-  type        = string
-}
-
-variable "allowed_ip_range" {
-  description = "CIDR block for allowed IP range"
-  type        = string
-  default     = "0.0.0.0/0"  # Change this to your IP range for better security
-}
-
-# terraform/ec2/outputs.tf
 
 output "instance_id" {
   value = aws_instance.kafka_airflow_instance.id
@@ -192,5 +124,17 @@ output "private_ip" {
 }
 
 output "security_group_id" {
-  value = aws_security_group.kafka_airflow_sg.id
+  description = "ID of the created security group"
+  value       = aws_security_group.kafka_airflow_sg.id
+}
+
+
+terraform {
+  backend "s3" {
+    bucket         = ""
+    key            = "state_file/dynamodb.tfstate" # modify
+    region         = ""
+    encrypt        = true
+    dynamodb_table = ""
+  }
 }

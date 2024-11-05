@@ -22,7 +22,7 @@ output "vpc_id" {
 terraform {
   backend "s3" {
     bucket         = ""
-    key            = "state_file/dynamodb.tfstate" # modify
+    key            = "state_file/vpc.tfstate" # modify
     region         = ""
     encrypt        = true
     dynamodb_table = ""
