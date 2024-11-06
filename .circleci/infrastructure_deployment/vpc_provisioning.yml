@@ -62,16 +62,35 @@ workflows:
   vpc-deployment:
     jobs:
       - terraform-vpc-plan:
+          # Auto-trigger conditions
+          filters:
+            branches:
+              only:
+                - dev  # or your deployment branch
+            paths:
+              - "terraform/vpc/**"  # Only trigger on VPC-related changes
+              - ".circleci/workflows/vpc_workflow.yml"
           context:
             - aws-oidc-context
             - terraform-context
+
       - approve-vpc-apply:
           type: approval
           requires:
             - terraform-vpc-plan
+          # Optional: Add filters if you want to restrict who can approve
+          filters:
+            branches:
+              only:
+                - dev
+
       - terraform-vpc-apply:
           requires:
             - approve-vpc-apply
+          filters:
+            branches:
+              only:
+                - dev
           context:
             - aws-oidc-context
             - terraform-context

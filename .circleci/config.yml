@@ -6,7 +6,7 @@ orbs:
   terraform: circleci/terraform@3.3
 
 # Setup workflow orchestration
-#setup: true
+setup: true
 
 # Import individual workflow files
 workflows:
