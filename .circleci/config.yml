@@ -18,12 +18,12 @@ workflows:
       - path-filtering/filter:
           name: check-updated-files
           mapping: |
-            terraform/vpc/.* run_workflow vpc
-            .circleci/infrastructure_deployment/vpc* run_workflow vpc
-            terraform/subnets/.* run_workflow subnets
-            .circleci/infrastructure_deployment/subnets* run_workflow subnets
-            terraform/ec2/.* run_workflow ec2
-            .circleci/infrastructure_deployment/ec2* run_workflow ec2
+            terraform/vpc/.* run_workflow "vpc"
+            .circleci/infrastructure_deployment/vpc* run_workflow "vpc"
+            terraform/subnets/.* run_workflow "subnets"
+            .circleci/infrastructure_deployment/subnets* run_workflow "subnets"
+            terraform/ec2/.* run_workflow "ec2"
+            .circleci/infrastructure_deployment/ec2* run_workflow "ec2"
           base-revision: main
           # Generate different configs based on which files changed
           config-path: .circleci/continue_config.yml
