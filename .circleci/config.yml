@@ -28,6 +28,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install CircleCI CLI
+          command: |
+            curl -fLSs https://raw.githubusercontent.com/CircleCI-Public/circleci-cli/master/install.sh | sudo bash
+      - run:
+          name: Process Config
           command: |
             cd .circleci/infrastructure_deployment
             circleci config pack vpc_provisioning.yml > processed_config.yml
