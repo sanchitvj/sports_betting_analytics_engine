@@ -23,12 +23,12 @@ workflows:
       - path-filtering/filter:
           name: check-updated-files
           mapping: |
-            terraform/vpc/.* run_workflow true
-            .circleci/infrastructure_deployment/vpc* run_workflow true
-            terraform/subnets/.* run_workflow true
-            .circleci/infrastructure_deployment/subnets* run_workflow true
-            terraform/ec2/.* run_workflow true
-            .circleci/infrastructure_deployment/ec2* run_workflow true
+            terraform/vpc/.* run_vpc true
+            .circleci/infrastructure_deployment/vpc* run_vpc true
+            terraform/subnets/.* run_subnets true
+            .circleci/infrastructure_deployment/subnets* run_subnets true
+            terraform/ec2/.* run_ec2 true
+            .circleci/infrastructure_deployment/ec2* run_ec2 true
           base-revision: main
           config-path: .circleci/continue_config.yml
           filters:
