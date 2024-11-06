@@ -7,74 +7,55 @@ orbs:
   continuation: circleci/continuation@0.2.0
 
 parameters:
-  deploy_vpc:
-    type: boolean
-    default: false
-  deploy_subnets:
-    type: boolean
-    default: false
-  deploy_ec2:
-    type: boolean
-    default: false
+  run_workflow:
+    type: string
+    default: ""
 
 workflows:
   version: 2
-  manage-infrastructure:
-#    unless: << pipeline.parameters.deploy_vpc >>  # Only run path filtering if not triggered directly
+  path-filtering:
     jobs:
       - path-filtering/filter:
-          name: check-vpc-changes
+          name: check-updated-files
           mapping: |
-            terraform/vpc/* deploy_vpc true
-            .circleci/infrastructure_deployment/vpc* deploy_vpc true
+            terraform/vpc/.* run_workflow vpc
+            .circleci/infrastructure_deployment/vpc* run_workflow vpc
+            terraform/subnets/.* run_workflow subnets
+            .circleci/infrastructure_deployment/subnets* run_workflow subnets
+            terraform/ec2/.* run_workflow ec2
+            .circleci/infrastructure_deployment/ec2* run_workflow ec2
           base-revision: main
-          config-path: .circleci/infrastructure_deployment/vpc_workflow.yml
+          # Generate different configs based on which files changed
+          config-path: .circleci/continue_config.yml
           filters:
             branches:
               only:
                 - dev
                 - main
 
-      - path-filtering/filter:
-          name: check-subnet-changes
-          mapping: |
-            terraform/subnets/* deploy_subnets true
-            .circleci/infrastructure_deployment/subnets* deploy_subnets true
-          base-revision: main
-          config-path: .circleci/infrastructure_deployment/subnets_workflow.yml
-          filters:
-            branches:
-              only:
-                - dev
-                - main
-
-      - path-filtering/filter:
-          name: check-ec2-changes
-          mapping: |
-            terraform/ec2/* deploy_ec2 true
-            .circleci/infrastructure_deployment/ec2* deploy_ec2 true
-          base-revision: main
-          config-path: .circleci/infrastructure_deployment/ec2_workflow.yml
-          filters:
-            branches:
-              only:
-                - dev
-                - main
-
-  trigger-vpc:
-    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
+  # This workflow handles the continuation
+  continue-workflow:
+    when:
+      not:
+        equal: [ "", << pipeline.parameters.run_workflow >> ]
     jobs:
       - continuation/continue:
-          configuration_path: .circleci/infrastructure_deployment/vpc_workflow.yml
+          configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
 
-  trigger-subnets:
-    when: << pipeline.parameters.deploy_subnets >>
-    jobs:
-      - continuation/continue:
-          configuration_path: .circleci/infrastructure_deployment/subnet_workflow.yml
-
-  trigger-ec2:
-    when: << pipeline.parameters.deploy_ec2 >>
-    jobs:
-      - continuation/continue:
-          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
+#  trigger-vpc:
+#    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
+#    jobs:
+#      - continuation/continue:
+#          configuration_path: .circleci/infrastructure_deployment/vpc_workflow.yml
+#
+#  trigger-subnets:
+#    when: << pipeline.parameters.deploy_subnets >>
+#    jobs:
+#      - continuation/continue:
+#          configuration_path: .circleci/infrastructure_deployment/subnet_workflow.yml
+#
+#  trigger-ec2:
+#    when: << pipeline.parameters.deploy_ec2 >>
+#    jobs:
+#      - continuation/continue:
+#          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
