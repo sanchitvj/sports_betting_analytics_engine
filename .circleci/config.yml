@@ -11,12 +11,12 @@ orbs:
 # Import individual workflow files
 workflows:
 #  version: 2
-  infrastructure-deployment:
+  infrastructure_deployment:
 #    when:
 #      and:
 #        - equal: [ main, dev ] # << pipeline.git.branch >>
     jobs:
-      - vpc-provisioning:
+      - vpc_provisioning:
           context:
             - aws-oidc-context
             - terraform-context
