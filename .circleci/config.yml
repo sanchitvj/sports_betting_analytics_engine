@@ -3,7 +3,7 @@ version: 2.1
 setup: true # for CIRCLE_CONTINUATION_KEY
 
 orbs:
-  path-filtering: circleci/path-filtering@1.0
+  path-filtering: circleci/path-filtering@1.1.0
 
 parameters:
   run_workflow:
@@ -25,7 +25,6 @@ workflows:
             .circleci/infrastructure_deployment/ec2* run_workflow "ec2"
           base-revision: main
           config-path: .circleci/continue_config.yml
-          setup: true
           filters:
             branches:
               only:
