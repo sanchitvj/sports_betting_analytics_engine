@@ -32,6 +32,7 @@ jobs:
             cd terraform/vpc
             export AWS_PROFILE=oidc-profile
             terraform plan \
+              -lock=false \
               -var="aws_region=${AWS_REGION}" \
               -var="vpc_cidr=10.0.0.0/16" \
               -var="environment=production" \
