@@ -81,7 +81,7 @@ resource "aws_security_group" "kafka_airflow_sg" {
 
 resource "aws_instance" "kafka_airflow_instance" {
   ami           = data.aws_ami.ubuntu_pro.id
-  instance_type = "t3a.medium"
+  instance_type = var.instance_type
 
   subnet_id                   = var.subnet_id
   vpc_security_group_ids     = [aws_security_group.kafka_airflow_sg.id]
@@ -132,7 +132,7 @@ output "security_group_id" {
 terraform {
   backend "s3" {
     bucket         = ""
-    key            = "state_file/dynamodb.tfstate" # modify
+    key            = "state_file/ec2.tfstate" # modify
     region         = ""
     encrypt        = true
     dynamodb_table = ""

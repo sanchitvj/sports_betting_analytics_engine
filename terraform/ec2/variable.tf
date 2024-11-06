@@ -8,6 +8,12 @@ variable "key_pair_name" {
   type        = string
 }
 
+variable "instance_type" {
+  description = "Instance type"
+  type = string
+  default = "t3a.medium"
+}
+
 variable "iam_role_name" {
   description = "Name of the existing IAM role"
   type        = string

@@ -20,7 +20,7 @@ parameters:
 workflows:
   version: 2
   manage-infrastructure:
-    unless: << pipeline.parameters.deploy_vpc >>  # Only run path filtering if not triggered directly
+#    unless: << pipeline.parameters.deploy_vpc >>  # Only run path filtering if not triggered directly
     jobs:
       - path-filtering/filter:
           name: check-vpc-changes
@@ -38,9 +38,9 @@ workflows:
       - path-filtering/filter:
           name: check-changes
           mapping: |
-            terraform/vpc/* deploy_subnets true
+            terraform/subnets/* deploy_subnets true
             .circleci/infrastructure_deployment/subnets* deploy_subnets true
-          base-revision: dev
+          base-revision: main
           config-path: .circleci/infrastructure_deployment/subnets_workflow.yml
           filters:
             branches:
@@ -77,5 +77,3 @@ workflows:
 #    jobs:
 #      - continuation/continue:
 #          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
-
-

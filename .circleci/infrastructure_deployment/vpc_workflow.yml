@@ -32,7 +32,6 @@ jobs:
             cd terraform/vpc
             export AWS_PROFILE=oidc-profile
             terraform plan \
-              -lock=false \
               -var="aws_region=${AWS_REGION}" \
               -var="vpc_cidr=10.0.0.0/16" \
               -var="environment=production" \
@@ -51,10 +50,7 @@ jobs:
             terraform state list
 
 workflows:
-  version: 2
   deploy_vpc:
-#    when:
-#      equal: [ true, << pipeline.parameters.deploy_vpc >> ]
     jobs:
       - vpc_provision:
           context: aeb_secrets
