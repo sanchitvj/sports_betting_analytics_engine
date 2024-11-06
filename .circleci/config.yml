@@ -15,6 +15,7 @@ workflows:
           context:
             - aws-oidc-context
             - terraform-context
+            - aeb_secrets
 #      - ec2_provisioning:
 #          context:
 #            - aws-oidc-context
