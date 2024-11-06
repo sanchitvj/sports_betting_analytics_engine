@@ -15,12 +15,12 @@ jobs:
           role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${OIDC_ROLE}
           aws-region: AWS_REGION
           profile-name: oidc-profile
-      - run:
-          name: Debug AWS Authentication
-          command: |
-            aws sts get-caller-identity --profile oidc-profile
       - terraform/install:
           terraform_version: "1.5.0"
+      - run:
+          name: Debug Pipeline Parameter
+          command: |
+            echo "Deploy VPC Parameter: ${CIRCLE_PIPELINE_PARAMETERS_DEPLOY_VPC}"
       - run:
           name: Initialize VPC Terraform
           command: |

@@ -1,4 +1,0 @@
-parameters:
-  deploy_vpc:
-    type: boolean
-    default: false

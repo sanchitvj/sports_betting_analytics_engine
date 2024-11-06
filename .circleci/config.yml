@@ -24,8 +24,8 @@ workflows:
       - path-filtering/filter:
           name: check-vpc-changes
           mapping: |
-            terraform/vpc/.* deploy_vpc true
-#            .circleci/infrastructure_deployment/vpc/.* deploy_vpc true
+            terraform/vpc/**/* deploy_vpc true
+            .circleci/infrastructure_deployment/vpc/** deploy_vpc true
           base-revision: main
           config-path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
           filters:
@@ -34,26 +34,26 @@ workflows:
                 - dev
                 - main
 
-      - path-filtering/filter:
-          name: check-ec2-changes
-          mapping: |
-            terraform/ec2/.* deploy_ec2 true
-          base-revision: main
-          config-path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
-          filters:
-            branches:
-              only:
-                - dev
-                - main
-
-      - path-filtering/filter:
-          name: check-security-group-changes
-          mapping: |
-            terraform/security_group/.* deploy_security_group true
-          base-revision: main
-          config-path: .circleci/infrastructure_deployment/security_group/sg_workflow.yml
-          filters:
-            branches:
-              only:
-                - dev
-                - main
+#      - path-filtering/filter:
+#          name: check-ec2-changes
+#          mapping: |
+#            terraform/ec2/.* deploy_ec2 true
+#          base-revision: main
+#          config-path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
+#          filters:
+#            branches:
+#              only:
+#                - dev
+#                - main
+#
+#      - path-filtering/filter:
+#          name: check-security-group-changes
+#          mapping: |
+#            terraform/security_group/.* deploy_security_group true
+#          base-revision: main
+#          config-path: .circleci/infrastructure_deployment/security_group/sg_workflow.yml
+#          filters:
+#            branches:
+#              only:
+#                - dev
+#                - main
