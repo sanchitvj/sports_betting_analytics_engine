@@ -24,18 +24,18 @@ workflows:
           name: vpc-workflow
           configuration_path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
 
-    trigger-subnets-workflow:
-      when:
-        equal: [ true, << pipeline.parameters.run_subnets >> ]
-      jobs:
-        - continuation/continue:
-            name: subnet-workflow
-            configuration_path: .circleci/infrastructure_deployment/subnets/subnets_workflow.yml
+  trigger-subnets-workflow:
+    when:
+      equal: [ true, << pipeline.parameters.run_subnets >> ]
+    jobs:
+      - continuation/continue:
+          name: subnet-workflow
+          configuration_path: .circleci/infrastructure_deployment/subnets/subnets_workflow.yml
 
-    trigger-ec2-workflow:
-      when:
-        equal: [ true, << pipeline.parameters.run_ec2 >> ]
-      jobs:
-        - continuation/continue:
-            name: ec2-workflow
-            configuration_path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
+  trigger-ec2-workflow:
+    when:
+      equal: [ true, << pipeline.parameters.run_ec2 >> ]
+    jobs:
+      - continuation/continue:
+          name: ec2-workflow
+          configuration_path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
