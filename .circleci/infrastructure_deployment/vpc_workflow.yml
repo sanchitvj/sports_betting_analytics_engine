@@ -3,7 +3,6 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@3.1.5
   terraform: circleci/terraform@3.3
-  continuation: circleci/continuation@0.2.0
 
 jobs:
   vpc_provision:
@@ -33,9 +32,13 @@ jobs:
             export AWS_PROFILE=oidc-profile
             terraform plan \
               -var="aws_region=${AWS_REGION}" \
-              -var="vpc_cidr=10.0.0.0/16" \
+              -var="vpc_cidr=${VPC_CIDR}" \
               -var="environment=production" \
               -out=vpc_tfplan
+      - persist_to_workspace:
+          root: .
+          paths:
+            - terraform/vpc/vpc_tfplan
       - run:
           name: Apply VPC Changes
           command: |

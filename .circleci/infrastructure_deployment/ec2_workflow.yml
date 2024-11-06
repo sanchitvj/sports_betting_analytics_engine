@@ -3,12 +3,11 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@3.1.5
   terraform: circleci/terraform@3.3
-  continuation: circleci/continuation@0.2.0
 
 jobs:
   ec2_provision:
     docker:
-      - image: cimg/aws:2024.03   # base to aws
+      - image: cimg/aws:2024.03
     steps:
       - checkout
       - aws-cli/setup:
@@ -31,42 +30,32 @@ jobs:
             cd terraform/ec2
             terraform plan \
               -var="vpc_id=${KAFKA_VPC_ID}" \
-              -var="subnet_id=${SUBNET_ID}" \
+              -var="subnet_id=${PUBLIC_SUBNET_1A}" \
               -var="key_pair_name=${OLD_KEY_PAIR}" \
-              -var='instance_type=t3a.medium" \
+              -var="instance_type=t3a.medium" \
               -var="iam_role_name=${EC2_IAM_ROLE}" \
+              -var="vpc_id=${KAFKA_VPC_ID}" \
               -var="vpc_cidr=${VPC_CIDR}" \
-              -var="allowed_cidr_blocks=${ALLOWED_CIDRS}" \
+              -var="allowed_cidr_blocks=0.0.0.0/0" \
               -out=tfplan
-
-  terraform-apply:
-    docker:
-      - image: cimg/base:2024.01
-    steps:
-      - checkout
-      - assume-role-with-oidc
-      - terraform/install:
-          terraform_version: "1.5.0"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - terraform/ec2/ec2_tfplan
       - run:
-          name: Apply Terraform Changes
+          name: Apply EC2 Changes
           command: |
             cd terraform/ec2
-            terraform apply tfplan
+            export AWS_PROFILE=oidc-profile
+            terraform apply -auto-approve ec2_tfplan
 
 workflows:
-  infrastructure_deployment:
+  deploy_ec2:
     jobs:
-      - terraform-plan:
-          context:
-            - aws-oidc-context
-            - terraform-context
-      - approve-apply:
-          type: approval
-          requires:
-            - terraform-plan
-      - terraform-apply:
-          requires:
-            - approve-apply
-          context:
-            - aws-oidc-context
-            - terraform-context
+      - ec2_provision:
+          context: aeb_secrets
+          filters:
+            branches:
+              only:
+                -dev
+                -main

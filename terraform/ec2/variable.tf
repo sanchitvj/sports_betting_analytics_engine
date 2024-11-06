@@ -11,7 +11,7 @@ variable "key_pair_name" {
 variable "instance_type" {
   description = "Instance type"
   type = string
-  default = "t3a.medium"
+  default = "t2.medium"
 }
 
 variable "iam_role_name" {
@@ -22,7 +22,7 @@ variable "iam_role_name" {
 variable "kafka_version" {
   description = "Kafka version to install"
   type        = string
-  default     = "3.4.0"
+  default     = "3.8.1"
 }
 
 variable "zookeeper_version" {
@@ -43,6 +43,6 @@ variable "vpc_cidr" {
 
 variable "allowed_cidr_blocks" {
   description = "List of CIDR blocks allowed to access Kafka"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+  type        = string
+  default     = "0.0.0.0/0"
 }

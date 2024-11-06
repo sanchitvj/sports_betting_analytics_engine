@@ -1,6 +1,6 @@
 version: 2.1
 
-setup: true
+setup: true # for dynamic configuration multi-path filtering
 
 orbs:
   path-filtering: circleci/path-filtering@1.0
@@ -36,7 +36,7 @@ workflows:
                 - main
 
       - path-filtering/filter:
-          name: check-changes
+          name: check-subnet-changes
           mapping: |
             terraform/subnets/* deploy_subnets true
             .circleci/infrastructure_deployment/subnets* deploy_subnets true
@@ -48,18 +48,19 @@ workflows:
                 - dev
                 - main
 
-#      - path-filtering/filter:
-#          name: check-ec2-changes
-#          mapping: |
-#            terraform/ec2/* deploy_ec2 true
-#            .circleci/infrastructure_deployment/ec2* deploy_ec2 true
-#          base-revision: main
-#          config-path: .circleci/infrastructure_deployment/ec2_workflow.yml
-#          filters:
-#            branches:
-#              only:
-#                - dev
-#                - main
+      - path-filtering/filter:
+          name: check-ec2-changes
+          mapping: |
+            terraform/ec2/* deploy_ec2 true
+            .circleci/infrastructure_deployment/ec2* deploy_ec2 true
+          base-revision: main
+          config-path: .circleci/infrastructure_deployment/ec2_workflow.yml
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+
   trigger-vpc:
     when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
     jobs:
@@ -72,8 +73,8 @@ workflows:
       - continuation/continue:
           configuration_path: .circleci/infrastructure_deployment/subnet_workflow.yml
 
-#  trigger-ec2:
-#    when: << pipeline.parameters.deploy_ec2 >>
-#    jobs:
-#      - continuation/continue:
-#          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
+  trigger-ec2:
+    when: << pipeline.parameters.deploy_ec2 >>
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
