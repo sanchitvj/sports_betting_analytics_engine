@@ -34,7 +34,11 @@ jobs:
               -backend-config="bucket=$TF_STATE_BUCKET" \
               -backend-config="region=$AWS_REGION" \
               -backend-config="dynamodb_table=$TF_LOCK_TABLE"
-            terraform plan -out=tfplan
+            terraform plan \
+              -var="aws_region=${AWS_REGION}" \
+              -var="vpc_cidr=10.0.0.0/16" \
+              -var="environment=production" \
+              -out=tfplan
       - run:
           name: Apply Changes
           command: |
