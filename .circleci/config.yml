@@ -1,45 +1,23 @@
 version: 2.1
 
-# Import required orbs
-orbs:
-  aws-cli: circleci/aws-cli@5.1.1
-  terraform: circleci/terraform@3.3
-
-# Setup workflow orchestration
+# Import all workflow configurations
 setup: true
 
+orbs:
+  path-filtering: circleci/path-filtering@1.0
+
 workflows:
-  infrastructure_deployment:
+  always-run:
     jobs:
-      - vpc_provisioning:
-          context:
-            - aws-oidc-context
-            - terraform-context
-            - aeb_secrets
-#      - ec2_provisioning:
-#          context:
-#            - aws-oidc-context
-#            - terraform-context
-
-# Use continuation to generate workflows
-#jobs:
-#  vpc_provisioning:
-#    docker:
-#      - image: cimg/aws:2024.03
-#    steps:
-#      - checkout
-#      - run:
-#          name: Install CircleCI CLI
-#          command: |
-#            curl -fLSs https://raw.githubusercontent.com/CircleCI-Public/circleci-cli/master/install.sh | sudo bash
-#      - run:
-#          name: Process Config
-#          command: |
-#            cd .circleci/infrastructure_deployment
-#            circleci config pack vpc_provisioning.yml > processed_config.yml
-#      - persist_to_workspace:
-#          root: .circleci/infrastructure_deployment
-#          paths:
-#            - processed_config.yml
-
-
+      - path-filtering/filter:
+          name: check-updated-files
+          mapping: |
+            terraform/vpc/.* run-vpc-workflow true
+            .circleci/infrastructure_deployment/.* run-vpc-workflow true
+          base-revision: main
+          config-path: .circleci/infrastructure_deployment/vpc_workflow.yml
+          filters:
+            branches:
+              only:
+                - main
+                - dev
