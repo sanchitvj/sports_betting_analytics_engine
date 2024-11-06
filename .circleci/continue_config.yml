@@ -1,4 +1,7 @@
+#dynamic configuration multi-path filtering
 version: 2.1
+
+setup: true # for CIRCLE_CONTINUATION_KEY
 
 #parameters:
 #  run_vpc:
