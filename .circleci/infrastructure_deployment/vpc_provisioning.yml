@@ -69,21 +69,20 @@ workflows:
           filters:
             branches:
               only:
-                - main
                 - dev
-      - approve-apply:
-          type: approval
-          requires:
-            - terraform-plan
-          filters:
-            branches:
-              only:
-                - main
+#      - approve-apply:
+#          type: approval
+#          requires:
+#            - terraform-plan
+#          filters:
+#            branches:
+#              only:
+#                - main
       - terraform-apply:
           context: aeb_secrets
-          requires:
-            - approve-apply
+#          requires:
+#            - approve-apply
           filters:
             branches:
               only:
-                - main
+                - dev

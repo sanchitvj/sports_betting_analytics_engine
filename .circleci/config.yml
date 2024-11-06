@@ -14,10 +14,9 @@ workflows:
           mapping: |
             terraform/vpc/.* run-vpc-workflow true
             .circleci/infrastructure_deployment/vpc_provisioning.yml run-vpc-workflow true
-          base-revision: main
+          base-revision: dev
           config-path: .circleci/infrastructure_deployment/vpc_provisioning.yml
           filters:
             branches:
               only:
-                - main
                 - dev
