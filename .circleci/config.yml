@@ -24,17 +24,24 @@ jobs:
             aws sts get-caller-identity --profile oidc-profile
       - terraform/install:
           terraform_version: "1.5.0"
+#      - run:
+#          name: Force unlock terraform state
+#          command: |
+#            cd terraform/vpc
+#            export AWS_PROFILE=oidc-profile
+#            LOCK_ID="e9eaacba-da92-ca59-ff9d-f608d5af962c"
+#            terraform force-unlock -force $LOCK_ID || true
       - run:
-          name: Initialize and Plan
+          name: Initialize and plan Terraform
           command: |
             cd terraform/vpc
             export AWS_PROFILE=oidc-profile
-            export TF_LOG=DEBUG
             terraform init \
               -backend-config="bucket=$TF_STATE_BUCKET" \
               -backend-config="region=$AWS_REGION" \
               -backend-config="dynamodb_table=$TF_LOCK_TABLE"
             terraform plan \
+              -lock=false \
               -var="aws_region=${AWS_REGION}" \
               -var="vpc_cidr=10.0.0.0/16" \
               -var="environment=production" \
