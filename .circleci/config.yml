@@ -34,13 +34,13 @@ workflows:
                 - main
 
   # This workflow handles the continuation
-  continue-workflow:
-    when:
-      not:
-        equal: [ "", << pipeline.parameters.run_workflow >> ]
-    jobs:
-      - continuation/continue:
-          configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
+#  continue-workflow:
+#    when:
+#      not:
+#        equal: [ "", << pipeline.parameters.run_workflow >> ]
+#    jobs:
+#      - continuation/continue:
+#          configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
 
 #  trigger-vpc:
 #    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
