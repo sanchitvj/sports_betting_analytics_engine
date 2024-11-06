@@ -15,7 +15,7 @@ commands:
           aws-region: ${AWS_REGION}
 
 jobs:
-  vpc_provisioning:
+  terraform-plan:
     docker:
       - image: cimg/aws:2024.03
     steps:
@@ -32,13 +32,13 @@ jobs:
               -backend-config="region=${AWS_REGION}" \
               -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
       - run:
-          name: Plan VPC Infrastructure
+          name: Terraform Plan
           command: |
             cd terraform/vpc
             terraform plan \
-              -var="aws_region=${AWS_REGION}" \
-              -var="vpc_cidr=${VPC_CIDR}" \
-              -var="environment=${ENVIRONMENT}" \
+#              -var="aws_region=${AWS_REGION}" \
+#              -var="vpc_cidr=${VPC_CIDR}" \
+#              -var="environment=${ENVIRONMENT}" \
 #              -var="project=${PROJECT_NAME}" \
 #              -var="owner=${OWNER}" \
               -out=tfplan
@@ -68,11 +68,15 @@ terraform-apply:
             terraform apply tfplan
 
 workflows:
-  version: 2
-  vpc-deployment:
+  run-vpc-workflow:
     jobs:
       - terraform-plan:
           context: aeb_secrets
+          filters:
+            branches:
+              only:
+                - main
+                - dev
       - approve-apply:
           type: approval
           requires:
