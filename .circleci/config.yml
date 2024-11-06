@@ -15,10 +15,10 @@ workflows:
           context:
             - aws-oidc-context
             - terraform-context
-      - ec2_provisioning:
-          context:
-            - aws-oidc-context
-            - terraform-context
+#      - ec2_provisioning:
+#          context:
+#            - aws-oidc-context
+#            - terraform-context
 
 # Use continuation to generate workflows
 jobs:
