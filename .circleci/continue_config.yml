@@ -1,18 +1,32 @@
 version: 2.1
 
+parameters:
+  run_vpc:
+    type: boolean
+    default: false
+  run_subnets:
+    type: boolean
+    default: false
+  run_ec2:
+    type: boolean
+    default: false
+
 orbs:
   continuation: circleci/continuation@1.0.0
 
-parameters:
-  run_workflow:
-    type: string
-    default: ""
-
 workflows:
-  continue-workflow:
-    when:
-      not:
-        equal: [ "", << pipeline.parameters.run_workflow >> ]
+  version: 2
+  trigger-workflows:
     jobs:
       - continuation/continue:
-          configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
+          name: vpc-workflow
+          configuration_path: .circleci/infrastructure_deployment/vpc_workflow.yml
+          when: << pipeline.parameters.run_vpc >>
+      - continuation/continue:
+          name: subnet-workflow
+          configuration_path: .circleci/infrastructure_deployment/subnets_workflow.yml
+          when: << pipeline.parameters.run_subnets >>
+      - continuation/continue:
+          name: ec2-workflow
+          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
+          when: << pipeline.parameters.run_ec2 >>

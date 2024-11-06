@@ -6,9 +6,15 @@ orbs:
   path-filtering: circleci/path-filtering@1.1.0
 
 parameters:
-  run_workflow:
-    type: string
-    default: ""
+  run_vpc:
+    type: boolean
+    default: false
+  run_subnets:
+    type: boolean
+    default: false
+  run_ec2:
+    type: boolean
+    default: false
 
 workflows:
   version: 2
@@ -17,12 +23,12 @@ workflows:
       - path-filtering/filter:
           name: check-updated-files
           mapping: |
-            terraform/vpc/.* run_workflow "vpc"
-            .circleci/infrastructure_deployment/vpc* run_workflow "vpc"
-            terraform/subnets/.* run_workflow "subnets"
-            .circleci/infrastructure_deployment/subnets* run_workflow "subnets"
-            terraform/ec2/.* run_workflow "ec2"
-            .circleci/infrastructure_deployment/ec2* run_workflow "ec2"
+            terraform/vpc/.* run_workflow true
+            .circleci/infrastructure_deployment/vpc* run_workflow true
+            terraform/subnets/.* run_workflow true
+            .circleci/infrastructure_deployment/subnets* run_workflow true
+            terraform/ec2/.* run_workflow true
+            .circleci/infrastructure_deployment/ec2* run_workflow true
           base-revision: main
           config-path: .circleci/continue_config.yml
           filters:
