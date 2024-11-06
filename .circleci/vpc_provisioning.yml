@@ -1,0 +1,47 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@5.1.1
+  terraform: circleci/terraform@3.3
+
+jobs:
+  deploy_vpc:
+    docker:
+      - image: cimg/aws:2024.03
+    steps:
+      - checkout
+      - aws-cli/setup:
+          role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${AWS_FEDERATED_USER_ROLE}
+          aws-region: ${AWS_REGION}
+      - run:
+          name: Debug AWS Authentication
+          command: |
+            aws sts get-caller-identity
+      - terraform/install:
+          terraform_version: "1.5.0"
+      - run:
+          name: Initialize and Plan
+          command: |
+            cd terraform/vpc
+            export TF_LOG=DEBUG
+            terraform init \
+              -backend-config="bucket=${TF_STATE_BUCKET}" \
+              -backend-config="region=${AWS_REGION}" \
+              -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
+            terraform plan -out=tfplan
+      - run:
+          name: Apply Changes
+          command: |
+            cd terraform/vpc
+            terraform apply -auto-approve tfplan
+
+workflows:
+  version: 2
+  deploy_infrastructure:
+    jobs:
+      - deploy_vpc:
+          context: aeb_secrets
+          filters:
+            branches:
+              only:
+                - dev
