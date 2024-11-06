@@ -4,6 +4,18 @@ setup: true
 
 orbs:
   path-filtering: circleci/path-filtering@1.0
+  continuation: circleci/continuation@0.2.0
+
+parameters:
+  deploy_vpc:
+    type: boolean
+    default: false
+  deploy_ec2:
+    type: boolean
+    default: false
+  deploy_security_group:
+    type: boolean
+    default: false
 
 workflows:
   version: 2
@@ -12,7 +24,7 @@ workflows:
       - path-filtering/filter:
           name: check-vpc-changes
           mapping: |
-            terraform/vpc/.* deploy_vpc true .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
+            terraform/vpc/.* deploy_vpc true
             .circleci/infrastructure_deployment/vpc/.* deploy_vpc true
           base-revision: main
           config-path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
