@@ -42,35 +42,35 @@ jobs:
 #              -var="project=${PROJECT_NAME}" \
 #              -var="owner=${OWNER}" \
               -out=tfplan
-      - persist_to_workspace:
-          root: .
-          paths:
-            - terraform/vpc/tfplan
+#      - persist_to_workspace:
+#          root: .
+#          paths:
+#            - terraform/vpc/tfplan
 
-  terraform-vpc-apply:
-    docker:
-      - image: cimg/aws:2024.03
-    steps:
-      - checkout
-      - assume-role-with-oidc
-      - terraform/install:
-          terraform_version: "1.5.0"
-      - attach_workspace:
-          at: .
-      - run:
-          name: Apply VPC Infrastructure
-          command: |
-            cd terraform/vpc
-            terraform apply tfplan
-
-workflows:
-  infrastructure_deployment:
-    jobs:
-      - vpc_provisioning:
-          context:
-            - aws-oidc-context
-            - terraform-context
-          filters:
-            branches:
-              only:
-                - dev
+#  terraform-vpc-apply:
+#    docker:
+#      - image: cimg/aws:2024.03
+#    steps:
+#      - checkout
+#      - assume-role-with-oidc
+#      - terraform/install:
+#          terraform_version: "1.5.0"
+#      - attach_workspace:
+#          at: .
+#      - run:
+#          name: Apply VPC Infrastructure
+#          command: |
+#            cd terraform/vpc
+#            terraform apply tfplan
+#
+#workflows:
+#  infrastructure_deployment:
+#    jobs:
+#      - vpc_provisioning:
+#          context:
+#            - aws-oidc-context
+#            - terraform-context
+#          filters:
+#            branches:
+#              only:
+#                - dev
