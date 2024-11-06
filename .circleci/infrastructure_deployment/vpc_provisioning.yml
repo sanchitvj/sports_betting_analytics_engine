@@ -47,25 +47,25 @@ jobs:
           paths:
             - terraform/vpc/tfplan
 
-terraform-apply:
-    docker:
-      - image: cimg/aws:2024.03
-    steps:
-      - checkout
-      - assume-role-with-oidc
-      - terraform/install:
-          terraform_version: "1.5.0"
-      - attach_workspace:
-          at: .
-      - run:
-          name: Apply Terraform Changes
-          command: |
-            cd terraform/vpc
-            terraform init \
-              -backend-config="bucket=${TF_STATE_BUCKET}" \
-              -backend-config="region=${AWS_REGION}" \
-              -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
-            terraform apply tfplan
+  terraform-apply:
+      docker:
+        - image: cimg/aws:2024.03
+      steps:
+        - checkout
+        - assume-role-with-oidc
+        - terraform/install:
+            terraform_version: "1.5.0"
+        - attach_workspace:
+            at: .
+        - run:
+            name: Apply Terraform Changes
+            command: |
+              cd terraform/vpc
+              terraform init \
+                -backend-config="bucket=${TF_STATE_BUCKET}" \
+                -backend-config="region=${AWS_REGION}" \
+                -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
+              terraform apply tfplan
 
 workflows:
   run-vpc-workflow:
