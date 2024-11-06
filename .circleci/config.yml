@@ -8,11 +8,13 @@ jobs:
   deploy_vpc:
     docker:
       - image: cimg/aws:2024.03
+    environment:
+      AWS_REGION: us-east-1  # Default region, will be overridden by context
     steps:
       - checkout
       - aws-cli/setup:
           role-arn: arn:aws:iam::$AWS_ACCOUNT_ID:role/$AWS_FEDERATED_USER_ROLE
-          aws-region: $AWS_REGION  # Note the double quotes
+          aws-region: AWS_REGION  # Note the double quotes
           profile-name: "oidc-profile"  # Optional but recommended
           role-session-name: "circleci-vpc-deployment"  # Optional but recommended
           session-duration: "3600"  # Optional, duration in seconds
