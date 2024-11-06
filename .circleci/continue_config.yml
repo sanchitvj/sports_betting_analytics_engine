@@ -10,17 +10,17 @@ parameters:
     type: string
     default: ""
 
-jobs:
-  debug_job:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run:
-          name: Debug Continuation Key
-          command: |
-            echo "Continuation Key: $CIRCLE_CONTINUATION_KEY"
-            echo "Run Workflow: << pipeline.parameters.run_workflow >>"
-            env | grep CIRCLE
+#jobs:
+#  debug_job:
+#    docker:
+#      - image: cimg/base:stable
+#    steps:
+#      - run:
+#          name: Debug Continuation Key
+#          command: |
+#            echo "Continuation Key: $CIRCLE_CONTINUATION_KEY"
+#            echo "Run Workflow: << pipeline.parameters.run_workflow >>"
+#            env | grep CIRCLE
 
 workflows:
   continue-workflow:
@@ -28,9 +28,9 @@ workflows:
       not:
         equal: [ "", << pipeline.parameters.run_workflow >> ]
     jobs:
-      - debug_job
+#      - debug_job
       - continuation/continue:
-          requires:
-            - debug_job
+#          requires:
+#            - debug_job
           configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
-          continuation-key: ${CIRCLE_CONTINUATION_KEY}
+#          continuation-key: ${CIRCLE_CONTINUATION_KEY}
