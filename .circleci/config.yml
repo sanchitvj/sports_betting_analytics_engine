@@ -8,13 +8,8 @@ orbs:
 # Setup workflow orchestration
 setup: true
 
-# Import individual workflow files
 workflows:
-#  version: 2
   infrastructure_deployment:
-#    when:
-#      and:
-#        - equal: [ main, dev ] # << pipeline.git.branch >>
     jobs:
       - vpc_provisioning:
           context:
@@ -24,3 +19,21 @@ workflows:
           context:
             - aws-oidc-context
             - terraform-context
+
+# Use continuation to generate workflows
+jobs:
+  vpc_provisioning:
+    docker:
+      - image: cimg/aws:2024.03
+    steps:
+      - checkout
+      - run:
+          command: |
+            cd .circleci/infrastructure_deployment
+            circleci config pack vpc_provisioning.yml > processed_config.yml
+      - persist_to_workspace:
+          root: .circleci/infrastructure_deployment
+          paths:
+            - processed_config.yml
+
+

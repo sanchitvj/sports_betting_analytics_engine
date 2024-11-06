@@ -1,5 +1,10 @@
 version: 2.1
 
+# Import required orbs
+orbs:
+  aws-cli: circleci/aws-cli@5.1.1
+  terraform: circleci/terraform@3.3
+
 # Define reusable commands
 commands:
   assume-role-with-oidc:
@@ -10,7 +15,7 @@ commands:
           aws-region: ${AWS_REGION}
 
 jobs:
-  terraform-vpc-plan:
+  vpc_provisioning:
     docker:
       - image: cimg/aws:2024.03
     steps:
@@ -59,38 +64,13 @@ jobs:
             terraform apply tfplan
 
 workflows:
-  vpc-deployment:
+  infrastructure_deployment:
     jobs:
-      - terraform-vpc-plan:
-          # Auto-trigger conditions
-          filters:
-            branches:
-              only:
-                - dev  # or your deployment branch
-            paths:
-              - "terraform/vpc/**"  # Only trigger on VPC-related changes
-              - ".circleci/workflows/vpc_workflow.yml"
+      - vpc_provisioning:
           context:
             - aws-oidc-context
             - terraform-context
-
-      - approve-vpc-apply:
-          type: approval
-          requires:
-            - terraform-vpc-plan
-          # Optional: Add filters if you want to restrict who can approve
           filters:
             branches:
               only:
                 - dev
-
-      - terraform-vpc-apply:
-          requires:
-            - approve-vpc-apply
-          filters:
-            branches:
-              only:
-                - dev
-          context:
-            - aws-oidc-context
-            - terraform-context
