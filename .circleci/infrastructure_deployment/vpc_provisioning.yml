@@ -35,13 +35,7 @@ jobs:
           name: Terraform Plan
           command: |
             cd terraform/vpc
-            terraform plan \
-#              -var="aws_region=${AWS_REGION}" \
-#              -var="vpc_cidr=${VPC_CIDR}" \
-#              -var="environment=${ENVIRONMENT}" \
-#              -var="project=${PROJECT_NAME}" \
-#              -var="owner=${OWNER}" \
-              -out=tfplan
+            terraform plan -out=tfplan
       - persist_to_workspace:
           root: .
           paths:
