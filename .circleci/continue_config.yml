@@ -16,17 +16,26 @@ orbs:
 
 workflows:
   version: 2
-  trigger-workflows:
+  trigger-vpc-workflow:
+    when:
+      equal: [ true, << pipeline.parameters.run_vpc >> ]
     jobs:
       - continuation/continue:
           name: vpc-workflow
-          configuration_path: .circleci/infrastructure_deployment/vpc_workflow.yml
-          when: << pipeline.parameters.run_vpc >>
-      - continuation/continue:
-          name: subnet-workflow
-          configuration_path: .circleci/infrastructure_deployment/subnets_workflow.yml
-          when: << pipeline.parameters.run_subnets >>
-      - continuation/continue:
-          name: ec2-workflow
-          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
-          when: << pipeline.parameters.run_ec2 >>
+          configuration_path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
+
+    trigger-subnets-workflow:
+      when:
+        equal: [ true, << pipeline.parameters.run_subnets >> ]
+      jobs:
+        - continuation/continue:
+            name: subnet-workflow
+            configuration_path: .circleci/infrastructure_deployment/subnets/subnets_workflow.yml
+
+    trigger-ec2-workflow:
+      when:
+        equal: [ true, << pipeline.parameters.run_ec2 >> ]
+      jobs:
+        - continuation/continue:
+            name: ec2-workflow
+            configuration_path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
