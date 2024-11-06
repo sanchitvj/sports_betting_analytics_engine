@@ -10,17 +10,17 @@ setup: true
 
 # Import individual workflow files
 workflows:
-  version: 2
+#  version: 2
   infrastructure-deployment:
-    when:
-      and:
-        - equal: [ main, dev ] # << pipeline.git.branch >>
+#    when:
+#      and:
+#        - equal: [ main, dev ] # << pipeline.git.branch >>
     jobs:
       - vpc-provisioning:
           context:
             - aws-oidc-context
             - terraform-context
-      - ec2-workflow:
+      - ec2-provisioning:
           context:
             - aws-oidc-context
             - terraform-context
