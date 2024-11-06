@@ -1,6 +1,6 @@
 version: 2.1
 
-setup: true # for CIRCLE_CONTINUATION_KEY
+#setup: true # for CIRCLE_CONTINUATION_KEY
 
 orbs:
   continuation: circleci/continuation@0.2.0
@@ -15,10 +15,10 @@ orbs:
 #  run_ec2:
 #    type: boolean
 #    default: false
-parameters:
-  run_workflow:
-    type: string
-    default: ""
+#parameters:
+#  run_workflow:
+#    type: string
+#    default: ""
 
 
 workflows:
