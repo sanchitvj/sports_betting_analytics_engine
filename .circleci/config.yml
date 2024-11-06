@@ -36,8 +36,7 @@ jobs:
             terraform apply -auto-approve tfplan
 
 workflows:
-  version: 2
-  deploy_infrastructure:
+  deploy_vpc:
     jobs:
       - deploy_vpc:
           context: aeb_secrets
