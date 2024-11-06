@@ -1,0 +1,26 @@
+version: 2.1
+
+# Import required orbs
+orbs:
+  aws-cli: circleci/aws-cli@5.1.1
+  terraform: circleci/terraform@3.3
+
+# Setup workflow orchestration
+setup: true
+
+# Import individual workflow files
+workflows:
+  version: 2
+  infrastructure-deployment:
+    when:
+      and:
+        - equal: [ main, << pipeline.git.branch >> ]
+    jobs:
+      - vpc-workflow:
+          context:
+            - aws-oidc-context
+            - terraform-context
+      - ec2-workflow:
+          context:
+            - aws-oidc-context
+            - terraform-context
