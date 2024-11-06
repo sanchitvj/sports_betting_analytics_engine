@@ -5,6 +5,11 @@ orbs:
   terraform: circleci/terraform@3.3
   continuation: circleci/continuation@0.2.0
 
+parameters:
+  deploy_vpc:
+    type: boolean
+    default: false
+
 jobs:
   vpc_provision:
     docker:
