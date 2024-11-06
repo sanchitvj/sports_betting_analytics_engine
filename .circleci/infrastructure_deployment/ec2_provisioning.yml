@@ -55,7 +55,7 @@ jobs:
             terraform apply tfplan
 
 workflows:
-  ec2-deployment:
+  infrastructure_deployment:
     jobs:
       - terraform-plan:
           context:
