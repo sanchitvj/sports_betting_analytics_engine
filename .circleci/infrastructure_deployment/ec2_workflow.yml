@@ -1,41 +1,40 @@
 version: 2.1
 
-# Define reusable commands
-commands:
-  assume-role-with-oidc:
-    description: "Assume AWS role using OIDC"
-    steps:
-      - aws-cli/setup:
-          role-arn: arn:aws:iam::${secrets.AWS_ACCOUNT_ID}:role/${secrets.AWS_FEDERATED_USER_ROLE}
-          aws-region: ${AWS_REGION}
+orbs:
+  aws-cli: circleci/aws-cli@3.1.5
+  terraform: circleci/terraform@3.3
+  continuation: circleci/continuation@0.2.0
 
 jobs:
-  terraform-plan:
+  ec2_provision:
     docker:
       - image: cimg/aws:2024.03   # base to aws
     steps:
       - checkout
-      - assume-role-with-oidc
+      - aws-cli/setup:
+          role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${OIDC_ROLE}
+          aws-region: AWS_REGION
+          profile-name: oidc-profile
       - terraform/install:
           terraform_version: "1.5.0"
       - run:
-          name: Initialize Terraform
+          name: Initialize EC2 Terraform
           command: |
             cd terraform/ec2
             terraform init \
               -backend-config="bucket=${TF_STATE_BUCKET}" \
-              -backend-config="key=${TF_STATE_KEY}" \
               -backend-config="region=${AWS_REGION}" \
               -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
       - run:
-          name: Plan Terraform Changes
+          name: Plan EC2 Changes
           command: |
             cd terraform/ec2
             terraform plan \
-              -var="vpc_id=${VPC_ID}" \
+              -var="vpc_id=${KAFKA_VPC_ID}" \
               -var="subnet_id=${SUBNET_ID}" \
-              -var="key_pair_name=${KEY_PAIR}" \
-              -var="iam_role_name=${IAM_ROLE}" \
+              -var="key_pair_name=${OLD_KEY_PAIR}" \
+              -var='instance_type=t3a.medium" \
+              -var="iam_role_name=${EC2_IAM_ROLE}" \
               -var="vpc_cidr=${VPC_CIDR}" \
               -var="allowed_cidr_blocks=${ALLOWED_CIDRS}" \
               -out=tfplan
@@ -55,7 +54,7 @@ jobs:
             terraform apply tfplan
 
 workflows:
-  ec2-deployment:
+  infrastructure_deployment:
     jobs:
       - terraform-plan:
           context:
