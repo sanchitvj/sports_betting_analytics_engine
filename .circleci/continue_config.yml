@@ -15,10 +15,10 @@ orbs:
 #  run_ec2:
 #    type: boolean
 #    default: false
-#parameters:
-#  run_workflow:
-#    type: string
-#    default: ""
+parameters:
+  run_workflow:
+    type: string
+    default: ""
 
 
 workflows:
