@@ -15,7 +15,7 @@ workflows:
           context:
             - aws-oidc-context
             - terraform-context
-      - ec2-provisioning:
+      - ec2_provisioning:
           context:
             - aws-oidc-context
             - terraform-context
