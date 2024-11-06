@@ -10,7 +10,7 @@ commands:
           aws-region: ${AWS_REGION}
 
 jobs:
-  terraform-plan:
+  ec2_provisioning:
     docker:
       - image: cimg/aws:2024.03   # base to aws
     steps:
