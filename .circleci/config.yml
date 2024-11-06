@@ -13,7 +13,7 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup:
-          role-arn: arn:aws:iam::$AWS_ACCOUNT_ID:role/$AWS_FEDERATED_USER_ROLE
+          role-arn: arn:aws:iam::$AWS_ACCOUNT_ID:role/$OIDC_ROLE
           aws-region: AWS_REGION  # Note the double quotes
           profile-name: "oidc-profile"  # Optional but recommended
           role-session-name: "circleci-vpc-deployment"  # Optional but recommended
