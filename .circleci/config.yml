@@ -11,6 +11,7 @@ workflows:
           name: check-vpc-changes
           mapping: |
             terraform/vpc/.* deploy_vpc true
+            .circleci/infrastructure_deployment/vpc/.* deploy_vpc true
           base-revision: main
           config-path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
           filters:
