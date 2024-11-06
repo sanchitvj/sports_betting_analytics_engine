@@ -10,12 +10,12 @@ parameters:
   deploy_vpc:
     type: boolean
     default: false
-#  deploy_ec2:
-#    type: boolean
-#    default: false
-#  deploy_security_group:
-#    type: boolean
-#    default: false
+  deploy_subnets:
+    type: boolean
+    default: false
+  deploy_ec2:
+    type: boolean
+    default: false
 
 workflows:
   version: 2
@@ -26,40 +26,56 @@ workflows:
           name: check-vpc-changes
           mapping: |
             terraform/vpc/* deploy_vpc true
-            .circleci/infrastructure_deployment/vpc/* deploy_vpc true
+            .circleci/infrastructure_deployment/vpc* deploy_vpc true
           base-revision: main
-          config-path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
+          config-path: .circleci/infrastructure_deployment/vpc_workflow.yml
           filters:
             branches:
               only:
                 - dev
                 - main
-  trigger-vpc:
-    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
-    jobs:
-      - continuation/continue:
-          configuration_path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
+
+      - path-filtering/filter:
+          name: check-changes
+          mapping: |
+            terraform/vpc/* deploy_subnets true
+            .circleci/infrastructure_deployment/subnets* deploy_subnets true
+          base-revision: dev
+          config-path: .circleci/infrastructure_deployment/subnets_workflow.yml
+          filters:
+            branches:
+              only:
+                - dev
+                - main
 
 #      - path-filtering/filter:
 #          name: check-ec2-changes
 #          mapping: |
-#            terraform/ec2/.* deploy_ec2 true
+#            terraform/ec2/* deploy_ec2 true
+#            .circleci/infrastructure_deployment/ec2* deploy_ec2 true
 #          base-revision: main
-#          config-path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
+#          config-path: .circleci/infrastructure_deployment/ec2_workflow.yml
 #          filters:
 #            branches:
 #              only:
 #                - dev
 #                - main
-#
-#      - path-filtering/filter:
-#          name: check-security-group-changes
-#          mapping: |
-#            terraform/security_group/.* deploy_security_group true
-#          base-revision: main
-#          config-path: .circleci/infrastructure_deployment/security_group/sg_workflow.yml
-#          filters:
-#            branches:
-#              only:
-#                - dev
-#                - main
+  trigger-vpc:
+    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/infrastructure_deployment/vpc_workflow.yml
+
+  trigger-subnets:
+    when: << pipeline.parameters.deploy_subnets >>
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/infrastructure_deployment/subnet_workflow.yml
+
+#  trigger-ec2:
+#    when: << pipeline.parameters.deploy_ec2 >>
+#    jobs:
+#      - continuation/continue:
+#          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
+
+
