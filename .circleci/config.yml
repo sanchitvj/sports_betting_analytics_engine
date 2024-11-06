@@ -1,10 +1,9 @@
 version: 2.1
 
-setup: true # for dynamic configuration multi-path filtering
+setup: true # for CIRCLE_CONTINUATION_KEY
 
 orbs:
   path-filtering: circleci/path-filtering@1.0
-  continuation: circleci/continuation@0.2.0
 
 parameters:
   run_workflow:
@@ -25,37 +24,9 @@ workflows:
             terraform/ec2/.* run_workflow "ec2"
             .circleci/infrastructure_deployment/ec2* run_workflow "ec2"
           base-revision: main
-          # Generate different configs based on which files changed
           config-path: .circleci/continue_config.yml
           filters:
             branches:
               only:
                 - dev
                 - main
-
-  # This workflow handles the continuation
-#  continue-workflow:
-#    when:
-#      not:
-#        equal: [ "", << pipeline.parameters.run_workflow >> ]
-#    jobs:
-#      - continuation/continue:
-#          configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
-
-#  trigger-vpc:
-#    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
-#    jobs:
-#      - continuation/continue:
-#          configuration_path: .circleci/infrastructure_deployment/vpc_workflow.yml
-#
-#  trigger-subnets:
-#    when: << pipeline.parameters.deploy_subnets >>
-#    jobs:
-#      - continuation/continue:
-#          configuration_path: .circleci/infrastructure_deployment/subnet_workflow.yml
-#
-#  trigger-ec2:
-#    when: << pipeline.parameters.deploy_ec2 >>
-#    jobs:
-#      - continuation/continue:
-#          configuration_path: .circleci/infrastructure_deployment/ec2_workflow.yml
