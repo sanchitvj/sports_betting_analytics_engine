@@ -16,11 +16,11 @@ workflows:
 #      and:
 #        - equal: [ main, dev ] # << pipeline.git.branch >>
     jobs:
-      - vpc_provisioning:
+      - vpc-provisioning:
           context:
             - aws-oidc-context
             - terraform-context
-      - ec2_provisioning:
+      - ec2-provisioning:
           context:
             - aws-oidc-context
             - terraform-context
