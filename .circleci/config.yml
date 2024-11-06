@@ -25,6 +25,7 @@ workflows:
             .circleci/infrastructure_deployment/ec2* run_workflow "ec2"
           base-revision: main
           config-path: .circleci/continue_config.yml
+          setup: true
           filters:
             branches:
               only:

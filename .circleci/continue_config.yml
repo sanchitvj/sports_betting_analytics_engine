@@ -1,9 +1,9 @@
 version: 2.1
 
-#setup: true # for CIRCLE_CONTINUATION_KEY
+setup: true # for CIRCLE_CONTINUATION_KEY
 
 orbs:
-  continuation: circleci/continuation@0.2.0
+  continuation: circleci/continuation@1.0.0
 
 parameters:
   run_workflow:
@@ -20,6 +20,7 @@ jobs:
           command: |
             echo "Continuation Key: $CIRCLE_CONTINUATION_KEY"
             echo "Run Workflow: << pipeline.parameters.run_workflow >>"
+            env | grep CIRCLE
 
 workflows:
   continue-workflow:
@@ -27,5 +28,9 @@ workflows:
       not:
         equal: [ "", << pipeline.parameters.run_workflow >> ]
     jobs:
+      - debug_job
       - continuation/continue:
+          requires:
+            - debug_job
           configuration_path: ".circleci/infrastructure_deployment/<< pipeline.parameters.run_workflow >>_workflow.yml"
+          continuation-key: ${CIRCLE_CONTINUATION_KEY}
