@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  aws-cli: circleci/aws-cli@5.1.1
+  aws-cli: circleci/aws-cli@3.1.5
   terraform: circleci/terraform@3.3
 
 jobs:
@@ -11,18 +11,22 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup:
-          role-arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${AWS_FEDERATED_USER_ROLE}
-          aws-region: ${AWS_REGION}
+          role-arn: 'arn:aws:iam::${AWS_ACCOUNT_ID}:role/${AWS_FEDERATED_USER_ROLE}'
+          aws-region: "${AWS_REGION}"  # Note the double quotes
+          profile-name: "oidc-profile"  # Optional but recommended
+          role-session-name: "circleci-vpc-deployment"  # Optional but recommended
+          session-duration: "3600"  # Optional, duration in seconds
       - run:
           name: Debug AWS Authentication
           command: |
-            aws sts get-caller-identity
+            aws sts get-caller-identity --profile oidc-profile
       - terraform/install:
           terraform_version: "1.5.0"
       - run:
           name: Initialize and Plan
           command: |
             cd terraform/vpc
+            export AWS_PROFILE=oidc-profile
             export TF_LOG=DEBUG
             terraform init \
               -backend-config="bucket=${TF_STATE_BUCKET}" \
@@ -33,10 +37,11 @@ jobs:
           name: Apply Changes
           command: |
             cd terraform/vpc
+            export AWS_PROFILE=oidc-profile
             terraform apply -auto-approve tfplan
 
 workflows:
-  deploy_vpc:
+  deploy_infrastructure:
     jobs:
       - deploy_vpc:
           context: aeb_secrets
