@@ -1,7 +1,9 @@
-#dynamic configuration multi-path filtering
 version: 2.1
 
 setup: true # for CIRCLE_CONTINUATION_KEY
+
+orbs:
+  continuation: circleci/continuation@0.2.0
 
 #parameters:
 #  run_vpc:
@@ -18,8 +20,6 @@ parameters:
     type: string
     default: ""
 
-orbs:
-  continuation: circleci/continuation@0.2.0
 
 workflows:
   version: 2
