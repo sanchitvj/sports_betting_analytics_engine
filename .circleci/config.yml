@@ -14,7 +14,7 @@ workflows:
   infrastructure-deployment:
     when:
       and:
-        - equal: [ main, << pipeline.git.branch >> ]
+        - equal: [ main, dev ] # << pipeline.git.branch >>
     jobs:
       - vpc-provisioning:
           context:
