@@ -10,6 +10,17 @@ parameters:
     type: string
     default: ""
 
+jobs:
+  debug_job:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Debug Continuation Key
+          command: |
+            echo "Continuation Key: $CIRCLE_CONTINUATION_KEY"
+            echo "Run Workflow: << pipeline.parameters.run_workflow >>"
+
 workflows:
   continue-workflow:
     when:
