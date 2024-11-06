@@ -5,11 +5,6 @@ orbs:
   terraform: circleci/terraform@3.3
   continuation: circleci/continuation@0.2.0
 
-parameters:
-  deploy_vpc:
-    type: boolean
-    default: false
-
 jobs:
   vpc_provision:
     docker:
@@ -22,10 +17,6 @@ jobs:
           profile-name: oidc-profile
       - terraform/install:
           terraform_version: "1.5.0"
-      - run:
-          name: Debug Pipeline Parameter
-          command: |
-            echo "Deploy VPC Parameter: ${CIRCLE_PIPELINE_PARAMETERS_DEPLOY_VPC}"
       - run:
           name: Initialize VPC Terraform
           command: |
@@ -61,8 +52,8 @@ jobs:
 workflows:
   version: 2
   deploy_vpc:
-    when:
-      equal: [ true, << pipeline.parameters.deploy_vpc >> ]
+#    when:
+#      equal: [ true, << pipeline.parameters.deploy_vpc >> ]
     jobs:
       - vpc_provision:
           context: aeb_secrets

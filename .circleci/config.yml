@@ -10,16 +10,17 @@ parameters:
   deploy_vpc:
     type: boolean
     default: false
-  deploy_ec2:
-    type: boolean
-    default: false
-  deploy_security_group:
-    type: boolean
-    default: false
+#  deploy_ec2:
+#    type: boolean
+#    default: false
+#  deploy_security_group:
+#    type: boolean
+#    default: false
 
 workflows:
   version: 2
   manage-infrastructure:
+    unless: << pipeline.parameters.deploy_vpc >>  # Only run path filtering if not triggered directly
     jobs:
       - path-filtering/filter:
           name: check-vpc-changes
@@ -33,6 +34,11 @@ workflows:
               only:
                 - dev
                 - main
+  trigger-vpc:
+    when: << pipeline.parameters.deploy_vpc >>  # Run this workflow when deploy_vpc is true
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
 
 #      - path-filtering/filter:
 #          name: check-ec2-changes
