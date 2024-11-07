@@ -1,0 +1,36 @@
+name: Terraform Provisioning VPC
+
+on:
+  push:
+    paths:
+      - 'terraform/subnets/**'
+      - '.github/workflows/subnet_workflow.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_FEDERATED_USER_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="region=${{ vars.AWS_REGION }}" -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}"
+        working-directory: terraform/subnets
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var "vpc_id=${{ secrets.KAFKA_VPC_ID }}"
+        working-directory: terraform/subnets

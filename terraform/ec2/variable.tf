@@ -3,6 +3,11 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "vpc_id" {
+  description = "VPC ID where security group will be created"
+  type        = string
+}
+
 variable "key_pair_name" {
   description = "Name of the existing key pair"
   type        = string
@@ -29,11 +34,6 @@ variable "zookeeper_version" {
   description = "Zookeeper version to install"
   type        = string
   default     = "3.8.0"
-}
-
-variable "vpc_id" {
-  description = "VPC ID where security group will be created"
-  type        = string
 }
 
 variable "vpc_cidr" {
