@@ -14,28 +14,45 @@ parameters:
 orbs:
   continuation: circleci/continuation@1.0.0
 
+
+jobs:
+  trigger_workflow:
+    docker:
+      - image: cimg/base:stable
+    parameters:
+      workflow_path:
+        type: string
+    steps:
+      - continuation/continue:
+          configuration_path: << parameters.workflow_path >>
+
 workflows:
   version: 2
-  trigger-vpc-workflow:
-    when:
-      equal: [ true, << pipeline.parameters.run_vpc >> ]
+  trigger-workflows:
     jobs:
-      - continuation/continue:
+      - trigger_workflow:
           name: vpc-workflow
-          configuration_path: .circleci/infrastructure_deployment/vpc/vpc_workflow.yml
+          workflow_path: .circleci/infrastructure_deployment/vpc_workflow.yml
+          requires:
+            - approval
+          when:
+            equal: [ true, << pipeline.parameters.run_vpc >> ]
 
-  trigger-subnets-workflow:
-    when:
-      equal: [ true, << pipeline.parameters.run_subnets >> ]
-    jobs:
-      - continuation/continue:
+      - trigger_workflow:
           name: subnet-workflow
-          configuration_path: .circleci/infrastructure_deployment/subnets/subnets_workflow.yml
+          workflow_path: .circleci/infrastructure_deployment/subnets_workflow.yml
+          requires:
+            - approval
+          when:
+            equal: [ true, << pipeline.parameters.run_subnets >> ]
 
-  trigger-ec2-workflow:
-    when:
-      equal: [ true, << pipeline.parameters.run_ec2 >> ]
-    jobs:
-      - continuation/continue:
+      - trigger_workflow:
           name: ec2-workflow
-          configuration_path: .circleci/infrastructure_deployment/ec2/ec2_workflow.yml
+          workflow_path: .circleci/infrastructure_deployment/ec2_workflow.yml
+          requires:
+            - approval
+          when:
+            equal: [ true, << pipeline.parameters.run_ec2 >> ]
+
+      - approval:
+          type: approval

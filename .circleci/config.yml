@@ -16,6 +16,17 @@ parameters:
     type: boolean
     default: false
 
+jobs:
+  pass-continuation:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Store continuation key
+          command: |
+            echo "export CIRCLE_CONTINUATION_KEY=${CIRCLE_CONTINUATION_KEY}" >> $BASH_ENV
+            source $BASH_ENV
+
 workflows:
   version: 2
   path-filtering:
@@ -31,6 +42,8 @@ workflows:
             .circleci/infrastructure_deployment/ec2* run_ec2 true
           base-revision: main
           config-path: .circleci/continue_config.yml
+          post-steps:
+            - pass-continuation
           filters:
             branches:
               only:
