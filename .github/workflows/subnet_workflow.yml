@@ -1,4 +1,4 @@
-name: Terraform Provisioning VPC
+name: Terraform Provisioning Subnets
 
 on:
   push:

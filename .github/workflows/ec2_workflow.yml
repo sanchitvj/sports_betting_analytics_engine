@@ -1,4 +1,4 @@
-name: Terraform Provisioning VPC
+name: Terraform Provisioning EC2 Instance
 
 on:
   push:
