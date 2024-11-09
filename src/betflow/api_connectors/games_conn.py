@@ -3,7 +3,8 @@ import time
 from typing import Dict, Any, Optional
 import requests
 from kafka import KafkaProducer
-from rate_limiter import RateLimiter
+from betflow.api_connectors.conn_utils import RateLimiter
+from kafka.errors import NoBrokersAvailable
 
 class ESPNConnector:
     """Connector for ESPN API with Kafka integration.
@@ -23,29 +24,35 @@ class ESPNConnector:
 
     def __init__(self, kafka_bootstrap_servers: str) -> None:
         self.base_url = "https://site.api.espn.com/apis/site/v2/sports"
-        self.producer = KafkaProducer(
-            bootstrap_servers=kafka_bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            compression_type='gzip',
-            retries=3,
-            acks='all'
-        )
+        # Add retry logic for Kafka connection
+        max_retries = 3
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                self.producer = KafkaProducer(
+                    bootstrap_servers=kafka_bootstrap_servers,
+                    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                    compression_type='gzip',
+                    retries=3,
+                    acks='all',
+                    api_version=(2, 5, 0),  # Add explicit API version
+                    security_protocol="PLAINTEXT",  # Specify security protocol
+                    request_timeout_ms=30000,  # Increase timeout
+                    connections_max_idle_ms=300000  # Increase idle time
+                )
+                break
+            except NoBrokersAvailable as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    raise Exception(f"Failed to connect to Kafka after {max_retries} attempts: {str(e)}")
+                time.sleep(5)  # Wait before retrying
+
         self.rate_limiter = RateLimiter()
         self.session = requests.Session()
 
     def make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
-        """Makes a rate-limited request to the ESPN API.
-
-        Args:
-            endpoint (str): API endpoint to request.
-            params (Optional[Dict]): Query parameters for the request.
-
-        Returns:
-            Dict[str, Any]: JSON response from the API.
-
-        Raises:
-            Exception: If request fails or rate limit is exceeded.
-        """
+        """Makes a rate-limited request to the ESPN API."""
         self.rate_limiter.wait_if_needed()
 
         url = f"{self.base_url}/{endpoint}"
@@ -55,8 +62,13 @@ class ESPNConnector:
             response.raise_for_status()
             return response.json()
 
+        except requests.exceptions.HTTPError as e:
+            if getattr(e.response, 'status_code', None) == 429:
+                retry_after = int(e.response.headers.get('Retry-After', 60))
+                raise Exception(f"Rate limit exceeded. Retrying after {retry_after} seconds")
+            raise Exception(f"HTTP error occurred: {e}")
         except requests.exceptions.RequestException as e:
-            self._handle_request_error(e)
+            raise Exception(f"An error occurred: {e}")
 
     def _handle_request_error(self, error: Exception) -> None:
         """Handles various types of request errors.
