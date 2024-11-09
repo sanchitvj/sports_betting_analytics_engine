@@ -5,10 +5,6 @@ from kafka.errors import KafkaTimeoutError
 
 from betflow.api_connectors.games_conn import ESPNConnector
 
-# Create an environment variable for testing
-# os.environ['KAFKA_BOOTSTRAP_SERVERS'] = 'test:9092'
-
-
 class MockResponse:
     """Mock HTTP response"""
     def __init__(self, json_data, status_code=200, headers=None):
