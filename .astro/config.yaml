@@ -1,0 +1,8 @@
+project:
+    name: sports-betting-analytics-engine
+skip_parse: false
+verbosity: debug
+webserver:
+    port: "8080"
+postgres:
+    port: "5431"

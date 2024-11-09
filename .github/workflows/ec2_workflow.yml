@@ -1,0 +1,37 @@
+name: Terraform Provisioning EC2 Instance
+
+on:
+  push:
+    paths:
+      - 'terraform/ec2/**'
+#      - '.github/workflows/ec2_workflow.yml'
+#      - '.github/scripts/kafka_setup.sh'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_FEDERATED_USER_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="region=${{ vars.AWS_REGION }}" -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}"
+        working-directory: terraform/ec2
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var "subnet_id=${{ secrets.SUBNET_ID_1A }}" -var "vpc_id=${{ secrets.KAFKA_VPC_ID }}" -var "key_pair_name=${{ secrets.INSTANCE_KEY_PAIR }}" -var "instance_type=t3a.medium" -var "iam_role_name=${{ secrets.INSTANCE_IAM_ROLE }}" -var "vpc_cidr=${{ secrets.VPC_CIDR }}"
+        working-directory: terraform/ec2

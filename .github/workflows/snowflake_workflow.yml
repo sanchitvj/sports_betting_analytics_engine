@@ -1,0 +1,69 @@
+#name: Snowflake Infrastructure Deployment
+#
+#on:
+#  push:
+#    paths:
+#      - 'terraform/snowflake/**'
+#    branches:
+#      - main
+#  pull_request:
+#    paths:
+#      - 'terraform/snowflake/**'
+#
+#env:
+#  TF_WORKSPACE: "dev"
+#  AWS_REGION: "us-east-1"
+#
+#jobs:
+#  terraform:
+#    runs-on: ubuntu-latest
+#    defaults:
+#      run:
+#        working-directory: ./terraform/snowflake
+#
+#    steps:
+#    - uses: actions/checkout@v2
+#
+#    - name: Configure AWS credentials
+#      uses: aws-actions/configure-aws-credentials@v1
+#      with:
+#        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#        aws-region: ${{ env.AWS_REGION }}
+#
+#    - name: Setup Terraform
+#      uses: hashicorp/setup-terraform@v1
+#      with:
+#        terraform_version: 1.0.0
+#
+#    - name: Create Snowflake Key Pair
+#      run: |
+#        openssl genrsa -out rsa_key.p8 2048
+#        openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub
+#        export SNOWFLAKE_PRIVATE_KEY=$(cat rsa_key.p8)
+#        echo "SNOWFLAKE_PRIVATE_KEY=${SNOWFLAKE_PRIVATE_KEY}" >> $GITHUB_ENV
+#
+#    - name: Terraform Init
+#      run: terraform init
+#      env:
+#        TF_VAR_snowflake_account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+#        TF_VAR_snowflake_user: ${{ secrets.SNOWFLAKE_USER }}
+#
+#    - name: Terraform Format
+#      run: terraform fmt -check
+#
+#    - name: Terraform Plan
+#      if: github.event_name == 'pull_request'
+#      run: terraform plan
+#      env:
+#        TF_VAR_snowflake_account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+#        TF_VAR_snowflake_user: ${{ secrets.SNOWFLAKE_USER }}
+#        TF_VAR_snowflake_private_key: ${{ env.SNOWFLAKE_PRIVATE_KEY }}
+#
+#    - name: Terraform Apply
+#      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+#      run: terraform apply -auto-approve
+#      env:
+#        TF_VAR_snowflake_account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+#        TF_VAR_snowflake_user: ${{ secrets.SNOWFLAKE_USER }}
+#        TF_VAR_snowflake_private_key: ${{ env.SNOWFLAKE_PRIVATE_KEY }}
