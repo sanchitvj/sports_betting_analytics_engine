@@ -4,8 +4,8 @@ on:
   push:
     paths:
       - 'terraform/ec2/**'
-      - '.github/workflows/ec2_workflow.yml'
-      - '.github/scripts/kafka_setup.sh'
+#      - '.github/workflows/ec2_workflow.yml'
+#      - '.github/scripts/kafka_setup.sh'
 
 jobs:
   deploy:
