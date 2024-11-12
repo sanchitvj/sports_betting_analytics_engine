@@ -46,7 +46,7 @@ class ESPNConnector:
                 retry_count += 1
                 if retry_count == max_retries:
                     raise Exception(f"Failed to connect to Kafka after {max_retries} attempts: {str(e)}")
-                time.sleep(5)  # Wait before retrying
+                time.sleep(3)  # Wait before retrying
 
         self.rate_limiter = RateLimiter()
         self.session = requests.Session()
@@ -69,8 +69,9 @@ class ESPNConnector:
             raise Exception(f"HTTP error occurred: {e}")
         except requests.exceptions.RequestException as e:
             raise Exception(f"An error occurred: {e}")
-
-    def _handle_request_error(self, error: Exception) -> None:
+    
+    @staticmethod
+    def _handle_request_error(error: Exception) -> None:
         """Handles various types of request errors.
 
         Args:
@@ -92,8 +93,9 @@ class ESPNConnector:
             raise Exception("Request timed out")
         else:
             raise Exception(f"An error occurred: {error}")
-
-    def transform_game_data(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    
+    @staticmethod
+    def transform_game_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transforms raw ESPN game data to defined schema format.
 
         Args:

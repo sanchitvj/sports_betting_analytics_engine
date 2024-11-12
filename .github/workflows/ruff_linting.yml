@@ -1,0 +1,46 @@
+name: Ruff Linting
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'src/**'
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  ruff-lint:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: write  # This is required for actions/checkout
+
+    steps:
+      - name: Check out repo code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install ruff
+
+      - name: Run Ruff
+        run: |
+          ruff check src/ --fix
+#          ruff check airflow_dags/custom_operators.py --fix
+#          ruff check airflow_dags/dag_assets.py --fix
+
+      - name: Ruff format
+        run: |
+          ruff format src/
+#          ruff format airflow_dags/custom_operators.py
+#          ruff format airflow_dags/dag_assets.py
+
+      - name: Commit
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'style fixes by ruff'

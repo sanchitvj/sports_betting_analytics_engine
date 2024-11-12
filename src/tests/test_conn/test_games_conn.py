@@ -45,14 +45,14 @@ def mock_session():
 @pytest.fixture
 def connector(mock_producer):
     """Create ESPNConnector with mocked dependencies"""
-    with patch('kafka.KafkaProducer', return_value=mock_producer):
+    with patch('kafka_orch.KafkaProducer', return_value=mock_producer):
         return ESPNConnector(kafka_bootstrap_servers='localhost:9092')
     
 
 class TestESPNConnector:
     def test_init(self, mock_producer):
         """Test connector initialization"""
-        with patch('kafka.KafkaProducer', return_value=mock_producer):
+        with patch('kafka_orch.KafkaProducer', return_value=mock_producer):
             connector = ESPNConnector(kafka_bootstrap_servers='localhost:9092')
             assert connector.base_url == "https://site.api.espn.com/apis/site/v2/sports"
             assert connector.producer is not None

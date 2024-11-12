@@ -1,4 +1,4 @@
-# Extract Kafka (assuming you're in /home/ubuntu/kafka directory)
+# Extract Kafka (assuming you're in /home/ubuntu/kafka_orch directory)
 tar -xzf kafka_2.13-3.9.0.tgz
 mv kafka_2.13-3.9.0/* .
 rm -rf kafka_2.13-3.9.0 kafka_2.13-3.9.0.tgz
