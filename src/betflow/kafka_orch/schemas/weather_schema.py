@@ -1,8 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional
 
+
 class WeatherData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     weather_id: str
     venue_id: str
     game_id: str
@@ -17,6 +19,4 @@ class WeatherData(BaseModel):
     visibility: float
     pressure: float
     uv_index: float
-    details: Optional[dict] = Field(
-        description="Additional weather metrics"
-    )
+    details: Optional[dict] = Field(description="Additional weather metrics")

@@ -17,6 +17,7 @@ dependencies = [
     "botocore>=1.34.73",
     "kafka-python>=2.0.2",
     "feedparser>=6.0.11",
+    "pydantic>=2.9.2",
 ]
 
 [project.urls]

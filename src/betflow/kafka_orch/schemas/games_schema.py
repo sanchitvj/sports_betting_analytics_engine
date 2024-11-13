@@ -1,8 +1,10 @@
 from typing import Dict, Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
+
 class BaseGameStats(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     game_id: str
     sport_type: str = Field(..., description="NBA, NFL, or MLB")
     start_time: datetime
@@ -14,7 +16,9 @@ class BaseGameStats(BaseModel):
     season_type: str
     broadcast: Optional[List[str]]
 
+
 class NFLGameStats(BaseGameStats):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     current_quarter: Optional[int]
     time_remaining: Optional[str]
     down: Optional[int]
@@ -25,7 +29,9 @@ class NFLGameStats(BaseGameStats):
         description="Team statistics including passing, rushing, etc."
     )
 
+
 class NBAGameStats(BaseGameStats):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     current_period: Optional[int]
     time_remaining: Optional[str]
     score: Dict[str, int]
@@ -33,7 +39,9 @@ class NBAGameStats(BaseGameStats):
         description="Team statistics including rebounds, assists, etc."
     )
 
+
 class MLBGameStats(BaseGameStats):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     current_inning: Optional[int]
     inning_half: Optional[str]
     outs: Optional[int]

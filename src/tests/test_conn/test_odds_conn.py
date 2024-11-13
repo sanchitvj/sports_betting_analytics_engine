@@ -1,4 +1,3 @@
-# test_odds_conn.py
 import pytest
 from unittest.mock import patch, MagicMock
 import requests
@@ -21,16 +20,14 @@ class MockResponse:
     def raise_for_status(self):
         if not self.ok:
             raise requests.exceptions.HTTPError(
-                f"{self.status_code} Error",
-                response=self
+                f"{self.status_code} Error", response=self
             )
 
 
-# Key change: Mock KafkaProducer at module level
 @pytest.fixture(autouse=True)
 def mock_kafka_producer():
     """Mock KafkaProducer at module level"""
-    with patch('betflow.api_connectors.odds_conn.KafkaProducer') as mock:
+    with patch("betflow.api_connectors.odds_conn.KafkaProducer") as mock:
         mock_instance = MagicMock()
         mock_instance.send.return_value.get.return_value = None
         mock.return_value = mock_instance
@@ -49,8 +46,7 @@ def mock_session():
 def connector():
     """Create OddsAPIConnector with mocked dependencies"""
     return OddsAPIConnector(
-        api_key="test_api_key",
-        kafka_bootstrap_servers='localhost:9092'
+        api_key="test_api_key", kafka_bootstrap_servers="localhost:9092"
     )
 
 
@@ -80,19 +76,19 @@ class TestOddsAPIConnector:
                             "key": "h2h",
                             "outcomes": [
                                 {"name": "San Antonio Spurs", "price": 1.74},
-                                {"name": "Utah Jazz", "price": 2.15}
-                            ]
+                                {"name": "Utah Jazz", "price": 2.15},
+                            ],
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         session_mock = MagicMock(spec=requests.Session)
         response_mock = MockResponse(mock_response)
         session_mock.get.return_value = response_mock
 
-        with patch('requests.Session', return_value=session_mock):
+        with patch("requests.Session", return_value=session_mock):
             connector.session = session_mock
             response = connector.make_request("sports/basketball_nba/odds")
 
@@ -101,7 +97,7 @@ class TestOddsAPIConnector:
                 f"{connector.base_url}/sports/basketball_nba/odds",
                 headers={"apikey": connector.api_key},
                 params=None,
-                timeout=30
+                timeout=30,
             )
 
     def test_make_request_rate_limit_error(self, connector):
@@ -111,15 +107,12 @@ class TestOddsAPIConnector:
         def raise_rate_limit(*args, **kwargs):
             raise requests.exceptions.HTTPError(
                 "429 Client Error: Too Many Requests",
-                response=MagicMock(
-                    status_code=429,
-                    headers={'Retry-After': '5'}
-                )
+                response=MagicMock(status_code=429, headers={"Retry-After": "5"}),
             )
 
         session_mock.get.side_effect = raise_rate_limit
 
-        with patch('requests.Session', return_value=session_mock):
+        with patch("requests.Session", return_value=session_mock):
             connector.session = session_mock
 
             with pytest.raises(Exception) as exc_info:
@@ -145,12 +138,12 @@ class TestOddsAPIConnector:
                             "key": "h2h",
                             "outcomes": [
                                 {"name": "San Antonio Spurs", "price": 1.74},
-                                {"name": "Utah Jazz", "price": 2.15}
-                            ]
+                                {"name": "Utah Jazz", "price": 2.15},
+                            ],
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         transformed = connector.transform_odds_data(raw_data)
@@ -182,20 +175,22 @@ class TestOddsAPIConnector:
 
     def test_fetch_and_publish_odds(self, connector):
         """Test complete fetch and publish pipeline"""
-        mock_response = [{
-            "id": "test_id",
-            "sport_key": "basketball_nba",
-            "sport_title": "NBA",
-            "commence_time": "2024-11-09T22:00Z",
-            "home_team": "Team A",
-            "away_team": "Team B",
-            "bookmakers": []
-        }]
+        mock_response = [
+            {
+                "id": "test_id",
+                "sport_key": "basketball_nba",
+                "sport_title": "NBA",
+                "commence_time": "2024-11-09T22:00Z",
+                "home_team": "Team A",
+                "away_team": "Team B",
+                "bookmakers": [],
+            }
+        ]
 
         session_mock = MagicMock(spec=requests.Session)
         session_mock.get.return_value = MockResponse(mock_response)
 
-        with patch('requests.Session', return_value=session_mock):
+        with patch("requests.Session", return_value=session_mock):
             connector.session = session_mock
             connector.fetch_and_publish_odds("basketball_nba")
 
