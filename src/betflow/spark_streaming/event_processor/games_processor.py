@@ -57,31 +57,77 @@ class GamesProcessor:
             "MLB": MLBGameTransformer(),
         }
 
+    @staticmethod
+    def _get_schema() -> StructType:
+        """Get schema for game data."""
+        return StructType(
+            [
+                # Base game fields
+                StructField("game_id", StringType(), False),
+                StructField("sport_type", StringType(), False),
+                StructField("start_time", TimestampType(), False),
+                StructField("venue_id", StringType(), False),
+                StructField("status", StringType(), False),
+                StructField("home_team_id", StringType(), False),
+                StructField("away_team_id", StringType(), False),
+                StructField("season", IntegerType(), False),
+                StructField("season_type", StringType(), False),
+                StructField("broadcast", ArrayType(StringType()), True),
+                # Sport-specific fields
+                StructField("current_quarter", IntegerType(), True),  # NFL
+                StructField("current_period", IntegerType(), True),  # NBA
+                StructField("current_inning", IntegerType(), True),  # MLB
+                StructField("time_remaining", StringType(), True),
+                StructField("down", IntegerType(), True),  # NFL
+                StructField("yards_to_go", IntegerType(), True),  # NFL
+                StructField("possession", StringType(), True),  # NFL
+                StructField("inning_half", StringType(), True),  # MLB
+                StructField("outs", IntegerType(), True),  # MLB
+                StructField("bases_occupied", ArrayType(IntegerType()), True),  # MLB
+                # Score and stats
+                StructField("score", MapType(StringType(), IntegerType(), True), False),
+                StructField(
+                    "stats",
+                    MapType(
+                        StringType(),  # Category (passing, rushing, shooting, etc.)
+                        MapType(
+                            StringType(),  # Stat name (yards, touchdowns, etc.)
+                            FloatType(),  # Stat value
+                            True,
+                        ),
+                        True,
+                    ),
+                    False,
+                ),
+                # Processing metadata
+                StructField("processing_time", TimestampType(), False),
+            ]
+        )
+
     def _parse_and_transform(self, stream_df: DataFrame) -> DataFrame:
         """Parse JSON data and apply sport-specific transformations."""
-        # First parse the JSON
+        # Parse the JSON
         parsed_df = stream_df.select(
             from_json(col("value").cast("string"), self._get_schema()).alias("data")
         ).select("data.*")
 
-        # Create a list to store transformed rows
-        transformed_rows = []
-
-        # Process each row using the appropriate transformer
-        for row in parsed_df.collect():
-            row_dict = row.asDict()
-            if row_dict.get("sport_type") == "NBA":
-                transformed_data = self.transformers["NBA"].transform(row_dict)
-            elif row_dict.get("sport_type") == "NFL":
-                transformed_data = self.transformers["NFL"].transform(row_dict)
-            elif row_dict.get("sport_type") == "MLB":
-                transformed_data = self.transformers["MLB"].transform(row_dict)
-            else:
-                transformed_data = row_dict
-            transformed_rows.append(transformed_data)
-
-        # Create DataFrame from transformed data
-        transformed_df = self.spark.createDataFrame(transformed_rows)
+        # Apply transformations using when clauses
+        transformed_df = parsed_df.select(
+            "*",
+            when(
+                col("sport_type") == "NBA",
+                struct(self.transformers["NBA"].transform(parsed_df)),
+            )
+            .when(
+                col("sport_type") == "NFL",
+                struct(self.transformers["NFL"].transform(parsed_df)),
+            )
+            .when(
+                col("sport_type") == "MLB",
+                struct(self.transformers["MLB"].transform(parsed_df)),
+            )
+            .alias("transformed_data"),
+        )
 
         # Add processing timestamp
         return transformed_df.withColumn("processing_time", current_timestamp())
@@ -354,56 +400,17 @@ class GamesProcessor:
                 .outputMode("update")
                 .start()
             )
+            if not hasattr(self, "output_format") or self.output_format == "kafka":
+                query = (
+                    query.option("kafka.bootstrap.servers", "localhost:9092")
+                    .option("topic", self.output_topic)
+                    .option("checkpointLocation", self.checkpoint_location)
+                )
+            else:
+                query = query.queryName("test_output")
 
-            return query
+            return query.start()
 
         except Exception as e:
-            self.logger.error(f"Error processing game stream: {e}")
+            self.logger.error(f"Error processing games stream: {e}")
             raise
-
-    @staticmethod
-    def _get_schema() -> StructType:
-        """Get schema for game data."""
-        return StructType(
-            [
-                # Base game fields
-                StructField("game_id", StringType(), False),
-                StructField("sport_type", StringType(), False),
-                StructField("start_time", TimestampType(), False),
-                StructField("venue_id", StringType(), False),
-                StructField("status", StringType(), False),
-                StructField("home_team_id", StringType(), False),
-                StructField("away_team_id", StringType(), False),
-                StructField("season", IntegerType(), False),
-                StructField("season_type", StringType(), False),
-                StructField("broadcast", ArrayType(StringType()), True),
-                # Sport-specific fields
-                StructField("current_quarter", IntegerType(), True),  # NFL
-                StructField("current_period", IntegerType(), True),  # NBA
-                StructField("current_inning", IntegerType(), True),  # MLB
-                StructField("time_remaining", StringType(), True),
-                StructField("down", IntegerType(), True),  # NFL
-                StructField("yards_to_go", IntegerType(), True),  # NFL
-                StructField("possession", StringType(), True),  # NFL
-                StructField("inning_half", StringType(), True),  # MLB
-                StructField("outs", IntegerType(), True),  # MLB
-                StructField("bases_occupied", ArrayType(IntegerType()), True),  # MLB
-                # Score and stats
-                StructField("score", MapType(StringType(), IntegerType(), True), False),
-                StructField(
-                    "stats",
-                    MapType(
-                        StringType(),  # Category (passing, rushing, shooting, etc.)
-                        MapType(
-                            StringType(),  # Stat name (yards, touchdowns, etc.)
-                            FloatType(),  # Stat value
-                            True,
-                        ),
-                        True,
-                    ),
-                    False,
-                ),
-                # Processing metadata
-                StructField("processing_time", TimestampType(), False),
-            ]
-        )

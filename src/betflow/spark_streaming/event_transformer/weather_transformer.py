@@ -1,38 +1,61 @@
 from typing import Dict, Any
 from datetime import datetime
 from betflow.kafka_orch.schemas import WeatherData
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import udf, col, lit, current_timestamp
+from pyspark.sql.types import StringType
 
 
 class WeatherTransformer:
     """Transform weather data from different sources."""
 
-    def transform_openweather(
-        self, raw_data: Dict[str, Any], venue_id: str, game_id: str
-    ) -> Dict[str, Any]:
-        """Transform OpenWeather API data."""
-        weather_data = {
-            "weather_id": f"weather_{venue_id}_{int(datetime.now().timestamp())}",
-            "venue_id": venue_id,
-            "game_id": game_id,
-            "timestamp": datetime.fromtimestamp(raw_data["dt"]),
-            "temperature": raw_data["main"]["temp"],
-            "feels_like": raw_data["main"]["feels_like"],
-            "humidity": raw_data["main"]["humidity"],
-            "wind_speed": raw_data["wind"]["speed"],
-            "wind_direction": self._get_wind_direction(raw_data["wind"]["deg"]),
-            "precipitation_probability": raw_data.get("pop", 0) * 100,
-            "weather_condition": raw_data["weather"][0]["main"],
-            "visibility": raw_data["visibility"] / 10000,  # Convert to km
-            "pressure": raw_data["main"]["pressure"],
-            "uv_index": raw_data.get("uvi", 0),
-            "details": {
-                "clouds": raw_data.get("clouds", {}).get("all", None),
-                "rain_1h": raw_data.get("rain", {}).get("1h", 0),  # Default to 0
-                "snow_1h": raw_data.get("snow", {}).get("1h", 0),  # Default to 0
-            },
-        }
+    def transform_openweather(self, df: DataFrame) -> DataFrame:
+        """Transform streaming DataFrame.
 
-        return WeatherData(**weather_data).model_dump()
+        Args:
+            df: Input DataFrame with parsed weather data
+
+        Returns:
+            DataFrame: Transformed weather data
+        """
+
+        # Create UDF for wind direction
+        @udf(returnType=StringType())
+        def get_wind_direction_udf(degrees):
+            if degrees is None:
+                return "None"  # Default to North for None values
+            try:
+                return self._get_wind_direction(float(degrees))
+            except (ValueError, TypeError):
+                return "None"  # Default to North for invalid values
+
+        # Apply transformations
+        try:
+            return df.select(
+                # Base fields
+                lit("weather_id"),
+                lit("venue_id"),
+                lit("game_id"),
+                col("timestamp"),
+                # Temperature metrics
+                col("temperature"),
+                col("feels_like"),
+                col("humidity"),
+                col("pressure"),
+                # Wind metrics
+                col("wind_speed"),
+                get_wind_direction_udf(col("wind_direction")).alias("wind_direction"),
+                # Additional metrics
+                col("visibility"),  # Convert to km
+                col("clouds"),
+                # Weather conditions
+                col("weather_condition"),
+                col("weather_description"),
+                # Location data
+                col("location"),
+            ).withColumn("processing_time", current_timestamp())
+        except Exception as e:
+            raise ValueError(f"Failed to transform OpenWeather data: {e}")
 
     def transform_openmeteo(
         self, raw_data: Dict[str, Any], venue_id: str, game_id: str

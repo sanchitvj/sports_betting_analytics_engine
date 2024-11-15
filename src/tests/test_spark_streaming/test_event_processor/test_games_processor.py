@@ -1,12 +1,24 @@
 import pytest
+import json
 from datetime import datetime
-from unittest.mock import patch, Mock, PropertyMock
+from unittest.mock import patch
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, struct, lit, expr
+from pyspark.sql.functions import col, current_timestamp, window
 from pyspark.sql.types import StructType
 from betflow.spark_streaming.event_processor import GamesProcessor
+from mockafka import FakeProducer, FakeConsumer, FakeAdminClientImpl
+from mockafka.admin_client import NewTopic
 
 current_time = datetime.now()
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder for datetime objects."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 class TestGamesProcessor:
@@ -213,93 +225,68 @@ class TestGamesProcessor:
             assert row.period_stats["three_pt_rate"] == 12.0
 
     @pytest.mark.asyncio
-    async def test_process_stream(self, games_processor, spark, sample_game_data):
+    async def test_process_stream(self, odds_processor, spark, sample_odds_data):
         """Test end-to-end stream processing."""
-        current_time = datetime.now()
 
-        # Create DataFrame with window column
-        base_df = spark.createDataFrame(
+        # Setup mock Kafka environment
+        admin = FakeAdminClientImpl()
+        admin.create_topics(
             [
-                {
-                    "game_id": sample_game_data["game_id"],
-                    "sport_type": sample_game_data["sport_type"],
-                    "processing_time": current_time,
-                    "stats": sample_game_data["stats"],
-                    "score": sample_game_data["score"],
-                }
+                NewTopic(topic=odds_processor.input_topic, num_partitions=1),
+                NewTopic(topic=odds_processor.output_topic, num_partitions=1),
             ]
         )
 
-        # Add window column
-        windowed_df = base_df.withColumn(
-            "window",
-            struct(
-                lit(current_time).alias("start"),
-                (lit(current_time) + expr("INTERVAL 5 MINUTES")).alias("end"),
-            ),
+        # Create producer to send test data
+        producer = FakeProducer()
+        producer.produce(
+            topic=odds_processor.input_topic,
+            value=json.dumps(sample_odds_data, cls=DateTimeEncoder),
+            key="test_key",
         )
 
-        # Create mock streaming DataFrame
-        mock_df = Mock()
-        mock_df.isStreaming = True
-        mock_df.writeStream = Mock()
-        mock_df.writeStream.format = Mock(return_value=mock_df.writeStream)
-        mock_df.writeStream.option = Mock(return_value=mock_df.writeStream)
-        mock_df.writeStream.outputMode = Mock(return_value=mock_df.writeStream)
-        mock_df.writeStream.start = Mock(
-            return_value=Mock(
-                isActive=True, awaitTermination=Mock(return_value=None), stop=Mock()
-            )
+        # Create DataFrame with window column
+        df = spark.createDataFrame([sample_odds_data])
+        windowed_df = df.withColumn(
+            "window", window(col("processing_time"), "5 minutes")
         )
 
-        # Mock DataStreamReader
-        mock_reader = Mock()
-        mock_reader.format = Mock(return_value=mock_reader)
-        mock_reader.option = Mock(return_value=mock_reader)
-        mock_reader.load = Mock(return_value=mock_df)
-
-        # Mock readStream property
-        mock_read_stream = PropertyMock(return_value=mock_reader)
-        type(spark).readStream = mock_read_stream
-
-        try:
-            # Mock analytics methods to return windowed DataFrame
-            with patch.object(
-                games_processor, "_parse_and_transform", return_value=windowed_df
-            ) as mock_parse, patch.object(
-                games_processor, "_apply_score_analytics", return_value=windowed_df
-            ) as mock_score, patch.object(
-                games_processor, "_apply_team_analytics", return_value=windowed_df
-            ) as mock_team, patch.object(
-                games_processor, "_apply_player_analytics", return_value=windowed_df
-            ) as mock_player, patch.object(
-                games_processor, "_apply_period_analytics", return_value=windowed_df
-            ) as mock_period:
+        # Mock analytics methods
+        with patch.object(
+            odds_processor, "_parse_and_transform", return_value=windowed_df
+        ) as mock_parse, patch.object(
+            odds_processor, "_apply_odds_analytics", return_value=windowed_df
+        ) as mock_odds, patch.object(
+            odds_processor, "_apply_probability_analytics", return_value=windowed_df
+        ) as mock_prob, patch.object(
+            odds_processor, "_apply_market_analytics", return_value=windowed_df
+        ) as mock_market:
+            try:
                 # Start processing
-                query = games_processor.process()
+                query = odds_processor.process()
 
                 # Verify streaming setup
                 assert query.isActive
 
                 # Verify method calls
                 mock_parse.assert_called_once()
-                mock_score.assert_called_once()
-                mock_team.assert_called_once()
-                mock_player.assert_called_once()
-                mock_period.assert_called_once()
+                mock_odds.assert_called_once()
+                mock_prob.assert_called_once()
+                mock_market.assert_called_once()
 
-                # Verify Kafka configuration
-                mock_df.writeStream.format.assert_called_with("kafka")
-                mock_df.writeStream.option.assert_any_call(
-                    "kafka.bootstrap.servers", "localhost:9092"
-                )
-                mock_df.writeStream.option.assert_any_call(
-                    "topic", games_processor.output_topic
-                )
+                # Verify output using consumer
+                consumer = FakeConsumer()
+                consumer.subscribe([odds_processor.output_topic])
+                message = consumer.poll()
 
-        finally:
-            if "query" in locals() and query and query.isActive:
-                query.stop()
+                # Verify output data
+                assert message is not None
+                output_data = json.loads(message.value())
+                assert output_data["game_id"] == sample_odds_data["game_id"]
+
+            finally:
+                if "query" in locals() and query and query.isActive:
+                    query.stop()
 
     def test_error_handling(self, games_processor, spark):
         """Test error handling in processing."""

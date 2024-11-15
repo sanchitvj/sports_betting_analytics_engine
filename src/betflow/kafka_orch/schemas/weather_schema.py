@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
 
 
 class WeatherData(BaseModel):
@@ -13,10 +12,13 @@ class WeatherData(BaseModel):
     feels_like: float
     humidity: float
     wind_speed: float
-    wind_direction: str
-    precipitation_probability: float
+    wind_direction: float
+    # precipitation_probability: float
     weather_condition: str
+    weather_description: str
     visibility: float
     pressure: float
-    uv_index: float
-    details: Optional[dict] = Field(description="Additional weather metrics")
+    clouds: float
+    location: str
+    # uv_index: float
+    # details: Optional[dict] = Field(description="Additional weather metrics")
