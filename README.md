@@ -31,18 +31,11 @@ bin/kafka-server-start.sh config/server.properties
 5. Create required topics:
 ```bash
 # Create game events topic
-bin/kafka-topics.sh --create \
-    --topic game_events \
-    --bootstrap-server localhost:9092 \
-    --partitions 1 \
-    --replication-factor 1
+bin/kafka-topics.sh --create --topic weather.current.dc --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 
 # Create analytics topic
-bin/kafka-topics.sh --create \
-    --topic game_analytics \
-    --bootstrap-server localhost:9092 \
-    --partitions 1 \
-    --replication-factor 1
+bin/kafka-topics.sh --create --topic weather_analytics --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
 ```
 
 6. Verify topics were created:
