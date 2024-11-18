@@ -127,3 +127,33 @@ graph TD
     GR --> DB
     RP --> DB
 ```
+
+## New
+
+```mermaid
+graph LR
+    subgraph "Real-time Pipeline"
+        A[APIs] --> B[Kafka]
+        B --> C[Spark Streaming]
+        C --> D[Apache Druid]
+        D --> E[Grafana]
+        B --> F[S3 Raw]
+        C --> G[Iceberg Tables]
+    end
+
+    subgraph "Batch Pipeline"
+        H[Historical Data] --> I[Airflow]
+        I --> J[S3]
+        J --> K[AWS Glue ETL]
+        K --> L[Iceberg Tables]
+        L --> M[Snowflake]
+        M --> N[dbt Models]
+        N --> O[Grafana Dashboards]
+    end
+
+    subgraph "Data Lake Management"
+        F --> P[AWS Glue Catalog]
+        G --> P
+        L --> P
+    end
+```
