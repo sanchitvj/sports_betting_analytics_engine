@@ -1,5 +1,57 @@
 # sports_betting_analytics_engine
 
+### Real-time pipeline
+```mermaid
+graph LR
+    classDef ingestion fill:#e6f3ff,stroke:#3498db
+    classDef processing fill:#e6ffe6,stroke:#2ecc71
+    classDef storage fill:#fff0e6,stroke:#e67e22
+    classDef visualization fill:#ffe6e6,stroke:#e74c3c
+    
+    A[APIs] -->|Fetch Data| B[Kafka]
+    B -->|Stream| C[Spark Streaming]
+    C -->|Process| D[Apache Druid]
+    D -->|Visualize| E[Grafana Dashboards]
+    
+    B -.->|Archive| F[S3 Raw]
+    C -.->|Persist| G[Iceberg Tables]
+    D -.->|Historical| H[Druid Storage]
+    H -.->|Long-term| I[S3/HDFS]
+    
+    F & G -->|Catalog| J[AWS Glue]
+    
+    A & B:::ingestion
+    C & D:::processing
+    F & G & H & I:::storage
+    E:::visualization
+    J:::processing
+```
+
+### Batch pipeline
+```mermaid
+graph LR
+    classDef source fill:#e6f3ff,stroke:#3498db
+    classDef processing fill:#e6ffe6,stroke:#2ecc71
+    classDef storage fill:#fff0e6,stroke:#e67e22
+    classDef analytics fill:#ffe6e6,stroke:#e74c3c
+    
+    A[Historical Data] -->|Load| B[Airflow]
+    B -->|Extract| C[S3]
+    C -->|Transform| D[Iceberg Tables]
+    D -->|Load| E[Snowflake]
+    E -->|Transform| F[dbt Models]
+    F -->|Visualize| G[Grafana Dashboards]
+    
+    C & D -->|Catalog| H[AWS Glue]
+    
+    A:::source
+    B & H:::processing
+    C & D:::storage
+    E & F:::analytics
+    G:::analytics
+```
+
+
 ### Kafka
 ```mermaid
 graph TD
@@ -73,6 +125,7 @@ graph TD
     class GC_RT,GC_B,DBT_RT,DBT_B,AD_RT,Grafana secondary
 ```
 
+<!---
 ## Data Flow strategy
 ### Real-time data
 ```mermaid
@@ -95,6 +148,8 @@ graph TD
     style F fill:#ffb3b3,stroke:#333,stroke-width:2px
     style G fill:#d9b3ff,stroke:#333,stroke-width:2px
 ```
+-->
+<!---
 ### Batch data
 ```mermaid
 graph TD
@@ -113,47 +168,4 @@ graph TD
     style F fill:#ffd,stroke:#333,stroke-width:2px
     style G fill:#dff,stroke:#333,stroke-width:2px
 ```
-## Hybrid
-```mermaid
-graph TD
-    RT[Real-time Data] --> SF[Snowflake]
-    HD[Historical Data] --> SF
-    SF --> LM[Live Metrics]
-    SF --> DM[dbt Models]
-    SF --> BA[Batch Analytics]
-    LM --> GR[Grafana]
-    DM --> DB[Dashboards]
-    BA --> RP[Reports]
-    GR --> DB
-    RP --> DB
-```
-
-## New
-
-```mermaid
-graph LR
-    subgraph "Real-time Pipeline"
-        A[APIs] --> B[Kafka]
-        B --> C[Spark Streaming]
-        C --> D[Apache Druid]
-        D --> E[Grafana]
-        B --> F[S3 Raw]
-        C --> G[Iceberg Tables]
-    end
-
-    subgraph "Batch Pipeline"
-        H[Historical Data] --> I[Airflow]
-        I --> J[S3]
-        J --> K[AWS Glue ETL]
-        K --> L[Iceberg Tables]
-        L --> M[Snowflake]
-        M --> N[dbt Models]
-        N --> O[Grafana Dashboards]
-    end
-
-    subgraph "Data Lake Management"
-        F --> P[AWS Glue Catalog]
-        G --> P
-        L --> P
-    end
-```
+-->
