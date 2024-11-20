@@ -36,22 +36,45 @@ sudo apt-get install -y wget curl net-tools
 ## 2. Apache Kafka Setup
 ```bash
 # Download Kafka
-wget https://downloads.apache.org/kafka/3.6.1/kafka_2.13-3.6.1.tgz
-tar -xzf kafka_2.13-3.6.1.tgz
-mv kafka_2.13-3.6.1 kafka
+wget https://downloads.apache.org/kafka/3.8.1/kafka_2.13-3.8.1.tgz
+tar -xzf kafka_2.13-3.8.1.tgz
+mv kafka_2.13-3.8.1 kafka
 
 # Start ZooKeeper
 cd kafka
-bin/zookeeper-server-start.sh config/zookeeper.properties &
+bin/zookeeper-server-start.sh config/zookeeper.properties
 
 # Start Kafka Server
-bin/kafka-server-start.sh config/server.properties &
+bin/kafka-server-start.sh config/server.properties
+```
 
 # Create topic
-bin/kafka-topics.sh --create --topic sports_analytics \
-    --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+```bash
+# Create game events topic
+bin/kafka-topics.sh --create --topic weather.current.dc --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 
-# Verify topic creation
+# Create analytics topic
+bin/kafka-topics.sh --create --topic weather_analytics --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+```
+
+### stop all Kafka and ZooKeeper processes:
+```bash
+bin/kafka-server-stop.sh
+bin/zookeeper-server-stop.sh
+```
+
+### Clean up Kafka and ZooKeeper data directories:
+```bash
+# Remove Kafka data
+rm -rf /home/ubuntu/kafka/data/kafka/*
+
+# Remove ZooKeeper data
+rm -rf /home/ubuntu/kafka/data/zookeeper/*
+rm -rf /tmp/zookeeper/
+```
+
+### Verify topics were created:
+```bash
 bin/kafka-topics.sh --list --bootstrap-server localhost:9092
 ```
 
