@@ -242,6 +242,31 @@ nano ~/druid/conf/druid/single-server/micro-quickstart/_common/jvm.config
 -XX:MaxDirectMemorySize=1g
 -XX:+UseG1GC
 ```
+```bash
+# If zk issue
+
+# Edit common.runtime.properties
+nano ~/druid/conf/druid/single-server/micro-quickstart/_common/common.runtime.properties
+
+# Add/modify these settings
+druid.zk.service.host=localhost
+druid.zk.service.port=2181
+druid.zk.paths.base=/druid
+
+# Edit micro-quickstart.conf
+nano ~/druid/conf/supervise/single-server/micro-quickstart.conf
+
+# Comment out or remove the zk line
+# !p10 zk conf
+
+# Should look like this:
+!p10 coordinator-overlord conf
+!p10 broker conf
+!p10 historical conf
+!p10 middleManager conf
+!p10 router conf
+
+```
 
 ```bash
 # Start Druid
