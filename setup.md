@@ -41,6 +41,36 @@ tar -xzf kafka_2.13-3.8.1.tgz
 mv kafka_2.13-3.8.1 kafka
 ```
 
+```bash
+# Configure kafka for Kraft mode (no zookeeper)
+# Generate cluster ID
+cd ~/kafka
+bin/kafka-storage.sh random-uuid
+# Save the output UUID
+
+# Create server.properties for KRaft
+nano config/kraft/server.properties
+
+# Add these configurations
+node.id=1
+process.roles=broker,controller
+listeners=PLAINTEXT://localhost:9092,CONTROLLER://localhost:9093
+controller.listener.names=CONTROLLER
+controller.quorum.voters=1@localhost:9093
+inter.broker.listener.name=PLAINTEXT
+advertised.listeners=PLAINTEXT://localhost:9092
+listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+log.dirs=/home/ubuntu/kafka/kraft-combined-logs
+
+# Format storage directory
+# Use the UUID you generated earlier
+KAFKA_CLUSTER_ID="your-generated-uuid"
+bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
+
+# Start kafka in Kraft mode
+bin/kafka-server-start.sh config/kraft/server.properties
+```
+
 ### First time only
 1. Create ZooKeeper service file:
 ```bash
