@@ -45,6 +45,10 @@ mv kafka_2.13-3.8.1 kafka
 1. Create ZooKeeper service file:
 ```bash
 sudo nano /etc/systemd/system/zookeeper.service
+
+# Set permissions for Kafka directory
+sudo chown -R ubuntu:ubuntu /home/ubuntu/kafka
+chmod -R 755 /home/ubuntu/kafka
 ```
 
 2. Add the following content:
@@ -59,8 +63,8 @@ After=network.target remote-fs.target
 Type=simple
 User=ubuntu
 Environment="JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
-ExecStart=/opt/kafka/bin/zookeeper-server-start.sh /opt/kafka/config/zookeeper.properties
-ExecStop=/opt/kafka/bin/zookeeper-server-stop.sh
+ExecStart=/home/ubuntu/kafka/bin/zookeeper-server-start.sh /home/ubuntu/kafka/config/zookeeper.properties
+ExecStop=/home/ubuntu/kafka/bin/zookeeper-server-stop.sh
 Restart=on-abnormal
 
 [Install]
@@ -102,8 +106,28 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-vi /home/ubuntu/kafka/config/server.properties
+# Edit zookeeper.properties
+nano /home/ubuntu/kafka/config/zookeeper.properties
+
+# Add/modify these settings
+dataDir=/home/ubuntu/kafka/data/zookeeper
+clientPort=2181
+maxClientCnxns=0
+admin.enableServer=false
+
+nano /home/ubuntu/kafka/config/server.properties
 # Ensure these settings:
+broker.id=0
+listeners=PLAINTEXT://localhost:9092
+log.dirs=/tmp/kafka-logs
+zookeeper.connect=localhost:2181
+```
+
+```bash
+# Edit server.properties
+nano /home/ubuntu/kafka/config/server.properties
+
+# Add/modify these settings
 broker.id=0
 listeners=PLAINTEXT://localhost:9092
 log.dirs=/tmp/kafka-logs
@@ -176,9 +200,11 @@ rm -rf /home/ubuntu/kafka/data/kafka/*
 
 # Remove ZooKeeper data
 rm -rf /home/ubuntu/kafka/data/zookeeper/*
-rm -rf /tmp/zookeeper/
-rm -rf /tmp/kafka-logs/
 rm -rf /opt/druid/var/
+
+rm -rf /home/ubuntu/kafka/data/zookeeper
+rm -rf /tmp/kafka-logs/
+rm -rf /tmp/zookeeper/
 ```
 
 ### Verify topics were created:
