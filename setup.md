@@ -220,19 +220,51 @@ tar -xzf apache-druid-27.0.0-bin.tar.gz
 mv apache-druid-27.0.0 druid
 
 # Configure Druid
-cd druid
-vi conf/druid/single-server/micro-quickstart/_common/common.runtime.properties
+# Edit common runtime properties
+nano ~/druid/conf/druid/single-server/micro-quickstart/_common/common.runtime.properties
 
-# Add these configurations
+# Add these settings
 druid.extensions.loadList=["druid-kafka-indexing-service"]
 druid.zk.service.host=localhost
 druid.metadata.storage.type=derby
 druid.metadata.storage.connector.connectURI=jdbc:derby://localhost:1527/var/druid/metadata.db;create=true
 druid.storage.type=local
 druid.storage.storageDirectory=var/druid/segments
+druid.indexer.logs.directory=var/druid/indexing-logs
+```
+```bash
+# Edit JVM config
+nano ~/druid/conf/druid/single-server/micro-quickstart/_common/jvm.config
 
+# Add these lines
+-Xms512m
+-Xmx512m
+-XX:MaxDirectMemorySize=1g
+-XX:+UseG1GC
+```
+
+```bash
 # Start Druid
 ./bin/start-micro-quickstart
+```
+
+```bash
+# Cleaning
+# Stop all processes
+cd ~/druid
+./bin/stop-druid.sh
+
+# Kill any remaining processes
+sudo pkill -f druid
+
+# Remove existing data
+rm -rf ~/druid/var/*
+rm -rf /tmp/druid-tmp/
+
+# Create fresh directories
+mkdir -p ~/druid/var/druid/segments
+mkdir -p ~/druid/var/druid/indexing-logs
+mkdir -p /tmp/druid-tmp
 ```
 
 ## 4. Grafana Setup
