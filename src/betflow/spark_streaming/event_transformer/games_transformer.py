@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from datetime import datetime
-from betflow.kafka_orch.schemas import NFLGameStats, NBAGameStats, MLBGameStats
+from betflow.kafka_orch.schemas import MLBGameStats
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import col, expr
 
 
 class BaseGameTransformer:
@@ -65,80 +67,271 @@ class MLBGameTransformer(BaseGameTransformer):
         }
 
 
-class NFLGameTransformer(BaseGameTransformer):
-    """Transform NFL game data."""
-
-    def transform(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform raw NFL game data to standardized format."""
-        base_data = self._extract_base_fields(raw_data)
-
-        game_data = {
-            **base_data,
-            "current_quarter": raw_data.get("quarter"),
-            "time_remaining": raw_data.get("time_remaining"),
-            "down": raw_data.get("down"),
-            "yards_to_go": raw_data.get("yards_to_go"),
-            "possession": raw_data.get("possession"),
-            "score": {
-                raw_data["home_team"]["id"]: raw_data["home_team"]["score"],
-                raw_data["away_team"]["id"]: raw_data["away_team"]["score"],
-            },
-            "stats": self._transform_nfl_stats(raw_data.get("stats", {})),
-        }
-
-        # Validate against schema
-        return NFLGameStats(**game_data).model_dump()
+class GameTransformer(BaseGameTransformer):
+    """Transform NBA game data from Kafka messages according to kafka schema."""
 
     @staticmethod
-    def _transform_nfl_stats(stats: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
-        """Transform NFL-specific statistics."""
-        return {
-            "passing": {
-                "yards": float(stats.get("passing_yards", 0)),
-                "touchdowns": float(stats.get("passing_touchdowns", 0)),
-                "completions": float(stats.get("completions", 0)),
-            },
-            "rushing": {
-                "yards": float(stats.get("rushing_yards", 0)),
-                "touchdowns": float(stats.get("rushing_touchdowns", 0)),
-                "attempts": float(stats.get("rushing_attempts", 0)),
-            },
-        }
+    def transform_espn_cfb(df: DataFrame) -> DataFrame:
+        """Transform streaming CFB DataFrame.
 
+        Args:
+            df: Input DataFrame with parsed ESPN CFB data
 
-class NBAGameTransformer(BaseGameTransformer):
-    """Transform NBA game data."""
+        Returns:
+            DataFrame: Transformed game data
+        """
+        try:
+            return df.select(
+                # Game identification
+                col("game_id"),
+                col("start_time"),
+                # Game status
+                col("status_state"),
+                col("status_detail"),
+                col("status_description"),
+                col("period"),
+                col("clock"),
+                # Home team
+                col("home_team_name"),
+                col("home_team_abbrev"),
+                col("home_team_score"),
+                col("home_team_record"),
+                # Home team statistics
+                col("home_passing_leader"),
+                col("home_rushing_leader"),
+                col("home_receiving_leader"),
+                # Away team
+                col("away_team_name"),
+                col("away_team_abbrev"),
+                col("away_team_score"),
+                col("away_team_record"),
+                # Away team statistics
+                col("away_passing_leader"),
+                col("away_rushing_leader"),
+                col("away_receiving_leader"),
+                # Venue information
+                col("venue_name"),
+                col("venue_city"),
+                col("venue_state"),
+                # Additional information
+                col("broadcasts"),
+                # col("odds"),
+                col("timestamp").alias("processing_time"),
+            )
 
-    def transform(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform raw NBA game data to standardized format."""
-        base_data = self._extract_base_fields(raw_data)
+        except Exception as e:
+            raise ValueError(f"Failed to transform ESPN CFB data: {e}")
 
-        game_data = {
-            **base_data,
-            "current_period": raw_data.get("period"),
-            "time_remaining": raw_data.get("time_remaining"),
-            "score": {
-                raw_data["home_team"]["id"]: raw_data["home_team"]["score"],
-                raw_data["away_team"]["id"]: raw_data["away_team"]["score"],
-            },
-            "stats": self._transform_nba_stats(raw_data.get("stats", {})),
-        }
+    def transform_espn_nfl(self, df: DataFrame) -> DataFrame:
+        """Transform streaming NFL DataFrame.
 
-        # Validate against schema
-        return NBAGameStats(**game_data).model_dump()
+        Args:
+            df: Input DataFrame with parsed ESPN NFL data
 
-    @staticmethod
-    def _transform_nba_stats(stats: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
-        """Transform NBA-specific statistics."""
-        return {
-            "shooting": {
-                "field_goals": float(stats.get("field_goals", 0)),
-                "three_pointers": float(stats.get("three_pointers", 0)),
-                "free_throws": float(stats.get("free_throws", 0)),
-            },
-            "rebounds": {
-                "offensive": float(stats.get("offensive_rebounds", 0)),
-                "defensive": float(stats.get("defensive_rebounds", 0)),
-                "total": float(stats.get("total_rebounds", 0)),
-            },
-        }
+        Returns:
+            DataFrame: Transformed game data
+        """
+        try:
+            return df.select(
+                # Game identification
+                col("game_id"),
+                col("start_time"),
+                # Game status
+                col("status.state").alias("status_state"),
+                col("status.detail").alias("status_detail"),
+                col("status.description").alias("status_description"),
+                col("period"),
+                col("clock"),
+                # Home team
+                col("home_team.name").alias("home_team_name"),
+                col("home_team.abbreviation").alias("home_team_abbrev"),
+                col("home_team.score").alias("home_team_score"),
+                # Home team statistics
+                expr("home_team.statistics[0].displayValue").alias(
+                    "home_passing_yards"
+                ),
+                expr("home_team.statistics[1].displayValue").alias(
+                    "home_rushing_yards"
+                ),
+                expr("home_team.statistics[2].displayValue").alias("home_total_yards"),
+                expr("home_team.statistics[3].displayValue").alias(
+                    "home_completion_pct"
+                ),
+                expr("home_team.statistics[4].displayValue").alias("home_third_down"),
+                expr("home_team.statistics[5].displayValue").alias("home_fourth_down"),
+                expr("home_team.statistics[6].displayValue").alias("home_sacks"),
+                expr("home_team.statistics[7].displayValue").alias("home_turnovers"),
+                # Away team
+                col("away_team.name").alias("away_team_name"),
+                col("away_team.abbreviation").alias("away_team_abbrev"),
+                col("away_team.score").alias("away_team_score"),
+                # Away team statistics
+                expr("away_team.statistics[0].displayValue").alias(
+                    "away_passing_yards"
+                ),
+                expr("away_team.statistics[1].displayValue").alias(
+                    "away_rushing_yards"
+                ),
+                expr("away_team.statistics[2].displayValue").alias("away_total_yards"),
+                expr("away_team.statistics[3].displayValue").alias(
+                    "away_completion_pct"
+                ),
+                expr("away_team.statistics[4].displayValue").alias("away_third_down"),
+                expr("away_team.statistics[5].displayValue").alias("away_fourth_down"),
+                expr("away_team.statistics[6].displayValue").alias("away_sacks"),
+                expr("away_team.statistics[7].displayValue").alias("away_turnovers"),
+                # Game leaders
+                expr("home_team.leaders[0].leaders[0].displayValue").alias(
+                    "home_passing_leader"
+                ),
+                expr("home_team.leaders[1].leaders[0].displayValue").alias(
+                    "home_rushing_leader"
+                ),
+                expr("home_team.leaders[2].leaders[0].displayValue").alias(
+                    "home_receiving_leader"
+                ),
+                expr("away_team.leaders[0].leaders[0].displayValue").alias(
+                    "away_passing_leader"
+                ),
+                expr("away_team.leaders[1].leaders[0].displayValue").alias(
+                    "away_rushing_leader"
+                ),
+                expr("away_team.leaders[2].leaders[0].displayValue").alias(
+                    "away_receiving_leader"
+                ),
+                # Venue information
+                col("venue.name").alias("venue_name"),
+                col("venue.city").alias("venue_city"),
+                col("venue.state").alias("venue_state"),
+                # Broadcasts and timestamp
+                col("broadcasts"),
+                col("timestamp").alias("processing_time"),
+            )
+
+        except Exception as e:
+            raise ValueError(f"Failed to transform ESPN NFL data: {e}")
+
+    def transform_espn_nhl(self, df: DataFrame) -> DataFrame:
+        """Transform streaming NHL DataFrame.
+
+        Args:
+            df: Input DataFrame with parsed ESPN NHL data
+
+        Returns:
+            DataFrame: Transformed game data
+        """
+        try:
+            return df.select(
+                # Game identification
+                col("game_id"),
+                col("start_time"),
+                # Game status
+                col("status_state"),
+                col("status_detail"),
+                col("status_description"),
+                col("period"),
+                col("clock"),
+                # Home team
+                col("home_team_name"),
+                col("home_team_abbrev"),
+                col("home_team_score"),
+                # Home team statistics
+                col("home_team_saves").alias("home_saves"),
+                col("home_team_save_pct").alias("home_save_pct"),
+                col("home_team_goals").alias("home_goals"),
+                col("home_team_assists").alias("home_assists"),
+                col("home_team_points").alias("home_points"),
+                # col("home_team_penalties").alias("home_penalties"),
+                # col("home_team_penalty_minutes").alias("home_penalty_minutes"),
+                # col("home_team_power_plays").alias("home_power_plays"),
+                # col("home_team_power_play_goals").alias("home_power_play_goals"),
+                # col("home_team_power_play_pct").alias("home_power_play_pct"),
+                col("home_team_record").alias("home_team_record"),
+                # Away team
+                col("away_team_name"),
+                col("away_team_abbrev"),
+                col("away_team_score"),
+                # Away team statistics
+                col("away_team_saves").alias("away_saves"),
+                col("away_team_save_pct").alias("away_save_pct"),
+                col("away_team_goals").alias("away_goals"),
+                col("away_team_assists").alias("away_assists"),
+                col("away_team_points").alias("away_points"),
+                # col("away_team_penalties").alias("away_penalties"),
+                # col("away_team_penalty_minutes").alias("away_penalty_minutes"),
+                # col("away_team_power_plays").alias("away_power_plays"),
+                # col("away_team_power_play_goals").alias("away_power_play_goals"),
+                # col("away_team_power_play_pct").alias("away_power_play_pct"),
+                col("away_team_record").alias("away_team_record"),
+                # Venue information
+                col("venue_name"),
+                col("venue_city"),
+                col("venue_state"),
+                col("venue_indoor"),
+                # Broadcasts and timestamp
+                col("broadcasts"),
+                col("timestamp").alias("processing_time"),
+            )
+
+        except Exception as e:
+            raise ValueError(f"Failed to transform ESPN NHL data: {e}")
+
+    def transform_espn_nba(self, df: DataFrame) -> DataFrame:
+        """Transform streaming NBA DataFrame.
+
+        Args:
+            df: Input DataFrame with parsed ESPN NBA data
+
+        Returns:
+            DataFrame: Transformed game data
+        """
+        try:
+            # Create UDF for getting statistics
+
+            return df.select(
+                # Game identification
+                col("game_id"),
+                col("start_time"),
+                # Game status
+                col("status_state"),
+                col("status_detail"),
+                col("status_description"),
+                col("period"),
+                col("clock"),
+                # Home team
+                col("home_team_name"),
+                col("home_team_abbrev"),
+                col("home_team_score"),
+                # Home team statistics
+                col("home_team_field_goals").alias("home_fg_pct"),
+                col("home_team_three_pointers").alias("home_three_pt_pct"),
+                col("home_team_free_throws").alias("home_ft_pct"),
+                col("home_team_rebounds").alias("home_rebounds"),
+                col("home_team_assists").alias("home_assists"),
+                col("home_team_steals").alias("home_steals"),
+                col("home_team_blocks").alias("home_blocks"),
+                col("home_team_turnovers").alias("home_turnovers"),
+                # Away team
+                col("away_team_name"),
+                col("away_team_abbrev"),
+                col("away_team_score"),
+                # Away team statistics
+                col("away_team_field_goals").alias("away_fg_pct"),
+                col("away_team_three_pointers").alias("away_three_pt_pct"),
+                col("away_team_free_throws").alias("away_ft_pct"),
+                col("away_team_rebounds").alias("away_rebounds"),
+                col("away_team_assists").alias("away_assists"),
+                col("away_team_steals").alias("away_steals"),
+                col("away_team_blocks").alias("away_blocks"),
+                col("away_team_turnovers").alias("away_turnovers"),
+                # Venue information
+                col("venue_name"),
+                col("venue_city"),
+                col("venue_state"),
+                # Add processing timestamp
+                col("broadcasts"),
+                col("timestamp").alias("processing_time"),
+            )
+
+        except Exception as e:
+            raise ValueError(f"Failed to transform ESPN NBA data: {e}")

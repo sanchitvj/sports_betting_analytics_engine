@@ -38,7 +38,7 @@ async def run_weather_pipeline():
     try:
         # Initialize components
         weather_connector = OpenWeatherConnector(
-            api_key="88502b0f64d6f2214f24ebf301936537",  # os.getenv("OPENWEATHER_API_KEY"),
+            api_key="",  # os.getenv("OPENWEATHER_API_KEY"),
             kafka_bootstrap_servers="localhost:9092",
         )
 
@@ -53,21 +53,6 @@ async def run_weather_pipeline():
             }
         ]
 
-        # Fetch and publish once before starting stream
-        # for venue in venues:
-        #     logger.info(f"Initial fetch for {venue['city']}")
-        #     result = await weather_connector.fetch_and_publish_weather(
-        #         city=venue["city"],
-        #         venue_id=venue["venue_id"],
-        #         game_id=venue["game_id"],
-        #         lat=venue["lat"],
-        #         lon=venue["lon"],
-        #     )
-        #     logger.info(
-        #         f"Published data: {json.dumps(result, cls=DateTimeEncoder, indent=2)}"
-        #     )
-
-        # Start processor
         logger.info("Starting weather processor...")
         weather_processor = WeatherProcessor(
             spark=spark,

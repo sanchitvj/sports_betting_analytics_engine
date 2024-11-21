@@ -13,7 +13,7 @@ def monitor_analytics():
         "weather_analytics",
         bootstrap_servers="localhost:9092",
         value_deserializer=lambda x: json.loads(x.decode("utf-8")),
-        auto_offset_reset="earliest",
+        auto_offset_reset="latest",  # 'earliest' if you want all data
         enable_auto_commit=False,
         group_id=None,  # Don't use consumer groups for testing
     )

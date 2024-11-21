@@ -183,3 +183,60 @@ class OddsTransformer:
             if decimal_odds > 0:
                 return 1 / decimal_odds
         return None
+
+
+from datetime import timedelta
+from typing import Dict, Any
+import time
+import pytz
+
+
+class OddsTransformer:
+    """Transform odds data for real-time analytics."""
+
+    @staticmethod
+    def transform_odds_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transform raw odds data with time window filtering."""
+        try:
+            # Convert commence_time to datetime
+            commence_time = datetime.fromisoformat(
+                raw_data.get("commence_time").replace("Z", "+00:00")
+            )
+            current_time = datetime.now(pytz.UTC)
+
+            # Skip games not within 3-hour window
+            time_diff = commence_time - current_time
+            if time_diff > timedelta(hours=3):
+                return None
+
+            # Extract best odds for each team
+            home_odds = []
+            away_odds = []
+            for bm in raw_data.get("bookmakers", []):
+                for market in bm.get("markets", []):
+                    if market.get("key") == "h2h":
+                        for outcome in market.get("outcomes", []):
+                            if outcome.get("name") == raw_data.get("home_team"):
+                                home_odds.append(outcome.get("price"))
+                            elif outcome.get("name") == raw_data.get("away_team"):
+                                away_odds.append(outcome.get("price"))
+
+            return {
+                "game_id": raw_data.get("id"),
+                "sport_key": raw_data.get("sport_key"),
+                "sport_title": raw_data.get("sport_title"),
+                "commence_time": raw_data.get("commence_time"),
+                "home_team": raw_data.get("home_team"),
+                "away_team": raw_data.get("away_team"),
+                "best_home_odds": max(home_odds) if home_odds else None,
+                "best_away_odds": max(away_odds) if away_odds else None,
+                "bookmakers_count": len(raw_data.get("bookmakers", [])),
+                "last_update": max(
+                    bm.get("last_update") for bm in raw_data.get("bookmakers", [])
+                ),
+                "processing_time": datetime.now(pytz.UTC).isoformat(),
+                "timestamp": int(time.time()),
+            }
+
+        except Exception as e:
+            raise ValueError(f"Failed to transform odds data: {e}")

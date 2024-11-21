@@ -19,9 +19,7 @@ from pyspark.sql.types import (
     StringType,
     TimestampType,
     StructField,
-    MapType,
     StructType,
-    FloatType,
 )
 from betflow.spark_streaming.event_transformer import OddsTransformer
 
@@ -45,26 +43,22 @@ class OddsProcessor:
         self.transformer = OddsTransformer()
 
     @staticmethod
-    def _get_schema() -> StructType:
-        """Get schema for odds data."""
+    def _get_schema(self) -> StructType:
+        """Define schema for odds data."""
         return StructType(
             [
-                StructField("odds_id", StringType(), False),
-                StructField("game_id", StringType(), False),
-                StructField("sport_type", StringType(), False),
-                StructField("bookmaker_id", StringType(), False),
-                StructField("timestamp", TimestampType(), False),
-                StructField("market_type", StringType(), False),
-                StructField("odds_value", FloatType(), False),
-                StructField("spread_value", FloatType(), True),
-                StructField("total_value", FloatType(), True),
-                StructField("probability", FloatType(), True),
-                StructField("volume", MapType(StringType(), FloatType(), True), True),
-                StructField("movement", MapType(StringType(), FloatType(), True), True),
-                StructField("status", StringType(), False),
-                StructField(
-                    "metadata", MapType(StringType(), StringType(), True), True
-                ),
+                StructField("game_id", StringType(), True),
+                StructField("sport_key", StringType(), True),
+                StructField("sport_title", StringType(), True),
+                StructField("commence_time", StringType(), True),
+                StructField("home_team", StringType(), True),
+                StructField("away_team", StringType(), True),
+                StructField("best_home_odds", DoubleType(), True),
+                StructField("best_away_odds", DoubleType(), True),
+                StructField("bookmakers_count", IntegerType(), True),
+                StructField("last_update", StringType(), True),
+                StructField("processing_time", TimestampType(), True),
+                StructField("timestamp", LongType(), True),
             ]
         )
 
@@ -167,8 +161,8 @@ class OddsProcessor:
             )
         )
 
-    def process(self):
-        """Start processing odds stream."""
+    def process(self) -> None:
+        """Process odds stream."""
         try:
             # Read from Kafka
             stream_df = (
@@ -179,28 +173,33 @@ class OddsProcessor:
                 .load()
             )
 
-            # Parse and transform data
-            parsed_df = self._parse_and_transform(stream_df)
+            # Parse JSON and apply schema
+            parsed_df = stream_df.select(
+                from_json(col("value").cast("string"), self._get_schema()).alias("data")
+            ).select("data.*")
 
-            # Add window column for analytics
-            windowed_df = parsed_df.withColumn(
-                "window", window(col("processing_time"), "5 minutes")
+            # Add analytics
+            analytics_df = (
+                parsed_df.withWatermark("processing_time", "1 minute")
+                .groupBy(
+                    window(col("processing_time"), "2 minutes"), "game_id", "sport_key"
+                )
+                .agg(
+                    first("home_team").alias("home_team"),
+                    first("away_team").alias("away_team"),
+                    first("commence_time").alias("commence_time"),
+                    avg("best_home_odds").alias("avg_home_odds"),
+                    avg("best_away_odds").alias("avg_away_odds"),
+                    max("best_home_odds").alias("max_home_odds"),
+                    max("best_away_odds").alias("max_away_odds"),
+                    avg("bookmakers_count").alias("avg_bookmakers"),
+                )
             )
-
-            # Apply analytics with windowed DataFrame
-            odds_analytics = self._apply_odds_analytics(windowed_df)
-            probability_analytics = self._apply_probability_analytics(windowed_df)
-            market_analytics = self._apply_market_analytics(windowed_df)
-
-            # Combine analytics using common columns
-            analytics_df = odds_analytics.join(
-                probability_analytics, ["window", "game_id", "bookmaker_id"]
-            ).join(market_analytics, ["window", "game_id"])
 
             # Write to Kafka
             query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
-                .writeStream.format("iceberg")
+                .writeStream.format("kafka")
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
@@ -211,5 +210,4 @@ class OddsProcessor:
             return query
 
         except Exception as e:
-            self.logger.error(f"Error processing odds stream: {e}")
-            raise
+            raise Exception(f"Failed to process odds stream: {e}")

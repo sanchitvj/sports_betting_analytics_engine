@@ -5,6 +5,11 @@ import requests
 from kafka import KafkaProducer
 from betflow.api_connectors.conn_utils import RateLimiter
 from kafka.errors import NoBrokersAvailable
+from betflow.kafka_orch.schemas import (
+    NFLGameStats,
+    NHLGameStats,
+)
+
 
 class ESPNConnector:
     """Connector for ESPN API with Kafka integration.
@@ -32,26 +37,30 @@ class ESPNConnector:
             try:
                 self.producer = KafkaProducer(
                     bootstrap_servers=kafka_bootstrap_servers,
-                    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                    compression_type='gzip',
+                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                    compression_type="gzip",
                     retries=3,
-                    acks='all',
+                    acks="all",
                     api_version=(2, 5, 0),  # Add explicit API version
                     security_protocol="PLAINTEXT",  # Specify security protocol
                     request_timeout_ms=30000,  # Increase timeout
-                    connections_max_idle_ms=300000  # Increase idle time
+                    connections_max_idle_ms=300000,  # Increase idle time
                 )
                 break
             except NoBrokersAvailable as e:
                 retry_count += 1
                 if retry_count == max_retries:
-                    raise Exception(f"Failed to connect to Kafka after {max_retries} attempts: {str(e)}")
+                    raise Exception(
+                        f"Failed to connect to Kafka after {max_retries} attempts: {str(e)}"
+                    )
                 time.sleep(3)  # Wait before retrying
 
         self.rate_limiter = RateLimiter()
         self.session = requests.Session()
 
-    def make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def make_request(
+        self, endpoint: str, params: Optional[Dict] = None
+    ) -> Dict[str, Any]:
         """Makes a rate-limited request to the ESPN API."""
         self.rate_limiter.wait_if_needed()
 
@@ -63,13 +72,15 @@ class ESPNConnector:
             return response.json()
 
         except requests.exceptions.HTTPError as e:
-            if getattr(e.response, 'status_code', None) == 429:
-                retry_after = int(e.response.headers.get('Retry-After', 60))
-                raise Exception(f"Rate limit exceeded. Retrying after {retry_after} seconds")
+            if getattr(e.response, "status_code", None) == 429:
+                retry_after = int(e.response.headers.get("Retry-After", 60))
+                raise Exception(
+                    f"Rate limit exceeded. Retrying after {retry_after} seconds"
+                )
             raise Exception(f"HTTP error occurred: {e}")
         except requests.exceptions.RequestException as e:
             raise Exception(f"An error occurred: {e}")
-    
+
     @staticmethod
     def _handle_request_error(error: Exception) -> None:
         """Handles various types of request errors.
@@ -82,9 +93,11 @@ class ESPNConnector:
         """
         if isinstance(error, requests.exceptions.HTTPError):
             if error.response.status_code == 429:
-                retry_after = int(error.response.headers.get('Retry-After', 60))
+                retry_after = int(error.response.headers.get("Retry-After", 60))
                 time.sleep(retry_after)
-                raise Exception(f"Rate limit exceeded. Retrying after {retry_after} seconds")
+                raise Exception(
+                    f"Rate limit exceeded. Retrying after {retry_after} seconds"
+                )
             elif error.response.status_code >= 500:
                 raise Exception(f"ESPN API server error: {error}")
             else:
@@ -93,38 +106,519 @@ class ESPNConnector:
             raise Exception("Request timed out")
         else:
             raise Exception(f"An error occurred: {error}")
-    
+
     @staticmethod
-    def transform_game_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Transforms raw ESPN game data to defined schema format.
-
-        Args:
-            raw_data (Dict[str, Any]): Raw game data from ESPN API.
-
-        Returns:
-            Dict[str, Any]: Transformed game data.
-
-        Raises:
-            Exception: If transformation fails.
-        """
+    def transform_cfb_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforms raw ESPN college football data to defined schema format."""
         try:
-            return {
-                'game_id': raw_data.get('id'),
-                'start_time': raw_data.get('date'),
-                'status': raw_data.get('status', {}).get('type', {}).get('name'),
-                'home_team': {
-                    'id': raw_data.get('competitions', [{}])[0].get('competitors', [{}])[0].get('id'),
-                    'name': raw_data.get('competitions', [{}])[0].get('competitors', [{}])[0].get('team', {}).get('name'),
-                    'score': raw_data.get('competitions', [{}])[0].get('competitors', [{}])[0].get('score')
-                },
-                'away_team': {
-                    'id': raw_data.get('competitions', [{}])[0].get('competitors', [{}])[1].get('id'),
-                    'name': raw_data.get('competitions', [{}])[0].get('competitors', [{}])[1].get('team', {}).get('name'),
-                    'score': raw_data.get('competitions', [{}])[0].get('competitors', [{}])[1].get('score')
-                },
-                'venue': raw_data.get('competitions', [{}])[0].get('venue', {}).get('name'),
-                'timestamp': int(time.time())
+            competition = raw_data.get("competitions", [{}])[0]
+            home_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "home"
+                ),
+                {},
+            )
+            away_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "away"
+                ),
+                {},
+            )
+
+            # Get team statistics
+            home_stats = home_team.get("statistics", [])
+            away_stats = away_team.get("statistics", [])
+
+            # Helper function to get stat value
+            def get_stat_value(stats, name):
+                stat = next((s for s in stats if s.get("name") == name), {})
+                return stat.get("displayValue")
+
+            cfb_game_data = {
+                "game_id": raw_data.get("id"),
+                "start_time": raw_data.get("date"),
+                # Game status
+                "status_state": raw_data.get("status", {}).get("type", {}).get("state"),
+                "status_detail": raw_data.get("status", {})
+                .get("type", {})
+                .get("detail"),
+                "status_description": raw_data.get("status", {})
+                .get("type", {})
+                .get("description"),
+                "period": raw_data.get("status", {}).get("period", 0),
+                "clock": raw_data.get("status", {}).get("displayClock", "0:00"),
+                # Home team
+                "home_team_name": home_team.get("team", {}).get("name"),
+                "home_team_abbrev": home_team.get("team", {}).get("abbreviation"),
+                "home_team_score": home_team.get("score"),
+                "home_team_record": next(
+                    (
+                        r.get("summary")
+                        for r in home_team.get("records", [])
+                        if r.get("name") == "overall"
+                    ),
+                    "0-0",
+                ),
+                # Home team statistics
+                "home_passing_leader": get_stat_value(home_stats, "passingLeader"),
+                "home_rushing_leader": get_stat_value(home_stats, "rushingLeader"),
+                "home_receiving_leader": get_stat_value(home_stats, "receivingLeader"),
+                # Away team
+                "away_team_name": away_team.get("team", {}).get("name"),
+                "away_team_abbrev": away_team.get("team", {}).get("abbreviation"),
+                "away_team_score": away_team.get("score"),
+                "away_team_record": next(
+                    (
+                        r.get("summary")
+                        for r in away_team.get("records", [])
+                        if r.get("name") == "overall"
+                    ),
+                    "0-0",
+                ),
+                # Away team statistics
+                "away_passing_leader": get_stat_value(away_stats, "passingLeader"),
+                "away_rushing_leader": get_stat_value(away_stats, "rushingLeader"),
+                "away_receiving_leader": get_stat_value(away_stats, "receivingLeader"),
+                # Venue information
+                "venue_name": competition.get("venue", {}).get("fullName"),
+                "venue_city": competition.get("venue", {})
+                .get("address", {})
+                .get("city"),
+                "venue_state": competition.get("venue", {})
+                .get("address", {})
+                .get("state"),
+                # Additional information
+                "broadcasts": [
+                    broadcast.get("names", [])[0]
+                    for broadcast in competition.get("broadcasts", [])
+                ],
+                # "odds": next(
+                #     (
+                #         {
+                #             "spread": odd.get("spread"),
+                #             "over_under": odd.get("overUnder"),
+                #             "details": odd.get("details"),
+                #         }
+                #         for odd in competition.get("odds", [])
+                #         if odd.get("provider", {}).get("name") == "ESPN BET"
+                #     ),
+                #     {},
+                # ),
+                "timestamp": int(time.time()),
             }
+            return cfb_game_data  # CFBGameStats(**cfb_game_data).model_dump()
+
+        except Exception as e:
+            raise ValueError(f"Failed to transform college football data: {e}")
+
+    @staticmethod
+    def transform_nfl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:  # TODO
+        """Transform raw ESPN NFL game data to defined schema format."""
+        try:
+            competition = raw_data.get("competitions", [{}])[0]
+            home_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "home"
+                ),
+                {},
+            )
+            away_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "away"
+                ),
+                {},
+            )
+
+            # Get team statistics and leaders
+            home_leaders = home_team.get("leaders", [])
+            away_leaders = away_team.get("leaders", [])
+
+            def get_leader_value(leaders, category):
+                leader = next((l for l in leaders if l.get("name") == category), {})
+                leader_stats = (
+                    leader.get("leaders", [{}])[0] if leader.get("leaders") else {}
+                )
+                return leader_stats
+
+            nfl_games_data = {
+                "game_id": raw_data.get("id"),
+                "start_time": raw_data.get("date"),
+                "status_state": raw_data.get("status", {}).get("type", {}).get("state"),
+                "status_detail": raw_data.get("status", {})
+                .get("type", {})
+                .get("detail"),
+                "status_description": raw_data.get("status", {})
+                .get("type", {})
+                .get("description"),
+                "period": raw_data.get("status", {}).get("period", 0),
+                "clock": raw_data.get("status", {}).get("displayClock", "0:00"),
+                # home
+                "home_team_name": home_team.get("team", {}).get("name"),
+                "home_team_abbreviation": home_team.get("team", {}).get("abbreviation"),
+                "home_team_score": home_team.get("score"),
+                "home_team_record": next(
+                    (
+                        r.get("summary")
+                        for r in home_team.get("records", [])
+                        if r.get("name") == "overall"
+                    ),
+                    "0-0",
+                ),
+                "home_passing_display_value": get_leader_value(
+                    home_leaders, "passingLeader"
+                ).get("displayValue"),
+                "home_passing_value": get_leader_value(
+                    home_leaders, "passingLeader"
+                ).get("value"),
+                "home_passing_athlete_name": get_leader_value(
+                    home_leaders, "passingLeader"
+                )
+                .get("athlete", {})
+                .get("displayName"),
+                "home_passing_athlete_position": get_leader_value(
+                    home_leaders, "passingLeader"
+                )
+                .get("athlete", {})
+                .get("position", {})
+                .get("abbreviation"),
+                "home_rushing_display_value": get_leader_value(
+                    home_leaders, "rushingLeader"
+                ).get("displayValue"),
+                "home_rushing_value": get_leader_value(
+                    home_leaders, "rushingLeader"
+                ).get("value"),
+                "home_rushing_athlete_name": get_leader_value(
+                    home_leaders, "rushingLeader"
+                )
+                .get("athlete", {})
+                .get("displayName"),
+                "home_rushing_athlete_position": get_leader_value(
+                    home_leaders, "rushingLeader"
+                )
+                .get("athlete", {})
+                .get("position", {})
+                .get("abbreviation"),
+                "home_receive_display_value": get_leader_value(
+                    home_leaders, "receivingLeader"
+                ).get("displayValue"),
+                "home_receive_value": get_leader_value(
+                    home_leaders, "receivingLeader"
+                ).get("value"),
+                "home_receive_athlete_name": get_leader_value(
+                    home_leaders, "receivingLeader"
+                )
+                .get("athlete", {})
+                .get("displayName"),
+                "home_receive_athlete_position": get_leader_value(
+                    home_leaders, "receivingLeader"
+                )
+                .get("athlete", {})
+                .get("position", {})
+                .get("abbreviation"),
+                "home_team_linescores": [
+                    ls.get("value") for ls in home_team.get("linescores", [])
+                ],
+                # away
+                "away_team_name": away_team.get("team", {}).get("name"),
+                "away_team_abbreviation": away_team.get("team", {}).get("abbreviation"),
+                "away_team_score": away_team.get("score"),
+                "away_team_record": next(
+                    (
+                        r.get("summary")
+                        for r in away_team.get("records", [])
+                        if r.get("name") == "overall"
+                    ),
+                    "0-0",
+                ),
+                "away_passing_display_value": get_leader_value(
+                    away_leaders, "passingLeader"
+                ).get("displayValue"),
+                "away_passing_value": get_leader_value(
+                    away_leaders, "passingLeader"
+                ).get("value"),
+                "away_passing_athlete_name": get_leader_value(
+                    away_leaders, "passingLeader"
+                )
+                .get("athlete", {})
+                .get("displayName"),
+                "away_passing_athlete_position": get_leader_value(
+                    away_leaders, "passingLeader"
+                )
+                .get("athlete", {})
+                .get("position", {})
+                .get("abbreviation"),
+                "away_rushing_display_value": get_leader_value(
+                    away_leaders, "rushingLeader"
+                ).get("displayValue"),
+                "away_rushing_value": get_leader_value(
+                    away_leaders, "rushingLeader"
+                ).get("value"),
+                "away_rushing_athlete_name": get_leader_value(
+                    away_leaders, "rushingLeader"
+                )
+                .get("athlete", {})
+                .get("displayName"),
+                "away_rushing_athlete_position": get_leader_value(
+                    away_leaders, "rushingLeader"
+                )
+                .get("athlete", {})
+                .get("position", {})
+                .get("abbreviation"),
+                "away_receive_display_value": get_leader_value(
+                    away_leaders, "receivingLeader"
+                ).get("displayValue"),
+                "away_receive_value": get_leader_value(
+                    away_leaders, "receivingLeader"
+                ).get("value"),
+                "away_receive_athlete_name": get_leader_value(
+                    away_leaders, "receivingLeader"
+                )
+                .get("athlete", {})
+                .get("displayName"),
+                "away_receive_athlete_position": get_leader_value(
+                    away_leaders, "receivingLeader"
+                )
+                .get("athlete", {})
+                .get("position", {})
+                .get("abbreviation"),
+                "away_team_linescores": [
+                    ls.get("value") for ls in away_team.get("linescores", [])
+                ],
+                # venue
+                "venue_name": competition.get("venue", {}).get("fullName"),
+                "venue_city": competition.get("venue", {})
+                .get("address", {})
+                .get("city"),
+                "venue_state": competition.get("venue", {})
+                .get("address", {})
+                .get("state"),
+                "venue_indoor": competition.get("venue", {}).get("indoor", False),
+                "broadcasts": [
+                    broadcast.get("names", [])[0]
+                    for broadcast in competition.get("broadcasts", [])
+                ],
+                "timestamp": int(time.time()),
+            }
+
+            return NFLGameStats(**nfl_games_data).model_dump()
+
+        except Exception as e:
+            raise Exception(f"Error transforming NFL game data: {e}")
+
+    @staticmethod
+    def transform_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforms raw ESPN NHL game data to defined schema format."""
+        try:
+            competition = raw_data.get("competitions", [{}])[0]
+            home_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "home"
+                ),
+                {},
+            )
+            away_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "away"
+                ),
+                {},
+            )
+
+            # Get team statistics
+            home_stats = home_team.get("statistics", [])
+            away_stats = away_team.get("statistics", [])
+
+            # Helper function to get stat value
+            def get_stat_value(stats, name):
+                stat = next((s for s in stats if s.get("name") == name), {})
+                return stat.get("displayValue")
+
+            nhl_game_data = {
+                "game_id": raw_data.get("id"),
+                "start_time": raw_data.get("date"),
+                # Game status
+                "status_state": raw_data.get("status", {}).get("type", {}).get("state"),
+                "status_detail": raw_data.get("status", {})
+                .get("type", {})
+                .get("detail"),
+                "status_description": raw_data.get("status", {})
+                .get("type", {})
+                .get("description"),
+                "period": raw_data.get("status", {}).get("period", 0),
+                "clock": raw_data.get("status", {}).get("displayClock", "0:00"),
+                # Home team
+                "home_team_name": home_team.get("team", {}).get("name"),
+                "home_team_abbrev": home_team.get("team", {}).get("abbreviation"),
+                "home_team_score": home_team.get("score"),
+                # Home team statistics
+                "home_team_saves": get_stat_value(home_stats, "saves"),
+                "home_team_save_pct": get_stat_value(home_stats, "savePct"),
+                "home_team_goals": get_stat_value(home_stats, "goals"),
+                "home_team_assists": get_stat_value(home_stats, "assists"),
+                "home_team_points": get_stat_value(home_stats, "points"),
+                "home_team_penalties": get_stat_value(home_stats, "penalties"),
+                "home_team_penalty_minutes": get_stat_value(
+                    home_stats, "penaltyMinutes"
+                ),
+                "home_team_power_plays": get_stat_value(home_stats, "powerPlays"),
+                "home_team_power_play_goals": get_stat_value(
+                    home_stats, "powerPlayGoals"
+                ),
+                "home_team_power_play_pct": get_stat_value(home_stats, "powerPlayPct"),
+                # Away team
+                "away_team_name": away_team.get("team", {}).get("name"),
+                "away_team_abbrev": away_team.get("team", {}).get("abbreviation"),
+                "away_team_score": away_team.get("score"),
+                # Away team statistics
+                "away_team_saves": get_stat_value(away_stats, "saves"),
+                "away_team_save_pct": get_stat_value(away_stats, "savePct"),
+                "away_team_goals": get_stat_value(away_stats, "goals"),
+                "away_team_assists": get_stat_value(away_stats, "assists"),
+                "away_team_points": get_stat_value(away_stats, "points"),
+                "away_team_penalties": get_stat_value(away_stats, "penalties"),
+                "away_team_penalty_minutes": get_stat_value(
+                    away_stats, "penaltyMinutes"
+                ),
+                "away_team_power_plays": get_stat_value(away_stats, "powerPlays"),
+                "away_team_power_play_goals": get_stat_value(
+                    away_stats, "powerPlayGoals"
+                ),
+                "away_team_power_play_pct": get_stat_value(away_stats, "powerPlayPct"),
+                # Team records
+                "home_team_record": next(
+                    (
+                        r.get("summary")
+                        for r in home_team.get("records", [])
+                        if r.get("name") == "overall"
+                    ),
+                    "0-0",
+                ),
+                "away_team_record": next(
+                    (
+                        r.get("summary")
+                        for r in away_team.get("records", [])
+                        if r.get("name") == "overall"
+                    ),
+                    "0-0",
+                ),
+                # Venue information
+                "venue_name": competition.get("venue", {}).get("fullName"),
+                "venue_city": competition.get("venue", {})
+                .get("address", {})
+                .get("city"),
+                "venue_state": competition.get("venue", {})
+                .get("address", {})
+                .get("state"),
+                "venue_indoor": competition.get("venue", {}).get("indoor", True),
+                # Broadcasts and timestamp
+                "broadcasts": [
+                    broadcast.get("names", [])[0]
+                    for broadcast in competition.get("broadcasts", [])
+                ],
+                "timestamp": int(time.time()),
+            }
+            return NHLGameStats(**nhl_game_data).model_dump()
+
+        except Exception as e:
+            raise ValueError(f"Failed to transform NHL game data: {e}")
+
+    @staticmethod
+    def transform_nba_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transforms raw ESPN game data to defined schema format."""
+        try:
+            competition = raw_data.get("competitions", [{}])[0]
+            home_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "home"
+                ),
+                {},
+            )
+            away_team = next(
+                (
+                    team
+                    for team in competition.get("competitors", [])
+                    if team.get("homeAway") == "away"
+                ),
+                {},
+            )
+
+            # Get team statistics
+            home_stats = home_team.get("statistics", [])
+            away_stats = away_team.get("statistics", [])
+
+            # Helper function to get stat value
+            def get_stat_value(stats, name):
+                stat = next((s for s in stats if s.get("name") == name), {})
+                return stat.get("displayValue")
+
+            nba_game_data = {
+                "game_id": raw_data.get("id"),
+                "start_time": raw_data.get("date"),
+                # game status
+                "status_state": raw_data.get("status", {}).get("type", {}).get("state"),
+                "status_detail": raw_data.get("status", {})
+                .get("type", {})
+                .get("detail"),
+                "status_description": raw_data.get("status", {})
+                .get("type", {})
+                .get("description"),
+                "period": raw_data.get("status", {}).get("period", 0),
+                "clock": raw_data.get("status", {}).get("displayClock", "0:00"),
+                # home team
+                "home_team_name": home_team.get("team", {}).get("name"),
+                "home_team_abbrev": home_team.get("team", {}).get("abbreviation"),
+                "home_team_score": home_team.get("score"),
+                # Home team statistics
+                "home_team_field_goals": get_stat_value(home_stats, "fieldGoalPct"),
+                "home_team_three_pointers": get_stat_value(home_stats, "threePointPct"),
+                "home_team_free_throws": get_stat_value(home_stats, "freeThrowPct"),
+                "home_team_rebounds": get_stat_value(home_stats, "rebounds"),
+                "home_team_assists": get_stat_value(home_stats, "assists"),
+                "home_team_steals": get_stat_value(home_stats, "steals"),
+                "home_team_blocks": get_stat_value(home_stats, "blocks"),
+                "home_team_turnovers": get_stat_value(home_stats, "turnovers"),
+                # away team
+                "away_team_name": away_team.get("team", {}).get("name"),
+                "away_team_abbrev": away_team.get("team", {}).get("abbreviation"),
+                "away_team_score": away_team.get("score"),
+                # Away team statistics
+                "away_team_field_goals": get_stat_value(away_stats, "fieldGoalPct"),
+                "away_team_three_pointers": get_stat_value(away_stats, "threePointPct"),
+                "away_team_free_throws": get_stat_value(away_stats, "freeThrowPct"),
+                "away_team_rebounds": get_stat_value(away_stats, "rebounds"),
+                "away_team_assists": get_stat_value(away_stats, "assists"),
+                "away_team_steals": get_stat_value(away_stats, "steals"),
+                "away_team_blocks": get_stat_value(away_stats, "blocks"),
+                "away_team_turnovers": get_stat_value(away_stats, "turnovers"),
+                # venue
+                "venue_name": competition.get("venue", {}).get("fullName"),
+                "venue_city": competition.get("venue", {})
+                .get("address", {})
+                .get("city"),
+                "venue_state": competition.get("venue", {})
+                .get("address", {})
+                .get("state"),
+                "broadcasts": [
+                    broadcast.get("names", [])[0]
+                    for broadcast in competition.get("broadcasts", [])
+                ],
+                "timestamp": int(time.time()),
+            }
+            return nba_game_data  # NBAGameStats(**nba_game_data).model_dump()
+
         except Exception as e:
             raise Exception(f"Error transforming game data: {e}")
 
@@ -144,12 +638,15 @@ class ESPNConnector:
         except Exception as e:
             raise Exception(f"Error publishing to Kafka: {e}")
 
-    def fetch_and_publish_games(self, sport: str, league: str) -> None:
+    async def fetch_and_publish_games(
+        self, sport: str, league: str, topic_name: str
+    ) -> None:
         """Fetches games for a sport/league and publishes to Kafka.
 
         Args:
             sport (str): Sport name (e.g., 'basketball').
             league (str): League name (e.g., 'nba').
+            topic_name (str): kafka topic name.
 
         Raises:
             Exception: If fetch and publish pipeline fails.
@@ -158,9 +655,19 @@ class ESPNConnector:
             endpoint = f"{sport}/{league}/scoreboard"
             raw_data = self.make_request(endpoint)
 
-            for game in raw_data.get('events', []):
-                transformed_data = self.transform_game_data(game)
-                self.publish_to_kafka(f"espn.{sport}.{league}.games", transformed_data)
+            for game in raw_data.get("events", []):
+                # TODO
+                if league == "nhl":
+                    transformed_data = self.transform_nhl_data(game)
+                elif league == "nba":
+                    transformed_data = self.transform_nba_data(game)
+                elif league == "nfl":
+                    transformed_data = self.transform_nfl_data(game)
+                elif league == "cfb":
+                    transformed_data = self.transform_cfb_data(game)
+                else:
+                    transformed_data = None
+                self.publish_to_kafka(topic_name, transformed_data)
 
         except Exception as e:
             raise Exception(f"Error in fetch and publish pipeline: {e}")
@@ -171,16 +678,17 @@ class ESPNConnector:
         self.producer.close()
 
 
-def main() -> None:
-    """Main function to demonstrate connector usage."""
-    connector = ESPNConnector(kafka_bootstrap_servers='localhost:9092')
-
-    try:
-        connector.fetch_and_publish_games('basketball', 'nba')
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        connector.close()
-
-if __name__ == "__main__":
-    main()
+# def main() -> None:
+#     """Main function to demonstrate connector usage."""
+#     connector = ESPNConnector(kafka_bootstrap_servers="localhost:9092")
+#
+#     try:
+#         connector.fetch_and_publish_games("basketball", "nba")
+#     except Exception as e:
+#         print(f"Error: {e}")
+#     finally:
+#         connector.close()
+#
+#
+# if __name__ == "__main__":
+#     main()

@@ -17,10 +17,10 @@ from pyspark.sql.types import (
     LongType,
 )
 
-from betflow.spark_streaming.event_transformer import NBAGameTransformer
+from betflow.spark_streaming.event_transformer import GameTransformer
 
 
-class GamesProcessor:
+class NBAProcessor:
     """Process real-time game data streams with analytics."""
 
     def __init__(
@@ -36,7 +36,7 @@ class GamesProcessor:
         self.checkpoint_location = checkpoint_location
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.transformers = NBAGameTransformer()
+        self.transformers = GameTransformer()
 
     @staticmethod
     def _get_schema() -> StructType:
@@ -90,15 +90,17 @@ class GamesProcessor:
 
     def _parse_and_transform(self, stream_df: DataFrame) -> DataFrame:
         """Parse JSON data and apply sport-specific transformations."""
-        # Parse the JSON
-        parsed_df = stream_df.select(
-            from_json(col("value").cast("string"), self._get_schema()).alias("data")
-        ).select("data.*")
+        try:
+            parsed_df = stream_df.select(
+                from_json(col("value").cast("string"), self._get_schema()).alias("data")
+            ).select("data.*")
 
-        # Apply transformations using when clauses
-        transformed_df = self.transformers.transform_espn_nba(parsed_df)
+            transformed_df = self.transformers.transform_espn_nba(parsed_df)
 
-        return transformed_df.withColumn("processing_time", current_timestamp())
+            return transformed_df.withColumn("processing_time", current_timestamp())
+        except Exception as e:
+            self.logger.error(f"Error in parse and transform: {e}")
+            raise
 
     def process(self):
         """Start processing game data stream with analytics."""
@@ -127,6 +129,7 @@ class GamesProcessor:
                 )
                 .agg(
                     # Game Status
+                    col("window.start").alias("timestamp"),
                     first("status_state").alias("status_state"),
                     first("status_detail").alias("status_detail"),
                     first("status_description").alias("status_description"),
@@ -140,21 +143,21 @@ class GamesProcessor:
                     # home Team Statistics
                     first(col("home_fg_pct")).alias("home_fg_pct"),
                     first(col("home_three_pt_pct")).alias("home_three_pt_pct"),
-                    first(col("home_team_free_throws")).alias("home_team_free_throws"),
-                    first(col("home_team_rebounds")).alias("home_team_rebounds"),
-                    first(col("home_team_assists")).alias("home_team_assists"),
-                    first(col("home_team_steals")).alias("home_team_steals"),
-                    first(col("home_team_blocks")).alias("home_team_blocks"),
-                    first(col("home_team_turnovers")).alias("home_team_turnovers"),
+                    first(col("home_ft_pct")).alias("home_ft_pct"),
+                    first(col("home_rebounds")).alias("home_rebounds"),
+                    first(col("home_assists")).alias("home_assists"),
+                    first(col("home_steals")).alias("home_steals"),
+                    first(col("home_blocks")).alias("home_blocks"),
+                    first(col("home_turnovers")).alias("home_turnovers"),
                     # away
                     first(col("away_fg_pct")).alias("away_fg_pct"),
                     first(col("away_three_pt_pct")).alias("away_three_pt_pct"),
-                    first(col("away_team_free_throws")).alias("away_team_free_throws"),
-                    first(col("away_team_rebounds")).alias("away_team_rebounds"),
-                    first(col("away_team_assists")).alias("away_team_assists"),
-                    first(col("away_team_steals")).alias("away_team_steals"),
-                    first(col("away_team_blocks")).alias("away_team_blocks"),
-                    first(col("away_team_turnovers")).alias("away_team_turnovers"),
+                    first(col("away_ft_pct")).alias("away_ft_pct"),
+                    first(col("away_rebounds")).alias("away_rebounds"),
+                    first(col("away_assists")).alias("away_assists"),
+                    first(col("away_steals")).alias("away_steals"),
+                    first(col("away_blocks")).alias("away_blocks"),
+                    first(col("away_turnovers")).alias("away_turnovers"),
                     # Game Analytics
                     (
                         last(col("home_team_score")) - first(col("home_team_score"))
@@ -162,11 +165,6 @@ class GamesProcessor:
                     (
                         last(col("away_team_score")) - first(col("away_team_score"))
                     ).alias("away_team_scoring_run"),
-                    # Additional Stats
-                    first(col("home_rebounds")).alias("home_team_rebounds"),
-                    first(col("away_rebounds")).alias("away_team_rebounds"),
-                    first(col("home_assists")).alias("home_team_assists"),
-                    first(col("away_assists")).alias("away_team_assists"),
                 )
             )
 
