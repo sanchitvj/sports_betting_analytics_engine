@@ -1,17 +1,21 @@
 # Apache Kafka Setup
 ```bash
-# Download Kafka
-wget https://downloads.apache.org/kafka/3.8.1/kafka_2.13-3.8.1.tgz
-tar -xzf kafka_2.13-3.8.1.tgz
-mv kafka_2.13-3.8.1 kafka
+# Download Kafka 3.7.1, versions 3.8.* are making issues with s3 sink connector so don't upgrade kafka
+wget https://downloads.apache.org/kafka/3.7.1/kafka_2.13-3.7.1.tgz
+tar -xzf kafka_2.13-3.7.1.tgz
+mv kafka_2.13-3.7.1 kafka
 ```
 
 ## Configure kafka for Kraft mode (no zookeeper)
 
 ### 1. Generate cluster ID
 ```bash
+mkdir -p /home/ubuntu/kafka/kraft-combined-logs
+
 cd ~/kafka
 bin/kafka-storage.sh random-uuid
+# OR
+# KAFKA_CLUSTER_ID=$(bin/kafka-storage.sh random-uuid)
 # Save the output UUID
 ```
 
@@ -36,11 +40,88 @@ log.dirs=/home/ubuntu/kafka/kraft-combined-logs
 # Use the UUID you generated earlier
 KAFKA_CLUSTER_ID="your-generated-uuid"
 bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
+# OR
+# bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
 ```
 
 ### 4. Start kafka in Kraft mode
 ```bash
+# -daemon to ignore the output
 bin/kafka-server-start.sh config/kraft/server.properties
+```
+## S3 Connector Sink
+Manually download AWS kafka s3 connect sink and put it in `~/kafka/connector/`.
+
+1. Verify your connector files in right location
+```bash
+# Create plugins directory if it doesn't exist
+mkdir -p ~/kafka/plugins
+
+# Move the S3 connector files to plugins directory
+mv ~/kafka/connectors/confluentinc-kafka-connect-s3-10.5.17/* ~/kafka/plugins/
+```
+
+2. Configure kafka connect standalone
+```bash
+mkdir -p config/connect
+
+# Edit connect-standalone.properties
+nano ~/kafka/config/connect-standalone.properties
+
+# Add these settings
+bootstrap.servers=localhost:9092
+key.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter=org.apache.kafka.connect.json.JsonConverter
+key.converter.schemas.enable=false
+value.converter.schemas.enable=false
+offset.storage.file.filename=/tmp/connect.offsets
+plugin.path=/home/ubuntu/kafka/plugins
+# Important: This is the REST API port setting, when 8083 is occupied
+listeners=HTTP://0.0.0.0:8084
+rest.port=8084
+```
+
+3. Create S3 sink config
+```bash
+# Create config directory
+mkdir -p ~/kafka/config/connect
+
+# Create s3 sink config file
+nano ~/kafka/config/connect/s3-sink.properties
+
+# Add this configuration
+name=s3-sink-sports
+connector.class=io.confluent.connect.s3.S3SinkConnector
+tasks.max=1
+
+# Topics by sport
+topics=nba_games_analytics,nba_odds_analytics,nba_news_analytics,nba_weather_analytics,\
+       nfl_games_analytics,nfl_odds_analytics,nfl_news_analytics,nfl_weather_analytics,\
+       ncaaf_games_analytics,ncaaf_odds_analytics,ncaaf_news_analytics,ncaaf_weather_analytics,\
+       nhl_games_analytics,nhl_odds_analytics,nhl_news_analytics,nhl_weather_analytics
+
+# S3 configuration
+s3.bucket.name=raw-sp-data-aeb
+s3.region=us-east-1
+s3.part.size=5242880
+flush.size=1000
+
+# Storage settings
+storage.class=io.confluent.connect.s3.storage.S3Storage
+format.class=io.confluent.connect.s3.format.json.JsonFormat
+partitioner.class=io.confluent.connect.storage.partitioner.TimeBasedPartitioner
+path.format='sport'=/${topic}/'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH
+timestamp.extractor=Record
+```
+
+4. Start Kafka Connect
+```bash
+# First start kafka in kraft mode then start connector
+ 
+bin/connect-standalone.sh config/connect-standalone.properties config/connect/s3-sink.properties
+
+# Check connector status
+curl -s localhost:8083/connectors/s3-sink-sports/status | jq
 ```
 
 ## Legacy Setup (with Zookeeper)
@@ -168,7 +249,7 @@ netstat -tulpn | grep 2181
 netstat -tulpn | grep 9092
 ```
 
-## Start with kafka
+### Start with kafka
 1. Start services
 ```bash
 # Start ZooKeeper, remove -daemon if you want to see output
