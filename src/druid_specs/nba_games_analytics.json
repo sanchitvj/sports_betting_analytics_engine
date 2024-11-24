@@ -1,0 +1,54 @@
+
+
+{
+  "type": "kafka",
+  "dataSchema": {
+    "dataSource": "nba_games_analytics",
+    "timestampSpec": {
+      "column": "window.start",
+      "format": "auto"
+    },
+    "dimensionsSpec": {
+      "dimensions": [
+        "game_id",
+        "venue_name",
+        "venue_city",
+        "venue_state",
+        "broadcasts",
+        "status_state",
+        "status_detail",
+        "status_description",
+        "current_period",
+        "time_remaining",
+        "home_team_name",
+        "away_team_name",
+        "home_fg_pct",
+        "home_three_pt_pct",
+        "home_ft_pct",
+        "away_fg_pct",
+        "away_three_pt_pct",
+        "away_ft_pct"
+      ]
+    },
+    "metricsSpec": [
+      { "type": "doubleSum", "name": "home_team_score", "fieldName": "home_team_score" },
+      { "type": "doubleSum", "name": "away_team_score", "fieldName": "away_team_score" },
+      { "type": "doubleSum", "name": "home_rebounds", "fieldName": "home_rebounds" },
+      { "type": "doubleSum", "name": "home_assists", "fieldName": "home_assists" },
+      { "type": "doubleSum", "name": "away_rebounds", "fieldName": "away_rebounds" },
+      { "type": "doubleSum", "name": "away_assists", "fieldName": "away_assists" },
+      { "type": "doubleSum", "name": "home_team_scoring_run", "fieldName": "home_team_scoring_run" },
+      { "type": "doubleSum", "name": "away_team_scoring_run", "fieldName": "away_team_scoring_run" }
+    ]
+  },
+  "ioConfig": {
+    "type": "kafka",
+    "consumerProperties": {
+      "bootstrap.servers": "localhost:9092"
+    },
+    "topic": "nba_games_analytics",
+    "inputFormat": {
+      "type": "json"
+    }
+  }
+}

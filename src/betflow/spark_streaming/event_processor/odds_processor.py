@@ -3,23 +3,27 @@ from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
     col,
     window,
-    avg,
-    sum,
     count,
-    collect_list,
     from_json,
     current_timestamp,
-    struct,
-    expr,
+    first,
+    avg,
+    last,
+    stddev,
     lit,
-    max as max_,
-    min as min_,
+    max as spark_max,
+    min as spark_min,
+    expr,
+    to_timestamp,
 )
 from pyspark.sql.types import (
     StringType,
-    TimestampType,
     StructField,
     StructType,
+    DoubleType,
+    ArrayType,
+    LongType,
+    IntegerType,
 )
 from betflow.spark_streaming.event_transformer import OddsTransformer
 
@@ -43,8 +47,8 @@ class OddsProcessor:
         self.transformer = OddsTransformer()
 
     @staticmethod
-    def _get_schema(self) -> StructType:
-        """Define schema for odds data."""
+    def _get_schema() -> StructType:
+        """Define schema for transformed odds data from Kafka."""
         return StructType(
             [
                 StructField("game_id", StringType(), True),
@@ -53,116 +57,62 @@ class OddsProcessor:
                 StructField("commence_time", StringType(), True),
                 StructField("home_team", StringType(), True),
                 StructField("away_team", StringType(), True),
+                # Odds by Bookmaker
+                StructField(
+                    "home_odds_by_bookie",
+                    ArrayType(
+                        StructType(
+                            [
+                                StructField("bookie_key", StringType(), True),
+                                StructField("price", DoubleType(), True),
+                            ]
+                        )
+                    ),
+                    True,
+                ),
+                StructField(
+                    "away_odds_by_bookie",
+                    ArrayType(
+                        StructType(
+                            [
+                                StructField("bookie_key", StringType(), True),
+                                StructField("price", DoubleType(), True),
+                            ]
+                        )
+                    ),
+                    True,
+                ),
+                # Pre-calculated Analytics
                 StructField("best_home_odds", DoubleType(), True),
                 StructField("best_away_odds", DoubleType(), True),
+                # StructField("min_home_odds", DoubleType(), True),
+                # StructField("min_away_odds", DoubleType(), True),
+                StructField("avg_home_odds", DoubleType(), True),
+                StructField("avg_away_odds", DoubleType(), True),
                 StructField("bookmakers_count", IntegerType(), True),
                 StructField("last_update", StringType(), True),
-                StructField("processing_time", TimestampType(), True),
                 StructField("timestamp", LongType(), True),
             ]
         )
 
     def _parse_and_transform(self, stream_df: DataFrame) -> DataFrame:
         """Parse JSON data and apply transformations."""
-        # First parse the JSON
-        parsed_df = stream_df.select(
-            from_json(col("value").cast("string"), self._get_schema()).alias("data")
-        ).select("data.*")
+        try:
+            # First parse the JSON
+            parsed_df = stream_df.select(
+                from_json(col("value").cast("string"), self._get_schema()).alias("data")
+            ).select("data.*")
 
-        # Create a list to store transformed rows
-        transformed_rows = []
+            # transformed_df = self.transformer.transform_odds_data(parsed_df)
 
-        # Process each row using the appropriate transformer
-        for row in parsed_df.collect():
-            row_dict = row.asDict()
-            if row_dict.get("bookmaker_id") == "odds_api":
-                transformed_data = self.transformer.transform_odds_api(
-                    row_dict, row_dict["sport_type"]
-                )
-            elif row_dict.get("bookmaker_id") == "pinnacle":
-                transformed_data = self.transformer.transform_pinnacle(
-                    row_dict, row_dict["sport_type"]
-                )
-            else:
-                transformed_data = row_dict
-            transformed_rows.append(transformed_data)
+            return parsed_df.withColumn("processing_time", current_timestamp())
 
-        # Create DataFrame from transformed data
-        transformed_df = self.spark.createDataFrame(transformed_rows)
+        except Exception as e:
+            self.logger.error(f"Error in parse and transform: {e}")
+            raise
 
-        # Add processing timestamp
-        return transformed_df.withColumn("processing_time", current_timestamp())
-
-    @staticmethod
-    def _apply_odds_analytics(df: DataFrame) -> DataFrame:
-        """Calculate odds analytics."""
-        return (
-            df.withWatermark("processing_time", "1 minute")
-            .groupBy(
-                window(col("processing_time"), "5 minutes"),
-                "game_id",
-                "bookmaker_id",
-                "market_type",
-            )
-            .agg(
-                # Average odds
-                avg(col("odds_value")).alias("avg_odds"),
-                # Odds movement
-                max_(col("odds_value")).alias("max_odds"),
-                min_(col("odds_value")).alias("min_odds"),
-                # Volume metrics
-                sum(expr("volume.total")).alias("total_volume"),
-                avg(expr("volume.matched")).alias("avg_matched_volume"),
-                # Market depth
-                count(lit(1)).alias("market_depth"),
-                # Collect movements
-                collect_list(
-                    struct(col("timestamp"), col("odds_value"), col("movement"))
-                ).alias("odds_history"),
-            )
-        )
-
-    @staticmethod
-    def _apply_probability_analytics(df: DataFrame) -> DataFrame:
-        """Analyze implied probabilities."""
-        return (
-            df.withWatermark("processing_time", "1 minute")
-            .groupBy(
-                window(col("processing_time"), "5 minutes"), "game_id", "bookmaker_id"
-            )
-            .agg(
-                # Average probability
-                avg(col("probability")).alias("avg_probability"),
-                # Probability range
-                max_(col("probability")).alias("max_probability"),
-                min_(col("probability")).alias("min_probability"),
-                # Market efficiency
-                (max_(col("probability")) - min_(col("probability"))).alias(
-                    "probability_spread"
-                ),
-            )
-        )
-
-    def _apply_market_analytics(self, df: DataFrame) -> DataFrame:
-        """Analyze market behavior."""
-        return (
-            df.withWatermark("processing_time", "1 minute")
-            .groupBy(window(col("processing_time"), "5 minutes"), "game_id")
-            .agg(
-                # Market statistics
-                count("bookmaker_id").alias("bookmaker_count"),
-                collect_list("market_type").alias("market_types"),
-                # Volume analysis
-                sum(expr("volume.total")).alias("total_market_volume"),
-                # Movement analysis
-                collect_list(
-                    struct(col("bookmaker_id"), col("market_type"), col("movement"))
-                ).alias("market_movements"),
-            )
-        )
-
-    def process(self) -> None:
-        """Process odds stream."""
+    def process(self):
+        """Process odds stream with comprehensive analytics."""
         try:
             # Read from Kafka
             stream_df = (
@@ -170,44 +120,100 @@ class OddsProcessor:
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("subscribe", self.input_topic)
                 .option("startingOffsets", "latest")
+                # .option("maxOffsetsPerTrigger", 10000)
                 .load()
             )
 
-            # Parse JSON and apply schema
-            parsed_df = stream_df.select(
-                from_json(col("value").cast("string"), self._get_schema()).alias("data")
-            ).select("data.*")
-
-            # Add analytics
-            analytics_df = (
-                parsed_df.withWatermark("processing_time", "1 minute")
-                .groupBy(
-                    window(col("processing_time"), "2 minutes"), "game_id", "sport_key"
-                )
-                .agg(
-                    first("home_team").alias("home_team"),
-                    first("away_team").alias("away_team"),
-                    first("commence_time").alias("commence_time"),
-                    avg("best_home_odds").alias("avg_home_odds"),
-                    avg("best_away_odds").alias("avg_away_odds"),
-                    max("best_home_odds").alias("max_home_odds"),
-                    max("best_away_odds").alias("max_away_odds"),
-                    avg("bookmakers_count").alias("avg_bookmakers"),
+            parsed_df = (
+                self._parse_and_transform(stream_df)
+                .withColumn("game_time", to_timestamp(col("commence_time")))
+                .filter(
+                    col("game_time").between(
+                        current_timestamp(),
+                        current_timestamp() + expr("INTERVAL 5 HOURS"),
+                    )
                 )
             )
 
-            # Write to Kafka
-            query = (
+            analytics_df = (
+                parsed_df.withWatermark("processing_time", "1 minute")
+                .groupBy(
+                    window(col("processing_time"), "5 minutes"),  # "1 minute"),
+                    "game_id",
+                    "sport_key",
+                )
+                .agg(
+                    # Game Info
+                    col("window.start").alias("timestamp"),
+                    first(col("sport_title")).alias("sport_title"),
+                    first(col("commence_time")).alias("commence_time"),
+                    first(col("home_team")).alias("home_team"),
+                    first(col("away_team")).alias("away_team"),
+                    # Basic Odds Analysis
+                    first(col("best_home_odds")).alias("current_home_odds"),
+                    first(col("best_away_odds")).alias("current_away_odds"),
+                    avg(col("best_home_odds")).alias("avg_home_odds"),
+                    avg(col("best_away_odds")).alias("avg_away_odds"),
+                    spark_max(col("best_home_odds")).alias("max_home_odds"),
+                    spark_max(col("best_away_odds")).alias("max_away_odds"),
+                    spark_min(col("best_home_odds")).alias("min_home_odds"),
+                    spark_min(col("best_away_odds")).alias("min_away_odds"),
+                    # Market Efficiency
+                    (
+                        spark_max(col("best_home_odds"))
+                        - spark_min(col("best_home_odds"))
+                    ).alias("home_odds_spread"),
+                    (
+                        spark_max(col("best_away_odds"))
+                        - spark_min(col("best_away_odds"))
+                    ).alias("away_odds_spread"),
+                    # Volatility Metrics
+                    stddev(col("best_home_odds")).alias("home_odds_volatility"),
+                    stddev(col("best_away_odds")).alias("away_odds_volatility"),
+                    # Bookmaker Analysis
+                    first(col("home_odds_by_bookie")).alias("home_odds_by_bookie"),
+                    first(col("away_odds_by_bookie")).alias("away_odds_by_bookie"),
+                    avg(col("bookmakers_count")).alias("avg_bookmakers"),
+                    spark_max(col("bookmakers_count")).alias("max_bookmakers"),
+                    # Time-based Metrics
+                    first(col("last_update")).alias("first_update"),
+                    last(col("last_update")).alias("latest_update"),
+                    count("*").alias("update_count"),
+                    # Implied Probability
+                    (lit(1) / avg(col("best_home_odds"))).alias("implied_home_prob"),
+                    (lit(1) / avg(col("best_away_odds"))).alias("implied_away_prob"),
+                    # Market Movement
+                    (
+                        (
+                            spark_max(col("best_home_odds"))
+                            - spark_min(col("best_home_odds"))
+                        )
+                        / spark_min(col("best_home_odds"))
+                    ).alias("home_odds_movement_pct"),
+                    (
+                        (
+                            spark_max(col("best_away_odds"))
+                            - spark_min(col("best_away_odds"))
+                        )
+                        / spark_min(col("best_away_odds"))
+                    ).alias("away_odds_movement_pct"),
+                )
+            )
+
+            kafka_query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
                 .writeStream.format("kafka")
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("topic", self.output_topic)
-                .option("checkpointLocation", self.checkpoint_location)
+                .option("checkpointLocation", f"{self.checkpoint_location}/kafka")
+                # .option("cleanSource", "delete-on-success")
                 .outputMode("update")
+                # .trigger(processingTime="1 minute")
                 .start()
             )
 
-            return query
+            return kafka_query
 
         except Exception as e:
-            raise Exception(f"Failed to process odds stream: {e}")
+            self.logger.error(f"Error processing odds stream: {e}")
+            raise

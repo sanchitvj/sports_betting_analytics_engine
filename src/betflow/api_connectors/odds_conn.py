@@ -54,10 +54,16 @@ class OddsAPIConnector:
         self.rate_limiter.wait_if_needed()
 
         url = f"{self.base_url}/{endpoint}"
-        headers = {"apikey": self.api_key}
 
+        if params is None:
+            params = {}
+        params["apiKey"] = self.api_key
+        params["regions"] = "us"
+        params["markets"] = "h2h"
+        # headers = {"apikey": self.api_key}
+        # print(url)
         try:
-            response = self.session.get(url, headers=headers, params=params, timeout=30)
+            response = self.session.get(url, params=params, timeout=30)
             response.raise_for_status()
 
             # Check remaining requests
@@ -78,43 +84,72 @@ class OddsAPIConnector:
             raise Exception(f"Request failed: {e}")
 
     @staticmethod
-    def transform_odds_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform raw odds data to our schema.
+    def api_raw_odds_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transform raw odds data with pre-calculated analytics.
 
         Args:
             raw_data: Raw data from API
 
         Returns:
-            Transformed data
+            Transformed data with odds analytics
         """
-        return {
+        # Extract basic game info
+        game_info = {
             "game_id": raw_data.get("id"),
             "sport_key": raw_data.get("sport_key"),
             "sport_title": raw_data.get("sport_title"),
             "commence_time": raw_data.get("commence_time"),
             "home_team": raw_data.get("home_team"),
             "away_team": raw_data.get("away_team"),
-            "bookmakers": [
-                {
-                    "key": bm.get("key"),
-                    "title": bm.get("title"),
-                    "last_update": bm.get("last_update"),
-                    "markets": [
-                        {
-                            "key": market.get("key"),
-                            "outcomes": [
+        }
+
+        # Process bookmaker odds
+        home_odds = []
+        away_odds = []
+        last_updates = []
+
+        for bm in raw_data.get("bookmakers", []):
+            bookie_key = bm.get("key")
+            last_updates.append(bm.get("last_update"))
+
+            for market in bm.get("markets", []):
+                if market.get("key") == "h2h":
+                    for outcome in market.get("outcomes", []):
+                        if outcome.get("name") == game_info["home_team"]:
+                            home_odds.append(
                                 {
-                                    "name": outcome.get("name"),
+                                    "bookie_key": bookie_key,
                                     "price": outcome.get("price"),
                                 }
-                                for outcome in market.get("outcomes", [])
-                            ],
-                        }
-                        for market in bm.get("markets", [])
-                    ],
-                }
-                for bm in raw_data.get("bookmakers", [])
-            ],
+                            )
+                        elif outcome.get("name") == game_info["away_team"]:
+                            away_odds.append(
+                                {
+                                    "bookie_key": bookie_key,
+                                    "price": outcome.get("price"),
+                                }
+                            )
+
+        # Calculate odds analytics
+        home_prices = [odd["price"] for odd in home_odds]
+        away_prices = [odd["price"] for odd in away_odds]
+
+        return {
+            **game_info,
+            "home_odds_by_bookie": home_odds,
+            "away_odds_by_bookie": away_odds,
+            "best_home_odds": max(home_prices) if home_prices else None,
+            "best_away_odds": max(away_prices) if away_prices else None,
+            # "min_home_odds": min(home_prices) if home_prices else None,
+            # "min_away_odds": min(away_prices) if away_prices else None,
+            "avg_home_odds": sum(home_prices) / len(home_prices)
+            if home_prices
+            else None,
+            "avg_away_odds": sum(away_prices) / len(away_prices)
+            if away_prices
+            else None,
+            "bookmakers_count": len(raw_data.get("bookmakers", [])),
+            "last_update": max(last_updates) if last_updates else None,
             "timestamp": int(time.time()),
         }
 
@@ -153,16 +188,20 @@ class OddsAPIConnector:
         """
         try:
             params = {
-                "api_key": self.api_key,
+                "apiKey": self.api_key,
                 "regions": regions,
                 "markets": markets,
-                # "oddsFormat": odds_format,
+                "oddsFormat": odds_format,
             }
+            # f"sports/{sport}/odds/?apikey={self.api_key}&regions={regions}&markets={markets}"
+            raw_data = self.make_request(
+                f"sports/{sport}/odds/",
+                params=params,
+            )
 
-            raw_data = self.make_request(f"sports/{sport}/odds", params=params)
-
-            transformed_data = self.transform_odds_data(raw_data)
-            self.publish_to_kafka(topic_name, transformed_data)
+            for game_odds in raw_data:  # raw_data is a list
+                transformed_data = self.api_raw_odds_data(game_odds)
+                self.publish_to_kafka(topic_name, transformed_data)
 
         except Exception as e:
             raise Exception(f"Failed to fetch and publish odds: {e}")

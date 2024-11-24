@@ -72,12 +72,6 @@ def monitor_basketball_analytics():
                         print(f"Away rebounds: {game_data.get('away_rebounds')}")
                         print(f"Home assists: {game_data.get('home_assists')}")
                         print(f"Away assists: {game_data.get('away_assists')}")
-                        print(f"Home steals: {game_data.get('home_steals')}")
-                        print(f"Away steals: {game_data.get('away_steals')}")
-                        print(f"Home blocks: {game_data.get('home_blocks')}")
-                        print(f"Away blocks: {game_data.get('away_blocks')}")
-                        print(f"Home turnovers: {game_data.get('home_turnovers')}")
-                        print(f"Away turnovers: {game_data.get('away_turnovers')}")
 
                         print("=" * 80)
             time.sleep(1)

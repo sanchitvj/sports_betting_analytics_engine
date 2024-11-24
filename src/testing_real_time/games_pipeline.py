@@ -11,43 +11,7 @@ from betflow.spark_streaming.event_processor import (
     NFLProcessor,
     NHLProcessor,
 )
-
-
-def get_live_games(espn_connector: ESPNConnector, sport: str, league: str) -> list:
-    """Get live or upcoming NBA games."""
-    try:
-        endpoint = f"{sport}/{league}/scoreboard"
-        raw_data = espn_connector.make_request(endpoint)
-
-        games_list = []
-        for game in raw_data.get("events", []):
-            competition = game.get("competitions", [{}])[0]
-            venue = competition.get("venue", {})
-
-            # Get teams
-            competitors = competition.get("competitors", [])
-            home_team = next(
-                (team for team in competitors if team.get("homeAway") == "home"), {}
-            )
-            away_team = next(
-                (team for team in competitors if team.get("homeAway") == "away"), {}
-            )
-
-            game_info = {
-                "game_id": game.get("id"),
-                "home_team": home_team.get("team", {}).get("name"),
-                "away_team": away_team.get("team", {}).get("name"),
-                "venue_id": venue.get("id"),
-                "venue_name": venue.get("fullName"),
-                "league": league,
-                "status": game.get("status", {}).get("type", {}).get("state"),
-                "start_time": game.get("date"),
-            }
-            games_list.append(game_info)
-
-        return games_list
-    except Exception as e:
-        raise Exception(f"Failed to get live games: {e}")
+from betflow.pipeline_utils import get_live_games
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -59,7 +23,7 @@ class DateTimeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-async def run_basketball_pipeline(sport, league):
+async def run_sports_pipeline(base_ckpt, sport, league):
     """Run the full basketball game streaming pipeline."""
     spark = (
         SparkSession.builder.appName("basketball_pipeline")
@@ -85,45 +49,30 @@ async def run_basketball_pipeline(sport, league):
             logger.info("No live or upcoming games found")
             return
 
-        logger.info(f"Found {len(games)} games:")
+        logger.info(f"Found {len(games)} {league} games:")
         for game in games:
             logger.info(
                 f"{game['away_team']} @ {game['home_team']} - {game['venue_name']}"
             )
+        processor_map = {
+            "nba": NBAProcessor,
+            "nfl": NFLProcessor,
+            "nhl": NHLProcessor,
+            "cfb": CFBProcessor,
+        }
 
-        # Start processor
-        if league == "college-football":
-            topic_league = "cfb"
-        else:
-            topic_league = league
-        if topic_league == "cfb":
-            game_processor = CFBProcessor(
-                spark=spark,
-                input_topic=f"{topic_league}.game.live",
-                output_topic=f"{topic_league}_analytics",
-                checkpoint_location="/tmp/checkpoint",
-            )
-        elif topic_league == "nba":
-            game_processor = NBAProcessor(
-                spark=spark,
-                input_topic=f"{topic_league}.game.live",
-                output_topic=f"{topic_league}_analytics",
-                checkpoint_location="/tmp/checkpoint",
-            )
-        elif topic_league == "nfl":
-            game_processor = NFLProcessor(
-                spark=spark,
-                input_topic=f"{topic_league}.game.live",
-                output_topic=f"{topic_league}_analytics",
-                checkpoint_location="/tmp/checkpoint",
-            )
-        else:
-            game_processor = NHLProcessor(
-                spark=spark,
-                input_topic=f"{topic_league}.game.live",
-                output_topic=f"{topic_league}_analytics",
-                checkpoint_location="/tmp/checkpoint",
-            )
+        topic_league = "cfb" if league == "college-football" else league
+        processor_class = processor_map.get(topic_league)
+
+        if not processor_class:
+            raise ValueError(f"Unsupported league: {league}")
+
+        game_processor = processor_class(
+            spark=spark,
+            input_topic=f"{topic_league}.game.live",
+            output_topic=f"{topic_league}_games_analytics",
+            checkpoint_location=f"{base_ckpt}/{topic_league}",
+        )
 
         kafka_query = game_processor.process()
         logger.info("Started streaming query")
@@ -134,15 +83,17 @@ async def run_basketball_pipeline(sport, league):
                 for game in games:
                     if game["status"] == "in":  # , "pre"]:  # Live or upcoming games
                         result = await espn_connector.fetch_and_publish_games(
-                            sport=sport, league=league, topic_name=f"{league}.game.live"
+                            sport=sport,
+                            league=league,  # do not make it topic_league
+                            topic_name=f"{topic_league}.game.live",
                         )
                         logger.info(
-                            f"Published game data for {game['away_team']} @ {game['home_team']}"
+                            f"Published {topic_league} game data for {game['away_team']} @ {game['home_team']}"
                         )
 
                         kafka_query.processAllAvailable()
                         logger.info("Processed available data")
-                await asyncio.sleep(300)  # Update every 30 seconds
+                await asyncio.sleep(180)  # Update every 30 seconds
 
             except Exception as e:
                 logger.error(f"Error in fetch loop: {e}")
@@ -157,11 +108,27 @@ async def run_basketball_pipeline(sport, league):
         spark.stop()
 
 
+async def main(base_ckpt):
+    """Run all sports pipelines concurrently."""
+    sports_config = [
+        # ("basketball", "nba"),
+        ("football", "nfl"),
+        # ("football", "college-football"),
+        # ("hockey", "nhl"),
+    ]
+
+    tasks = [
+        run_sports_pipeline(base_ckpt, sport, league) for sport, league in sports_config
+    ]
+
+    await asyncio.gather(*tasks)
+
+
 if __name__ == "__main__":
+    base_ckpt = "/tmp/checkpoint/games"
     try:
-        shutil.rmtree("/tmp/checkpoint")
+        shutil.rmtree(base_ckpt)
     except FileNotFoundError:
         print("Checkpoint directory doesn't exist")
-    # espn_connector = ESPNConnector(kafka_bootstrap_servers="localhost:9092")
-    # games = get_live_games(espn_connector)
-    asyncio.run(run_basketball_pipeline("basketball", "nba"))
+
+    asyncio.run(main(base_ckpt))

@@ -16,7 +16,6 @@ from pyspark.sql.types import (
     StructType,
     LongType,
     DoubleType,
-    FloatType,
     BooleanType,
 )
 
@@ -43,67 +42,43 @@ class NFLProcessor:
 
     @staticmethod
     def _get_schema() -> StructType:
-        """Get schema for NBA game data."""
+        """Define schema for NFL game data."""
         return StructType(
             [
-                # Game identification
                 StructField("game_id", StringType(), True),
                 StructField("start_time", StringType(), True),
-                # Game status
                 StructField("status_state", StringType(), True),
                 StructField("status_detail", StringType(), True),
                 StructField("status_description", StringType(), True),
                 StructField("period", IntegerType(), True),
                 StructField("clock", StringType(), True),
-                # Home team
+                # Team Info
                 StructField("home_team_name", StringType(), True),
-                StructField("home_team_abbrev", StringType(), True),
-                StructField("home_team_score", StringType(), True),
-                # Home team statistics
+                StructField("home_team_abbreviation", StringType(), True),
+                StructField("home_team_score", IntegerType(), True),
                 StructField("home_team_record", StringType(), True),
-                StructField("home_passing_display_value", StringType(), True),
-                StructField("home_passing_value", FloatType(), True),
-                StructField("home_passing_athlete_name", StringType(), True),
-                StructField("home_passing_athlete_position", StringType(), True),
-                StructField("home_rushing_display_value", StringType(), True),
-                StructField("home_rushing_value", FloatType(), True),
-                StructField("home_rushing_athlete_name", StringType(), True),
-                StructField("home_rushing_athlete_position", StringType(), True),
-                StructField("home_receive_display_value", StringType(), True),
-                StructField("home_receive_value", FloatType(), True),
-                StructField("home_receive_athlete_name", StringType(), True),
-                StructField("home_receive_athlete_position", StringType(), True),
-                StructField(
-                    "home_team_linescores", ArrayType(DoubleType(), True), True
-                ),
-                # Away team
+                StructField("home_team_linescores", ArrayType(DoubleType()), True),
                 StructField("away_team_name", StringType(), True),
-                StructField("away_team_abbrev", StringType(), True),
-                StructField("away_team_score", StringType(), True),
-                # Away team statistics
+                StructField("away_team_abbreviation", StringType(), True),
+                StructField("away_team_score", IntegerType(), True),
                 StructField("away_team_record", StringType(), True),
-                StructField("away_passing_display_value", StringType(), True),
-                StructField("away_passing_value", FloatType(), True),
-                StructField("away_passing_athlete_name", StringType(), True),
-                StructField("away_passing_athlete_position", StringType(), True),
-                StructField("away_rushing_display_value", StringType(), True),
-                StructField("away_rushing_value", FloatType(), True),
-                StructField("away_rushing_athlete_name", StringType(), True),
-                StructField("away_rushing_athlete_position", StringType(), True),
-                StructField("away_receive_display_value", StringType(), True),
-                StructField("away_receive_value", FloatType(), True),
-                StructField("away_receive_athlete_name", StringType(), True),
-                StructField("away_receive_athlete_position", StringType(), True),
-                StructField(
-                    "away_team_linescores", ArrayType(DoubleType(), True), True
-                ),
-                # Venue information
+                StructField("away_team_linescores", ArrayType(DoubleType()), True),
+                # Leaders
+                StructField("passing_leader_name", StringType(), True),
+                StructField("passing_leader_value", StringType(), True),
+                StructField("passing_leader_team", StringType(), True),
+                StructField("rushing_leader_name", StringType(), True),
+                StructField("rushing_leader_value", StringType(), True),
+                StructField("rushing_leader_team", StringType(), True),
+                StructField("receiving_leader_name", StringType(), True),
+                StructField("receiving_leader_value", StringType(), True),
+                StructField("receiving_leader_team", StringType(), True),
+                # Venue
                 StructField("venue_name", StringType(), True),
                 StructField("venue_city", StringType(), True),
                 StructField("venue_state", StringType(), True),
                 StructField("venue_indoor", BooleanType(), True),
-                # Broadcasts and timestamp
-                StructField("broadcasts", ArrayType(StringType(), True), True),
+                StructField("broadcasts", ArrayType(StringType()), True),
                 StructField("timestamp", LongType(), True),
             ]
         )
@@ -115,9 +90,9 @@ class NFLProcessor:
                 from_json(col("value").cast("string"), self._get_schema()).alias("data")
             ).select("data.*")
 
-            transformed_df = self.transformers.transform_espn_nba(parsed_df)
+            # transformed_df = self.transformers.transform_espn_nba(parsed_df)
 
-            return transformed_df.withColumn("processing_time", current_timestamp())
+            return parsed_df.withColumn("processing_time", current_timestamp())
 
         except Exception as e:
             self.logger.error(f"Error in parse and transform: {e}")
@@ -136,11 +111,10 @@ class NFLProcessor:
             )
 
             parsed_df = self._parse_and_transform(stream_df)
-
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
-                    window(col("processing_time"), "3 minutes"),
+                    window(col("processing_time"), "5 minutes"),
                     "game_id",
                     "venue_name",
                     "venue_city",
@@ -149,46 +123,41 @@ class NFLProcessor:
                 )
                 .agg(
                     # Game Status
+                    col("window.start").alias("timestamp"),
                     first("status_state").alias("status_state"),
                     first("status_detail").alias("status_detail"),
                     first("status_description").alias("status_description"),
                     first("period").alias("current_period"),
                     first("clock").alias("time_remaining"),
-                    # Team Scores
-                    first(col("home_team_name")).alias("home_team_name"),
-                    first(col("away_team_name")).alias("away_team_name"),
-                    last(col("home_team_score")).alias("home_team_score"),
-                    last(col("away_team_score")).alias("away_team_score"),
-                    # home Team Statistics
-                    first(col("home_fg_pct")).alias("home_fg_pct"),
-                    first(col("home_three_pt_pct")).alias("home_three_pt_pct"),
-                    first(col("home_team_free_throws")).alias("home_team_free_throws"),
-                    first(col("home_team_rebounds")).alias("home_team_rebounds"),
-                    first(col("home_team_assists")).alias("home_team_assists"),
-                    first(col("home_team_steals")).alias("home_team_steals"),
-                    first(col("home_team_blocks")).alias("home_team_blocks"),
-                    first(col("home_team_turnovers")).alias("home_team_turnovers"),
-                    # away
-                    first(col("away_fg_pct")).alias("away_fg_pct"),
-                    first(col("away_three_pt_pct")).alias("away_three_pt_pct"),
-                    first(col("away_team_free_throws")).alias("away_team_free_throws"),
-                    first(col("away_team_rebounds")).alias("away_team_rebounds"),
-                    first(col("away_team_assists")).alias("away_team_assists"),
-                    first(col("away_team_steals")).alias("away_team_steals"),
-                    first(col("away_team_blocks")).alias("away_team_blocks"),
-                    first(col("away_team_turnovers")).alias("away_team_turnovers"),
-                    # Game Analytics
-                    (
-                        last(col("home_team_score")) - first(col("home_team_score"))
-                    ).alias("home_team_scoring_run"),
-                    (
-                        last(col("away_team_score")) - first(col("away_team_score"))
-                    ).alias("away_team_scoring_run"),
-                    # Additional Stats
-                    first(col("home_rebounds")).alias("home_team_rebounds"),
-                    first(col("away_rebounds")).alias("away_team_rebounds"),
-                    first(col("home_assists")).alias("home_team_assists"),
-                    first(col("away_assists")).alias("away_team_assists"),
+                    # Team Info
+                    first("home_team_name").alias("home_team_name"),
+                    first("home_team_abbreviation").alias("home_team_abbreviation"),
+                    first("away_team_name").alias("away_team_name"),
+                    first("away_team_abbreviation").alias("away_team_abbreviation"),
+                    # Scoring
+                    last("home_team_score").alias("home_team_score"),
+                    last("away_team_score").alias("away_team_score"),
+                    first("home_team_record").alias("home_team_record"),
+                    first("away_team_record").alias("away_team_record"),
+                    first("home_team_linescores").alias("home_team_quarters"),
+                    first("away_team_linescores").alias("away_team_quarters"),
+                    # Game Leaders
+                    first("passing_leader_name").alias("passing_leader"),
+                    first("passing_leader_value").alias("passing_stats"),
+                    first("passing_leader_team").alias("passing_team"),
+                    first("rushing_leader_name").alias("rushing_leader"),
+                    first("rushing_leader_value").alias("rushing_stats"),
+                    first("rushing_leader_team").alias("rushing_team"),
+                    first("receiving_leader_name").alias("receiving_leader"),
+                    first("receiving_leader_value").alias("receiving_stats"),
+                    first("receiving_leader_team").alias("receiving_team"),
+                    # Scoring Analysis
+                    (last("home_team_score") - first("home_team_score")).alias(
+                        "home_scoring_run"
+                    ),
+                    (last("away_team_score") - first("away_team_score")).alias(
+                        "away_scoring_run"
+                    ),
                 )
             )
 

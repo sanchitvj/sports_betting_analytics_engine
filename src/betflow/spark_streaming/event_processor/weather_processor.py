@@ -159,7 +159,6 @@ class WeatherProcessor:
                 .load()
             )
 
-            # Parse and transform data
             parsed_df = self._parse_and_transform(stream_df)
 
             # Combine all analytics in a single aggregation. Calculate severity score first as a numeric value
@@ -169,7 +168,6 @@ class WeatherProcessor:
                 + when(col("clouds") > lit(80), 1).otherwise(0)
             )
 
-            # Then do the aggregation
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
@@ -177,6 +175,7 @@ class WeatherProcessor:
                 )
                 .agg(
                     # Temperature Analytics
+                    col("window.start").alias("timestamp"),
                     avg("temperature").alias("avg_temperature"),
                     # max("temperature").alias("max_temperature"),
                     # min("temperature").alias("min_temperature"),
@@ -203,22 +202,6 @@ class WeatherProcessor:
                 )
             )
 
-            # # Add window column for analytics
-            # windowed_df = parsed_df.withColumn(
-            #     "window", window(col("processing_time"), "5 minutes")
-            # )
-            #
-            # # Apply analytics
-            # temperature_analytics = self._apply_temperature_analytics(windowed_df)
-            # wind_analytics = self._apply_wind_analytics(windowed_df)
-            # condition_analytics = self._apply_condition_analytics(windowed_df)
-            #
-            # # Combine analytics
-            # analytics_df = temperature_analytics.join(
-            #     wind_analytics, ["window", "venue_id", "game_id"]
-            # ).join(condition_analytics, ["window", "venue_id", "game_id"])
-
-            # Also write to Kafka
             kafka_query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
                 .writeStream.format("kafka")

@@ -46,6 +46,34 @@ mkdir -p ~/druid/var/druid/indexing-logs
 mkdir -p /tmp/druid-tmp
 ```
 
+## S3 Storage Config
+```bash
+nano ~/druid/conf/druid/single-server/micro-quickstart/_common/common.runtime.properties
+
+druid.extensions.loadList=["druid-s3-extensions"]
+
+# Add/modify these settings
+druid.storage.type=s3
+druid.storage.bucket=hist-sp-data-aeb
+druid.storage.baseKey=druid/segments
+
+# S3 Configuration
+druid.s3.accessKey=your-access-key
+druid.s3.secretKey=your-secret-key
+druid.s3.protocol=http
+druid.s3.region=us-east-1
+
+# Historical Deep Storage
+druid.segmentCache.locations=[{"path":"/home/ubuntu/druid/var/druid/segment-cache","maxSize":130000000000}]
+druid.segmentCache.numBootstrapThreads=1
+
+# Indexing Service Storage
+druid.indexer.logs.type=s3
+druid.indexer.logs.s3Bucket=hist-sp-data-aeb
+druid.indexer.logs.s3Prefix=druid/indexing-logs
+```
+
+
 ## Optional (CAUTION: NOT RECOMMENDED)
 ```bash
 # Edit JVM config

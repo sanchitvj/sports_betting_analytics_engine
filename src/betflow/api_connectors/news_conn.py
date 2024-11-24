@@ -15,7 +15,7 @@ class NewsAPIConnector:
         self,
         api_key: str,
         kafka_bootstrap_servers: str,
-        base_url: str = "https://newsapi.org/v2"
+        base_url: str = "https://newsapi.org/v2",
     ) -> None:
         """Initialize NewsAPI connector.
 
@@ -32,23 +32,21 @@ class NewsAPIConnector:
 
         self.producer = KafkaProducer(
             bootstrap_servers=kafka_bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            compression_type='gzip',
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            compression_type="gzip",
             retries=3,
-            acks='all'
+            acks="all",
         )
 
     def make_request(
-        self,
-        endpoint: str,
-        params: Optional[Dict] = None
+        self, endpoint: str, params: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """Make a rate-limited request to NewsAPI."""
         self.rate_limiter.wait_if_needed()
 
         if params is None:
             params = {}
-        params['apiKey'] = self.api_key
+        params["apiKey"] = self.api_key
 
         url = f"{self.base_url}/{endpoint}"
 
@@ -63,26 +61,26 @@ class NewsAPIConnector:
             raise Exception(f"HTTP error occurred: {e}")
         except requests.exceptions.RequestException as e:
             raise Exception(f"Request failed: {e}")
-    
+
     @staticmethod
-    def transform_news_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def api_raw_news_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform raw news data to our schema."""
         return {
-            'status': raw_data.get('status'),
-            'total_results': raw_data.get('totalResults'),
-            'articles': [
+            "status": raw_data.get("status"),
+            "total_results": raw_data.get("totalResults"),
+            "articles": [
                 {
-                    'source': article.get('source', {}).get('name'),
-                    'author': article.get('author'),
-                    'title': article.get('title'),
-                    'description': article.get('description'),
-                    'url': article.get('url'),
-                    'published_at': article.get('publishedAt'),
-                    'content': article.get('content')
+                    "source": article.get("source", {}).get("name"),
+                    "author": article.get("author"),
+                    "title": article.get("title"),
+                    "description": article.get("description"),
+                    "url": article.get("url"),
+                    "published_at": article.get("publishedAt"),
+                    "content": article.get("content"),
                 }
-                for article in raw_data.get('articles', [])
+                for article in raw_data.get("articles", [])
             ],
-            'timestamp': int(time.time())
+            "timestamp": int(time.time()),
         }
 
     def publish_to_kafka(self, topic: str, data: Dict[str, Any]) -> None:
@@ -98,23 +96,19 @@ class NewsAPIConnector:
         query: str,
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
-        language: str = 'en',
-        sort_by: str = 'publishedAt'
+        language: str = "en",
+        sort_by: str = "publishedAt",
     ) -> None:
         """Fetch news data and publish to Kafka."""
         try:
-            params = {
-                'q': query,
-                'language': language,
-                'sortBy': sort_by
-            }
+            params = {"q": query, "language": language, "sortBy": sort_by}
             if from_date:
-                params['from'] = from_date
+                params["from"] = from_date
             if to_date:
-                params['to'] = to_date
+                params["to"] = to_date
 
-            raw_data = self.make_request('everything', params=params)
-            transformed_data = self.transform_news_data(raw_data)
+            raw_data = self.make_request("everything", params=params)
+            transformed_data = self.api_raw_news_data(raw_data)
             self.publish_to_kafka(f"news.newsapi.{query}", transformed_data)
 
         except Exception as e:
@@ -134,7 +128,7 @@ class GNewsConnector:
         self,
         api_key: str,
         kafka_bootstrap_servers: str,
-        base_url: str = "https://gnews.io/api/v4"
+        base_url: str = "https://gnews.io/api/v4",
     ) -> None:
         """Initialize GNews connector."""
         self.api_key = api_key
@@ -145,23 +139,21 @@ class GNewsConnector:
 
         self.producer = KafkaProducer(
             bootstrap_servers=kafka_bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            compression_type='gzip',
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            compression_type="gzip",
             retries=3,
-            acks='all'
+            acks="all",
         )
 
     def make_request(
-        self,
-        endpoint: str,
-        params: Optional[Dict] = None
+        self, endpoint: str, params: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """Make a rate-limited request to GNews API."""
         self.rate_limiter.wait_if_needed()
 
         if params is None:
             params = {}
-        params['token'] = self.api_key
+        params["token"] = self.api_key
 
         url = f"{self.base_url}/{endpoint}"
 
@@ -176,28 +168,28 @@ class GNewsConnector:
             raise Exception(f"HTTP error occurred: {e}")
         except requests.exceptions.RequestException as e:
             raise Exception(f"Request failed: {e}")
-    
+
     @staticmethod
-    def transform_news_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def api_raw_news_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform raw news data to our schema."""
         return {
-            'total_articles': raw_data.get('totalArticles'),
-            'articles': [
+            "total_articles": raw_data.get("totalArticles"),
+            "articles": [
                 {
-                    'title': article.get('title'),
-                    'description': article.get('description'),
-                    'content': article.get('content'),
-                    'url': article.get('url'),
-                    'image': article.get('image'),
-                    'published_at': article.get('publishedAt'),
-                    'source': {
-                        'name': article.get('source', {}).get('name'),
-                        'url': article.get('source', {}).get('url')
-                    }
+                    "title": article.get("title"),
+                    "description": article.get("description"),
+                    "content": article.get("content"),
+                    "url": article.get("url"),
+                    "image": article.get("image"),
+                    "published_at": article.get("publishedAt"),
+                    "source": {
+                        "name": article.get("source", {}).get("name"),
+                        "url": article.get("source", {}).get("url"),
+                    },
                 }
-                for article in raw_data.get('articles', [])
+                for article in raw_data.get("articles", [])
             ],
-            'timestamp': int(time.time())
+            "timestamp": int(time.time()),
         }
 
     def publish_to_kafka(self, topic: str, data: Dict[str, Any]) -> None:
@@ -209,23 +201,14 @@ class GNewsConnector:
             raise Exception(f"Failed to publish to Kafka: {e}")
 
     def fetch_and_publish_news(
-        self,
-        query: str,
-        lang: str = 'en',
-        country: str = 'us',
-        max_articles: int = 10
+        self, query: str, lang: str = "en", country: str = "us", max_articles: int = 10
     ) -> None:
         """Fetch news data and publish to Kafka."""
         try:
-            params = {
-                'q': query,
-                'lang': lang,
-                'country': country,
-                'max': max_articles
-            }
+            params = {"q": query, "lang": lang, "country": country, "max": max_articles}
 
-            raw_data = self.make_request('search', params=params)
-            transformed_data = self.transform_news_data(raw_data)
+            raw_data = self.make_request("search", params=params)
+            transformed_data = self.api_raw_news_data(raw_data)
             self.publish_to_kafka(f"news.gnews.{query}", transformed_data)
 
         except Exception as e:
@@ -241,21 +224,17 @@ class GNewsConnector:
 class RSSFeedConnector:
     """Connector for RSS feeds with Kafka integration."""
 
-    def __init__(
-        self,
-        kafka_bootstrap_servers: str,
-        feed_urls: List[str]
-    ) -> None:
+    def __init__(self, kafka_bootstrap_servers: str, feed_urls: List[str]) -> None:
         """Initialize RSS feed connector."""
         self.feed_urls = feed_urls
         self.rate_limiter = RateLimiter(requests_per_second=0.1)
 
         self.producer = KafkaProducer(
             bootstrap_servers=kafka_bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            compression_type='gzip',
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            compression_type="gzip",
             retries=3,
-            acks='all'
+            acks="all",
         )
 
     def fetch_feed(self, url: str) -> Dict[str, Any]:
@@ -264,35 +243,35 @@ class RSSFeedConnector:
 
         try:
             feed = feedparser.parse(url)
-            if feed.get('bozo_exception'):
+            if feed.get("bozo_exception"):
                 raise Exception(f"Feed parsing error: {feed['bozo_exception']}")
             return feed
 
         except Exception as e:
             raise Exception(f"Failed to fetch feed {url}: {e}")
-    
+
     @staticmethod
-    def transform_feed_data(feed: Dict[str, Any]) -> Dict[str, Any]:
+    def api_raw_feed_data(feed: Dict[str, Any]) -> Dict[str, Any]:
         """Transform RSS feed data to our schema."""
         return {
-            'feed_info': {
-                'title': feed['feed'].get('title'),
-                'link': feed['feed'].get('link'),
-                'description': feed['feed'].get('description'),
-                'language': feed['feed'].get('language')
+            "feed_info": {
+                "title": feed["feed"].get("title"),
+                "link": feed["feed"].get("link"),
+                "description": feed["feed"].get("description"),
+                "language": feed["feed"].get("language"),
             },
-            'entries': [
+            "entries": [
                 {
-                    'title': entry.get('title'),
-                    'link': entry.get('link'),
-                    'description': entry.get('description'),
-                    'published': entry.get('published'),
-                    'author': entry.get('author'),
-                    'tags': [tag.get('term') for tag in entry.get('tags', [])]
+                    "title": entry.get("title"),
+                    "link": entry.get("link"),
+                    "description": entry.get("description"),
+                    "published": entry.get("published"),
+                    "author": entry.get("author"),
+                    "tags": [tag.get("term") for tag in entry.get("tags", [])],
                 }
-                for entry in feed.get('entries', [])
+                for entry in feed.get("entries", [])
             ],
-            'timestamp': int(time.time())
+            "timestamp": int(time.time()),
         }
 
     def publish_to_kafka(self, topic: str, data: Dict[str, Any]) -> None:
@@ -308,7 +287,7 @@ class RSSFeedConnector:
         for url in self.feed_urls:
             try:
                 feed = self.fetch_feed(url)
-                transformed_data = self.transform_feed_data(feed)
+                transformed_data = self.api_raw_feed_data(feed)
 
                 # Create topic name from feed URL
                 topic = f"news.rss.{url.replace('/', '_').replace(':', '')}"
@@ -325,32 +304,28 @@ class RSSFeedConnector:
 
 def main():
     """Main function to demonstrate usage."""
-    newsapi_key = os.getenv('NEWSAPI_KEY')
-    gnews_key = os.getenv('GNEWS_API_KEY')
+    newsapi_key = os.getenv("NEWSAPI_KEY")
+    gnews_key = os.getenv("GNEWS_API_KEY")
 
     # Initialize connectors
     newsapi = NewsAPIConnector(
-        api_key=newsapi_key,
-        kafka_bootstrap_servers='localhost:9092'
+        api_key=newsapi_key, kafka_bootstrap_servers="localhost:9092"
     )
 
-    gnews = GNewsConnector(
-        api_key=gnews_key,
-        kafka_bootstrap_servers='localhost:9092'
-    )
+    gnews = GNewsConnector(api_key=gnews_key, kafka_bootstrap_servers="localhost:9092")
 
     rss = RSSFeedConnector(
-        kafka_bootstrap_servers='localhost:9092',
+        kafka_bootstrap_servers="localhost:9092",
         feed_urls=[
-            'http://feeds.bbci.co.uk/news/rss.xml',
-            'http://rss.cnn.com/rss/cnn_topstories.rss'
-        ]
+            "http://feeds.bbci.co.uk/news/rss.xml",
+            "http://rss.cnn.com/rss/cnn_topstories.rss",
+        ],
     )
 
     try:
         # Fetch news from different sources
-        newsapi.fetch_and_publish_news('sports betting')
-        gnews.fetch_and_publish_news('sports analytics')
+        newsapi.fetch_and_publish_news("sports betting")
+        gnews.fetch_and_publish_news("sports analytics")
         rss.fetch_and_publish_feeds()
 
     except Exception as e:

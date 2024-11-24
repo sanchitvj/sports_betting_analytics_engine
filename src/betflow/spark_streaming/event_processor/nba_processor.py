@@ -62,9 +62,9 @@ class NBAProcessor:
                 StructField("home_team_free_throws", StringType(), True),
                 StructField("home_team_rebounds", StringType(), True),
                 StructField("home_team_assists", StringType(), True),
-                StructField("home_team_steals", StringType(), True),
-                StructField("home_team_blocks", StringType(), True),
-                StructField("home_team_turnovers", StringType(), True),
+                # StructField("home_team_steals", StringType(), True),
+                # StructField("home_team_blocks", StringType(), True),
+                # StructField("home_team_turnovers", StringType(), True),
                 # Away team
                 StructField("away_team_name", StringType(), True),
                 StructField("away_team_abbrev", StringType(), True),
@@ -75,9 +75,9 @@ class NBAProcessor:
                 StructField("away_team_free_throws", StringType(), True),
                 StructField("away_team_rebounds", StringType(), True),
                 StructField("away_team_assists", StringType(), True),
-                StructField("away_team_steals", StringType(), True),
-                StructField("away_team_blocks", StringType(), True),
-                StructField("away_team_turnovers", StringType(), True),
+                # StructField("away_team_steals", StringType(), True),
+                # StructField("away_team_blocks", StringType(), True),
+                # StructField("away_team_turnovers", StringType(), True),
                 # Venue information
                 StructField("venue_name", StringType(), True),
                 StructField("venue_city", StringType(), True),
@@ -120,7 +120,7 @@ class NBAProcessor:
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
-                    window(col("processing_time"), "3 minutes"),
+                    window(col("processing_time"), "5 minutes"),
                     "game_id",
                     "venue_name",
                     "venue_city",
@@ -146,18 +146,12 @@ class NBAProcessor:
                     first(col("home_ft_pct")).alias("home_ft_pct"),
                     first(col("home_rebounds")).alias("home_rebounds"),
                     first(col("home_assists")).alias("home_assists"),
-                    first(col("home_steals")).alias("home_steals"),
-                    first(col("home_blocks")).alias("home_blocks"),
-                    first(col("home_turnovers")).alias("home_turnovers"),
                     # away
                     first(col("away_fg_pct")).alias("away_fg_pct"),
                     first(col("away_three_pt_pct")).alias("away_three_pt_pct"),
                     first(col("away_ft_pct")).alias("away_ft_pct"),
                     first(col("away_rebounds")).alias("away_rebounds"),
                     first(col("away_assists")).alias("away_assists"),
-                    first(col("away_steals")).alias("away_steals"),
-                    first(col("away_blocks")).alias("away_blocks"),
-                    first(col("away_turnovers")).alias("away_turnovers"),
                     # Game Analytics
                     (
                         last(col("home_team_score")) - first(col("home_team_score"))
@@ -168,17 +162,18 @@ class NBAProcessor:
                 )
             )
 
-            query = (
+            kafka_query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
                 .writeStream.format("kafka")
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
                 .outputMode("update")
+                .trigger(processingTime="30 seconds")
                 .start()
             )
 
-            return query
+            return kafka_query
 
         except Exception as e:
             self.logger.error(f"Error processing games stream: {e}")

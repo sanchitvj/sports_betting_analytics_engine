@@ -4,11 +4,11 @@ from .weather_conn import OpenWeatherConnector, OpenMeteoConnector
 from .news_conn import NewsAPIConnector, GNewsConnector, RSSFeedConnector
 
 __all__ = [
-    'OddsAPIConnector',
-    'ESPNConnector',
-    'OpenWeatherConnector',
-    'OpenMeteoConnector',
-    'NewsAPIConnector',
-    'GNewsConnector',
-    'RSSFeedConnector'
+    "OddsAPIConnector",
+    "ESPNConnector",
+    "OpenWeatherConnector",
+    "OpenMeteoConnector",
+    "NewsAPIConnector",
+    "GNewsConnector",
+    "RSSFeedConnector",
 ]

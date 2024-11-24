@@ -1,7 +1,7 @@
 from .nba_processor import NBAProcessor
 from .nhl_processor import NHLProcessor
 from .nfl_processor import NFLProcessor
-from .ncaaf_processor import CFBProcessor
+from .cfb_processor import CFBProcessor
 from .odds_processor import OddsProcessor
 
 from .weather_processor import WeatherProcessor

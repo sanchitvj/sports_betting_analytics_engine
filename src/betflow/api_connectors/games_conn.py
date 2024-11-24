@@ -5,10 +5,6 @@ import requests
 from kafka import KafkaProducer
 from betflow.api_connectors.conn_utils import RateLimiter
 from kafka.errors import NoBrokersAvailable
-from betflow.kafka_orch.schemas import (
-    NFLGameStats,
-    NHLGameStats,
-)
 
 
 class ESPNConnector:
@@ -108,7 +104,7 @@ class ESPNConnector:
             raise Exception(f"An error occurred: {error}")
 
     @staticmethod
-    def transform_cfb_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def api_raw_cfb_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transforms raw ESPN college football data to defined schema format."""
         try:
             competition = raw_data.get("competitions", [{}])[0]
@@ -216,7 +212,7 @@ class ESPNConnector:
             raise ValueError(f"Failed to transform college football data: {e}")
 
     @staticmethod
-    def transform_nfl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:  # TODO
+    def api_raw_nfl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:  # TODO
         """Transform raw ESPN NFL game data to defined schema format."""
         try:
             competition = raw_data.get("competitions", [{}])[0]
@@ -238,15 +234,24 @@ class ESPNConnector:
             )
 
             # Get team statistics and leaders
-            home_leaders = home_team.get("leaders", [])
-            away_leaders = away_team.get("leaders", [])
+            home_leaders = competition.get("leaders", [])
+            away_leaders = competition.get("leaders", [])
 
-            def get_leader_value(leaders, category):
+            def get_leader_value(competition, category):
+                leaders = competition.get("leaders", [])
                 leader = next((l for l in leaders if l.get("name") == category), {})
                 leader_stats = (
                     leader.get("leaders", [{}])[0] if leader.get("leaders") else {}
                 )
-                return leader_stats
+                return {
+                    "displayValue": leader_stats.get("displayValue"),
+                    "value": leader_stats.get("value"),
+                    "athlete": leader_stats.get("athlete", {}).get("displayName"),
+                    "position": leader_stats.get("athlete", {})
+                    .get("position", {})
+                    .get("abbreviation"),
+                    "team": leader_stats.get("team", {}).get("abbreviation"),
+                }
 
             nfl_games_data = {
                 "game_id": raw_data.get("id"),
@@ -272,57 +277,6 @@ class ESPNConnector:
                     ),
                     "0-0",
                 ),
-                "home_passing_display_value": get_leader_value(
-                    home_leaders, "passingLeader"
-                ).get("displayValue"),
-                "home_passing_value": get_leader_value(
-                    home_leaders, "passingLeader"
-                ).get("value"),
-                "home_passing_athlete_name": get_leader_value(
-                    home_leaders, "passingLeader"
-                )
-                .get("athlete", {})
-                .get("displayName"),
-                "home_passing_athlete_position": get_leader_value(
-                    home_leaders, "passingLeader"
-                )
-                .get("athlete", {})
-                .get("position", {})
-                .get("abbreviation"),
-                "home_rushing_display_value": get_leader_value(
-                    home_leaders, "rushingLeader"
-                ).get("displayValue"),
-                "home_rushing_value": get_leader_value(
-                    home_leaders, "rushingLeader"
-                ).get("value"),
-                "home_rushing_athlete_name": get_leader_value(
-                    home_leaders, "rushingLeader"
-                )
-                .get("athlete", {})
-                .get("displayName"),
-                "home_rushing_athlete_position": get_leader_value(
-                    home_leaders, "rushingLeader"
-                )
-                .get("athlete", {})
-                .get("position", {})
-                .get("abbreviation"),
-                "home_receive_display_value": get_leader_value(
-                    home_leaders, "receivingLeader"
-                ).get("displayValue"),
-                "home_receive_value": get_leader_value(
-                    home_leaders, "receivingLeader"
-                ).get("value"),
-                "home_receive_athlete_name": get_leader_value(
-                    home_leaders, "receivingLeader"
-                )
-                .get("athlete", {})
-                .get("displayName"),
-                "home_receive_athlete_position": get_leader_value(
-                    home_leaders, "receivingLeader"
-                )
-                .get("athlete", {})
-                .get("position", {})
-                .get("abbreviation"),
                 "home_team_linescores": [
                     ls.get("value") for ls in home_team.get("linescores", [])
                 ],
@@ -338,60 +292,37 @@ class ESPNConnector:
                     ),
                     "0-0",
                 ),
-                "away_passing_display_value": get_leader_value(
-                    away_leaders, "passingLeader"
-                ).get("displayValue"),
-                "away_passing_value": get_leader_value(
-                    away_leaders, "passingLeader"
-                ).get("value"),
-                "away_passing_athlete_name": get_leader_value(
-                    away_leaders, "passingLeader"
-                )
-                .get("athlete", {})
-                .get("displayName"),
-                "away_passing_athlete_position": get_leader_value(
-                    away_leaders, "passingLeader"
-                )
-                .get("athlete", {})
-                .get("position", {})
-                .get("abbreviation"),
-                "away_rushing_display_value": get_leader_value(
-                    away_leaders, "rushingLeader"
-                ).get("displayValue"),
-                "away_rushing_value": get_leader_value(
-                    away_leaders, "rushingLeader"
-                ).get("value"),
-                "away_rushing_athlete_name": get_leader_value(
-                    away_leaders, "rushingLeader"
-                )
-                .get("athlete", {})
-                .get("displayName"),
-                "away_rushing_athlete_position": get_leader_value(
-                    away_leaders, "rushingLeader"
-                )
-                .get("athlete", {})
-                .get("position", {})
-                .get("abbreviation"),
-                "away_receive_display_value": get_leader_value(
-                    away_leaders, "receivingLeader"
-                ).get("displayValue"),
-                "away_receive_value": get_leader_value(
-                    away_leaders, "receivingLeader"
-                ).get("value"),
-                "away_receive_athlete_name": get_leader_value(
-                    away_leaders, "receivingLeader"
-                )
-                .get("athlete", {})
-                .get("displayName"),
-                "away_receive_athlete_position": get_leader_value(
-                    away_leaders, "receivingLeader"
-                )
-                .get("athlete", {})
-                .get("position", {})
-                .get("abbreviation"),
                 "away_team_linescores": [
                     ls.get("value") for ls in away_team.get("linescores", [])
                 ],
+                # Leaders
+                "passing_leader_name": get_leader_value(
+                    competition, "passingYards"
+                ).get("athlete"),
+                "passing_leader_value": get_leader_value(
+                    competition, "passingYards"
+                ).get("displayValue"),
+                "passing_leader_team": get_leader_value(
+                    competition, "passingYards"
+                ).get("team"),
+                "rushing_leader_name": get_leader_value(
+                    competition, "rushingYards"
+                ).get("athlete"),
+                "rushing_leader_value": get_leader_value(
+                    competition, "rushingYards"
+                ).get("displayValue"),
+                "rushing_leader_team": get_leader_value(
+                    competition, "rushingYards"
+                ).get("team"),
+                "receiving_leader_name": get_leader_value(
+                    competition, "receivingYards"
+                ).get("athlete"),
+                "receiving_leader_value": get_leader_value(
+                    competition, "receivingYards"
+                ).get("displayValue"),
+                "receiving_leader_team": get_leader_value(
+                    competition, "receivingYards"
+                ).get("team"),
                 # venue
                 "venue_name": competition.get("venue", {}).get("fullName"),
                 "venue_city": competition.get("venue", {})
@@ -408,13 +339,13 @@ class ESPNConnector:
                 "timestamp": int(time.time()),
             }
 
-            return NFLGameStats(**nfl_games_data).model_dump()
+            return nfl_games_data  # NFLGameStats(**nfl_games_data).model_dump()
 
         except Exception as e:
             raise Exception(f"Error transforming NFL game data: {e}")
 
     @staticmethod
-    def transform_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def api_raw_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transforms raw ESPN NHL game data to defined schema format."""
         try:
             competition = raw_data.get("competitions", [{}])[0]
@@ -528,13 +459,13 @@ class ESPNConnector:
                 ],
                 "timestamp": int(time.time()),
             }
-            return NHLGameStats(**nhl_game_data).model_dump()
+            return nhl_game_data  # NHLGameStats(**nhl_game_data).model_dump()
 
         except Exception as e:
             raise ValueError(f"Failed to transform NHL game data: {e}")
 
     @staticmethod
-    def transform_nba_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def api_raw_nba_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transforms raw ESPN game data to defined schema format."""
         try:
             competition = raw_data.get("competitions", [{}])[0]
@@ -587,9 +518,9 @@ class ESPNConnector:
                 "home_team_free_throws": get_stat_value(home_stats, "freeThrowPct"),
                 "home_team_rebounds": get_stat_value(home_stats, "rebounds"),
                 "home_team_assists": get_stat_value(home_stats, "assists"),
-                "home_team_steals": get_stat_value(home_stats, "steals"),
-                "home_team_blocks": get_stat_value(home_stats, "blocks"),
-                "home_team_turnovers": get_stat_value(home_stats, "turnovers"),
+                # "home_team_steals": get_stat_value(home_stats, "steals"),
+                # "home_team_blocks": get_stat_value(home_stats, "blocks"),
+                # "home_team_turnovers": get_stat_value(home_stats, "turnovers"),
                 # away team
                 "away_team_name": away_team.get("team", {}).get("name"),
                 "away_team_abbrev": away_team.get("team", {}).get("abbreviation"),
@@ -600,9 +531,9 @@ class ESPNConnector:
                 "away_team_free_throws": get_stat_value(away_stats, "freeThrowPct"),
                 "away_team_rebounds": get_stat_value(away_stats, "rebounds"),
                 "away_team_assists": get_stat_value(away_stats, "assists"),
-                "away_team_steals": get_stat_value(away_stats, "steals"),
-                "away_team_blocks": get_stat_value(away_stats, "blocks"),
-                "away_team_turnovers": get_stat_value(away_stats, "turnovers"),
+                # "away_team_steals": get_stat_value(away_stats, "steals"),
+                # "away_team_blocks": get_stat_value(away_stats, "blocks"),
+                # "away_team_turnovers": get_stat_value(away_stats, "turnovers"),
                 # venue
                 "venue_name": competition.get("venue", {}).get("fullName"),
                 "venue_city": competition.get("venue", {})
@@ -657,17 +588,21 @@ class ESPNConnector:
 
             for game in raw_data.get("events", []):
                 # TODO
-                if league == "nhl":
-                    transformed_data = self.transform_nhl_data(game)
-                elif league == "nba":
-                    transformed_data = self.transform_nba_data(game)
-                elif league == "nfl":
-                    transformed_data = self.transform_nfl_data(game)
-                elif league == "cfb":
-                    transformed_data = self.transform_cfb_data(game)
-                else:
-                    transformed_data = None
-                self.publish_to_kafka(topic_name, transformed_data)
+                status = game.get("status", {}).get("type", {}).get("state")
+                if status != "post":  # Skip completed games
+                    if league == "nhl":
+                        transformed_data = self.api_raw_nhl_data(game)
+                    elif league == "nba":
+                        transformed_data = self.api_raw_nba_data(game)
+                    elif league == "nfl":
+                        transformed_data = self.api_raw_nfl_data(game)
+                    elif league == "college-football":
+                        transformed_data = self.api_raw_cfb_data(game)
+                    else:
+                        transformed_data = None
+                    self.publish_to_kafka(topic_name, transformed_data)
+                # else:
+                #     print(f"No games for {sport} with status='in'")
 
         except Exception as e:
             raise Exception(f"Error in fetch and publish pipeline: {e}")

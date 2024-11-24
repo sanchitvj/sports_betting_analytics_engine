@@ -24,6 +24,7 @@ class CFBProcessor:
     ):
         """Initialize processor."""
         self.spark = spark
+
         self.input_topic = input_topic
         self.output_topic = output_topic
         self.checkpoint_location = checkpoint_location
@@ -104,9 +105,9 @@ class CFBProcessor:
             parsed_df = self._parse_and_transform(stream_df)
 
             analytics_df = (
-                parsed_df.withWatermark("processing_time", "1 minute")
+                parsed_df.withWatermark("processing_time", "1 minutes")
                 .groupBy(
-                    window(col("processing_time"), "3 minutes"),
+                    window(col("processing_time"), "5 minutes"),
                     "game_id",
                     "venue_name",
                     "venue_city",
@@ -115,6 +116,7 @@ class CFBProcessor:
                 )
                 .agg(
                     # Game Status
+                    col("window.start").alias("timestamp"),
                     first("status_state").alias("game_state"),
                     first("status_detail").alias("status_detail"),
                     first("status_description").alias("status_description"),
@@ -147,17 +149,18 @@ class CFBProcessor:
                 )
             )
 
-            query = (
+            kafka_query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
                 .writeStream.format("kafka")
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
                 .outputMode("update")
+                .trigger(processingTime="30 seconds")
                 .start()
             )
 
-            return query
+            return kafka_query
 
         except Exception as e:
             self.logger.error(f"Error processing games stream: {e}")

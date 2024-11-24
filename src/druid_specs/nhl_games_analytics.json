@@ -1,0 +1,54 @@
+{
+  "type": "kafka",
+  "dataSchema": {
+    "dataSource": "nhl_games_analytics",
+    "timestampSpec": {
+      "column": "window.start",
+      "format": "auto"
+    },
+    "dimensionsSpec": {
+      "dimensions": [
+        "game_id",
+        "venue_name",
+        "venue_city",
+        "venue_state",
+        "broadcasts",
+        "game_state",
+        "current_period",
+        "time_remaining",
+        "home_team_name",
+        "home_team_abbrev",
+        "away_team_name",
+        "away_team_abbrev",
+        "home_team_record",
+        "away_team_record"
+      ]
+    },
+    "metricsSpec": [
+      { "type": "doubleSum", "name": "home_team_score", "fieldName": "home_team_score" },
+      { "type": "doubleSum", "name": "away_team_score", "fieldName": "away_team_score" },
+      { "type": "doubleSum", "name": "home_saves", "fieldName": "home_saves" },
+      { "type": "doubleSum", "name": "home_save_pct", "fieldName": "home_save_pct" },
+      { "type": "doubleSum", "name": "home_goals", "fieldName": "home_goals" },
+      { "type": "doubleSum", "name": "home_assists", "fieldName": "home_assists" },
+      { "type": "doubleSum", "name": "home_points", "fieldName": "home_points" },
+      { "type": "doubleSum", "name": "away_saves", "fieldName": "away_saves" },
+      { "type": "doubleSum", "name": "away_save_pct", "fieldName": "away_save_pct" },
+      { "type": "doubleSum", "name": "away_goals", "fieldName": "away_goals" },
+      { "type": "doubleSum", "name": "away_assists", "fieldName": "away_assists" },
+      { "type": "doubleSum", "name": "away_points", "fieldName": "away_points" },
+      { "type": "doubleSum", "name": "home_scoring_run", "fieldName": "home_scoring_run" },
+      { "type": "doubleSum", "name": "away_scoring_run", "fieldName": "away_scoring_run" }
+    ]
+  },
+  "ioConfig": {
+    "type": "kafka",
+    "consumerProperties": {
+      "bootstrap.servers": "localhost:9092"
+    },
+    "topic": "nhl_games_analytics",
+    "inputFormat": {
+      "type": "json"
+    }
+  }
+}

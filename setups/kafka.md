@@ -88,7 +88,8 @@ mkdir -p ~/kafka/config/connect
 
 # Create s3 sink config file
 nano ~/kafka/config/connect/s3-sink.properties
-
+```
+```bash
 # Add this configuration
 name=s3-sink-sports
 connector.class=io.confluent.connect.s3.S3SinkConnector
@@ -97,7 +98,7 @@ tasks.max=1
 # Topics by sport
 topics=nba_games_analytics,nba_odds_analytics,nba_news_analytics,nba_weather_analytics,\
        nfl_games_analytics,nfl_odds_analytics,nfl_news_analytics,nfl_weather_analytics,\
-       ncaaf_games_analytics,ncaaf_odds_analytics,ncaaf_news_analytics,ncaaf_weather_analytics,\
+       cfb_games_analytics,cfb_odds_analytics,cfb_news_analytics,cfb_weather_analytics,\
        nhl_games_analytics,nhl_odds_analytics,nhl_news_analytics,nhl_weather_analytics
 
 # S3 configuration
@@ -110,8 +111,15 @@ flush.size=1000
 storage.class=io.confluent.connect.s3.storage.S3Storage
 format.class=io.confluent.connect.s3.format.json.JsonFormat
 partitioner.class=io.confluent.connect.storage.partitioner.TimeBasedPartitioner
-path.format='sport'=/${topic}/'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH
 timestamp.extractor=Record
+partition.duration.ms=3600000
+path.format='${topic}/year'=yyyy/'month'=MM/'day'=dd/'hour'=HH
+locale=en-US
+timezone=UTC
+
+schema.compatibility=NONE
+behavior.on.null.values=ignore
+file.delim=+
 ```
 
 4. Start Kafka Connect

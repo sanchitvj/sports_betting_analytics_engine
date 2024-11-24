@@ -138,6 +138,7 @@ class NHLProcessor:
                 )
                 .agg(
                     # Game Status
+                    col("window.start").alias("timestamp"),
                     first("status_state").alias("game_state"),
                     first("period").alias("current_period"),
                     first("clock").alias("time_remaining"),
@@ -154,19 +155,6 @@ class NHLProcessor:
                     sum_(col("home_goals").cast("double")).alias("home_goals"),
                     sum_(col("home_assists").cast("double")).alias("home_assists"),
                     sum_(col("home_points").cast("double")).alias("home_points"),
-                    # sum_(col("home_penalties").cast("double")).alias("home_penalties"),
-                    # sum_(col("home_penalty_minutes").cast("double")).alias(
-                    #     "home_penalty_minutes"
-                    # ),
-                    # sum_(col("home_power_plays").cast("double")).alias(
-                    #     "home_power_plays"
-                    # ),
-                    # sum_(col("home_power_play_goals").cast("double")).alias(
-                    #     "home_power_play_goals"
-                    # ),
-                    # avg(col("home_power_play_pct").cast("double")).alias(
-                    #     "home_power_play_pct"
-                    # ),
                     first("home_team_record").alias("home_team_record"),
                     # Away Team Statistics
                     avg(col("away_saves").cast("double")).alias("away_saves"),
@@ -174,19 +162,6 @@ class NHLProcessor:
                     sum_(col("away_goals").cast("double")).alias("away_goals"),
                     sum_(col("away_assists").cast("double")).alias("away_assists"),
                     sum_(col("away_points").cast("double")).alias("away_points"),
-                    # sum_(col("away_penalties").cast("double")).alias("away_penalties"),
-                    # sum_(col("away_penalty_minutes").cast("double")).alias(
-                    #     "away_penalty_minutes"
-                    # ),
-                    # sum_(col("away_power_plays").cast("double")).alias(
-                    #     "away_power_plays"
-                    # ),
-                    # sum_(col("away_power_play_goals").cast("double")).alias(
-                    #     "away_power_play_goals"
-                    # ),
-                    # avg(col("away_power_play_pct").cast("double")).alias(
-                    #     "away_power_play_pct"
-                    # ),
                     first("away_team_record").alias("away_team_record"),
                     # Game Analytics
                     (last("home_team_score") - first("home_team_score")).alias(
@@ -195,24 +170,8 @@ class NHLProcessor:
                     (last("away_team_score") - first("away_team_score")).alias(
                         "away_scoring_run"
                     ),
-                    # Efficiency Metrics
-                    # (
-                    #     sum_(col("home_power_play_goals").cast("double"))
-                    #     / sum_(col("home_power_plays").cast("double"))
-                    # ).alias("home_power_play_efficiency"),
-                    # (
-                    #     sum_(col("away_power_play_goals").cast("double"))
-                    #     / sum_(col("away_power_plays").cast("double"))
-                    # ).alias("away_power_play_efficiency"),
                 )
             )
-
-            def debug_batch(batch_df, batch_id):
-                print(f"\nProcessing batch {batch_id}")
-                print(f"Number of records: {batch_df.count()}")
-                batch_df.show(truncate=False)
-
-            analytics_df.writeStream.foreachBatch(debug_batch).start()
 
             query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
@@ -221,6 +180,7 @@ class NHLProcessor:
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
                 .outputMode("update")
+                .trigger(processingTime="30 seconds")
                 .start()
             )
 

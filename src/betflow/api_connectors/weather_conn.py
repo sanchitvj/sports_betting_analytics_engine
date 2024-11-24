@@ -125,6 +125,7 @@ class OpenWeatherConnector:
 
     async def fetch_and_publish_weather(
         self,
+        topic_name: str,
         city: str,
         venue_id: str,
         game_id: str = None,
@@ -157,7 +158,7 @@ class OpenWeatherConnector:
 
             # Publish to Kafka
             self.publish_to_kafka(
-                topic=f"weather.current.{city.lower().replace(' ', '_')}",
+                topic=topic_name,
                 data=transformed_data,
             )
 
@@ -277,7 +278,7 @@ class OpenMeteoConnector:
         except Exception as e:
             raise Exception(f"Failed to publish to Kafka: {e}")
 
-    def fetch_and_publish_forecast(
+    def fetch_and_publish_weather(
         self, latitude: float, longitude: float, days: int = 7
     ) -> None:
         """Fetch forecast data and publish to Kafka."""
