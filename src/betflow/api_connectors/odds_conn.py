@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 import requests
 from kafka import KafkaProducer
 from betflow.api_connectors.conn_utils import RateLimiter
+from datetime import datetime, timedelta, timezone
 
 
 class OddsAPIConnector:
@@ -199,9 +200,29 @@ class OddsAPIConnector:
                 params=params,
             )
 
-            for game_odds in raw_data:  # raw_data is a list
-                transformed_data = self.api_raw_odds_data(game_odds)
-                self.publish_to_kafka(topic_name, transformed_data)
+            current_time = datetime.now(timezone.utc)
+
+            for game_odds in raw_data:
+                # Convert commence_time to datetime
+                commence_time = datetime.fromisoformat(
+                    game_odds.get("commence_time").replace("Z", "+00:00")
+                )
+
+                # Calculate time until game starts
+                time_until_game = commence_time - current_time
+
+                # Only publish if:
+                # 1. Game starts within next 3 hours OR
+                # 2. Game has already started but not finished
+                if (
+                    timedelta(hours=-4) <= time_until_game <= timedelta(hours=3)
+                    or game_odds.get("status") == "in"
+                ):
+                    transformed_data = self.api_raw_odds_data(game_odds)
+                    self.publish_to_kafka(topic_name, transformed_data)
+                    print(
+                        f"Published odds data for {game_odds['sport_title']}: {game_odds['home_team']} vs {game_odds['away_team']}"
+                    )
 
         except Exception as e:
             raise Exception(f"Failed to fetch and publish odds: {e}")

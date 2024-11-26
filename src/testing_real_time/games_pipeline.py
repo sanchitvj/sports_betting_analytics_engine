@@ -23,17 +23,24 @@ class DateTimeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-async def run_sports_pipeline(base_ckpt, sport, league):
+async def run_sports_pipeline(base_ckpt, sport, league, spark=None):
     """Run the full basketball game streaming pipeline."""
-    spark = (
-        SparkSession.builder.appName("basketball_pipeline")
-        .master("local[2]")
-        .config("spark.sql.streaming.schemaInference", "true")
-        .config(
-            "spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3"
+    if not spark:
+        spark = (
+            SparkSession.builder.appName("games_pipeline")
+            .master("local[4]")
+            .config("spark.ui.port", "4040")
+            .config("spark.driver.port", "50001")
+            .config("spark.blockManager.port", "50002")
+            .config("spark.driver.memory", "8g")
+            .config("spark.sql.streaming.schemaInference", "true")
+            .config(
+                "spark.jars.packages",
+                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,"
+                "org.apache.kafka:kafka-clients:3.5.1",
+            )
+            .getOrCreate()
         )
-        .getOrCreate()
-    )
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -46,7 +53,7 @@ async def run_sports_pipeline(base_ckpt, sport, league):
         games = get_live_games(espn_connector, sport, league)
 
         if not games:
-            logger.info("No live or upcoming games found")
+            logger.info(f"No live or upcoming games found for {league}")
             return
 
         logger.info(f"Found {len(games)} {league} games:")
@@ -80,20 +87,20 @@ async def run_sports_pipeline(base_ckpt, sport, league):
         # Continuous fetch loop
         while kafka_query.isActive:
             try:
-                for game in games:
-                    if game["status"] == "in":  # , "pre"]:  # Live or upcoming games
-                        result = await espn_connector.fetch_and_publish_games(
-                            sport=sport,
-                            league=league,  # do not make it topic_league
-                            topic_name=f"{topic_league}.game.live",
-                        )
-                        logger.info(
-                            f"Published {topic_league} game data for {game['away_team']} @ {game['home_team']}"
-                        )
+                # for game in games:
+                #     if game["status"] != "post":  # , "pre"]:  # Live or upcoming games
+                result = await espn_connector.fetch_and_publish_games(
+                    sport=sport,
+                    league=league,  # do not make it topic_league
+                    topic_name=f"{topic_league}.game.live",
+                )
+                # logger.info(
+                #     f"Published {topic_league} game data for {game['away_team']} @ {game['home_team']}"
+                # )
 
-                        kafka_query.processAllAvailable()
-                        logger.info("Processed available data")
-                await asyncio.sleep(180)  # Update every 30 seconds
+                kafka_query.processAllAvailable()
+                # logger.info("Processed available data")
+                await asyncio.sleep(60)  # Update every 30 seconds
 
             except Exception as e:
                 logger.error(f"Error in fetch loop: {e}")
@@ -101,6 +108,7 @@ async def run_sports_pipeline(base_ckpt, sport, league):
 
     except Exception as e:
         logger.error(f"Pipeline error: {e}")
+        raise
     finally:
         if "kafka_query" in locals() and kafka_query.isActive:
             kafka_query.stop()
@@ -111,10 +119,10 @@ async def run_sports_pipeline(base_ckpt, sport, league):
 async def main(base_ckpt):
     """Run all sports pipelines concurrently."""
     sports_config = [
-        # ("basketball", "nba"),
+        ("basketball", "nba"),
         ("football", "nfl"),
-        # ("football", "college-football"),
-        # ("hockey", "nhl"),
+        ("football", "college-football"),
+        ("hockey", "nhl"),
     ]
 
     tasks = [

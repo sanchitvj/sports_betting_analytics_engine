@@ -167,30 +167,6 @@ class OpenWeatherConnector:
         except Exception as e:
             raise Exception(f"Failed to fetch/publish weather for {city}: {e}")
 
-    @staticmethod
-    def _get_wind_direction(degrees: float) -> str:
-        """Convert wind degrees to cardinal direction."""
-        directions = [
-            "N",
-            "NNE",
-            "NE",
-            "ENE",
-            "E",
-            "ESE",
-            "SE",
-            "SSE",
-            "S",
-            "SSW",
-            "SW",
-            "WSW",
-            "W",
-            "WNW",
-            "NW",
-            "NNW",
-        ]
-        index = round(degrees / (360 / len(directions))) % len(directions)
-        return directions[index]
-
     def close(self) -> None:
         """Clean up resources."""
         self.producer.flush()

@@ -171,7 +171,7 @@ class WeatherProcessor:
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
-                    window(col("processing_time"), "5 minutes"), "venue_id", "game_id"
+                    window(col("processing_time"), "10 minutes"), "venue_id", "game_id"
                 )
                 .agg(
                     # Temperature Analytics

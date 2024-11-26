@@ -94,6 +94,7 @@ class NewsAPIConnector:
     def fetch_and_publish_news(
         self,
         query: str,
+        topic_name: str,
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
         language: str = "en",
@@ -109,7 +110,7 @@ class NewsAPIConnector:
 
             raw_data = self.make_request("everything", params=params)
             transformed_data = self.api_raw_news_data(raw_data)
-            self.publish_to_kafka(f"news.newsapi.{query}", transformed_data)
+            self.publish_to_kafka(topic_name, transformed_data)
 
         except Exception as e:
             raise Exception(f"Failed to fetch and publish news: {e}")

@@ -14,17 +14,23 @@ class WeatherPipeline:
         self.spark = (
             SparkSession.builder.appName("weather_pipeline")
             .master("local[2]")
+            .config("spark.ui.port", "4042")
+            .config("spark.driver.port", "50005")
+            .config("spark.blockManager.port", "50006")
+            .config("spark.driver.memory", "8g")
             .config("spark.sql.streaming.schemaInference", "true")
             .config(
                 "spark.jars.packages",
-                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3",
+                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,"
+                "org.apache.kafka:kafka-clients:3.5.1",
             )
             .getOrCreate()
         )
 
         self.logger = logging.getLogger(__name__)
         self.weather_connector = OpenWeatherConnector(
-            api_key="your_key", kafka_bootstrap_servers="localhost:9092"
+            api_key="88502b0f64d6f2214f24ebf301936537",
+            kafka_bootstrap_servers="localhost:9092",
         )
         self.espn_connector = ESPNConnector(kafka_bootstrap_servers="localhost:9092")
 
@@ -78,11 +84,11 @@ class WeatherPipeline:
         start_time = venue["start_time"]
 
         # Stream if:
-        # 1. Game starts within 3 hours
+        # 1. Game starts within 6 hours
         # 2. Game is in progress
         # 3. Game started less than 4 hours ago (typical game duration)
         if venue["status"] == "pre":
-            return (start_time - now) <= timedelta(hours=3)
+            return (start_time - now) <= timedelta(hours=6)
         elif venue["status"] == "in":
             return (now - start_time) <= timedelta(hours=4)
         return False
@@ -128,10 +134,12 @@ class WeatherPipeline:
                             self.logger.info(
                                 f"Published weather data for {venue['city']} ({league})"
                             )
+                        else:
+                            self.logger.info("No weather data to publish.")
 
                     for query in queries.values():
                         query.processAllAvailable()
-                    await asyncio.sleep(300)
+                    await asyncio.sleep(600)
 
                 except Exception as e:
                     self.logger.error(f"Error in fetch loop: {e}")
@@ -149,8 +157,8 @@ class WeatherPipeline:
 
 
 if __name__ == "__main__":
+    base_ckpt = "/tmp/checkpoint/weather"
     try:
-        base_ckpt = "/tmp/checkpoint/weather"
         shutil.rmtree(base_ckpt)
     except FileNotFoundError:
         print("Checkpoint directory doesn't exist")

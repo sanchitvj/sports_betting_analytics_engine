@@ -107,7 +107,7 @@ class CFBProcessor:
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minutes")
                 .groupBy(
-                    window(col("processing_time"), "5 minutes"),
+                    window(col("processing_time"), "3 minutes"),
                     "game_id",
                     "venue_name",
                     "venue_city",

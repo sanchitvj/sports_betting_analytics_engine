@@ -138,7 +138,7 @@ class OddsProcessor:
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
-                    window(col("processing_time"), "5 minutes"),  # "1 minute"),
+                    window(col("processing_time"), "7 minutes"),  # "1 minute"),
                     "game_id",
                     "sport_key",
                 )

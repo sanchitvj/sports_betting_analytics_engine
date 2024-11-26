@@ -234,8 +234,8 @@ class ESPNConnector:
             )
 
             # Get team statistics and leaders
-            home_leaders = competition.get("leaders", [])
-            away_leaders = competition.get("leaders", [])
+            # home_leaders = competition.get("leaders", [])
+            # away_leaders = competition.get("leaders", [])
 
             def get_leader_value(competition, category):
                 leaders = competition.get("leaders", [])
@@ -589,7 +589,7 @@ class ESPNConnector:
             for game in raw_data.get("events", []):
                 # TODO
                 status = game.get("status", {}).get("type", {}).get("state")
-                if status != "post":  # Skip completed games
+                if status == "in":  # Skip completed games
                     if league == "nhl":
                         transformed_data = self.api_raw_nhl_data(game)
                     elif league == "nba":
@@ -601,6 +601,9 @@ class ESPNConnector:
                     else:
                         transformed_data = None
                     self.publish_to_kafka(topic_name, transformed_data)
+                    print(
+                        f"Published {topic_name.split('.')[0]} game data for {game.get('name')}"
+                    )
                 # else:
                 #     print(f"No games for {sport} with status='in'")
 
@@ -611,6 +614,7 @@ class ESPNConnector:
         """Closes Kafka producer and cleans up resources."""
         self.producer.flush()
         self.producer.close()
+        self.session.close()
 
 
 # def main() -> None:

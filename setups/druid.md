@@ -74,6 +74,30 @@ druid.indexer.logs.s3Prefix=druid/indexing-logs
 ```
 
 
+## Cleaning, kafka-druid schema change
+
+To delete a Kafka topic and ensure Druid ingests fresh data with the new schema, follow these steps:
+
+1. Delete the Kafka topic:
+```bash
+kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic nba_odds_analytics
+```
+
+2. Delete the Druid supervisor:
+```bash
+curl -X POST http://localhost:8081/druid/indexer/v1/supervisor/nba_odds_analytics/terminate
+```
+
+3. Delete the Druid datasource:
+```bash
+curl -X POST http://localhost:8081/druid/coordinator/v1/datasources/nba_odds_analytics --data 'kill=true&interval=1000/3000'
+```
+
+4. Recreate the Kafka topic:
+```bash
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic nba_odds_analytics
+```
+
 ## Optional (CAUTION: NOT RECOMMENDED)
 ```bash
 # Edit JVM config

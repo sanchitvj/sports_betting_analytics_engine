@@ -33,8 +33,8 @@ def get_live_games(espn_connector: ESPNConnector, sport: str, league: str) -> li
                 "status": game.get("status", {}).get("type", {}).get("state"),
                 "start_time": game.get("date"),
             }
-            if game_info["status"] == "in":
-                games_list.append(game_info)
+            # if game_info["status"] == "in":
+            games_list.append(game_info)
 
         return games_list
     except Exception as e:

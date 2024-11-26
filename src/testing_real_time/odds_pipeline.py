@@ -11,72 +11,17 @@ async def run_odds_pipeline(base_ckpt: str, sport: str):
     """Run the full odds streaming pipeline."""
     spark = (
         SparkSession.builder.appName("odds_pipeline")
-        .master("local[2]")
+        .master("local[4]")
+        .config("spark.ui.port", "4041")
+        .config("spark.driver.port", "50003")
+        .config("spark.blockManager.port", "50004")
+        .config("spark.driver.memory", "8g")
         .config("spark.sql.streaming.schemaInference", "true")
-        # State Store configs
-        # .config(
-        #     "spark.sql.streaming.stateStore.providerClass",
-        #     "org.apache.spark.sql.execution.streaming.state.HDFSBackedStateStoreProvider",
-        # )
-        # .config("spark.sql.streaming.stateStore.minDeltasForSnapshot", "10")
-        # .config(
-        #     "spark.sql.streaming.statefulOperator.checkCorrectness.enabled", "false"
-        # )
-        # .config("spark.sql.streaming.minBatchesToRetain", "10")
-        # .config("spark.sql.streaming.stateStore.maintenanceInterval", "60s")
-        # # Memory Management
-        # .config("spark.memory.offHeap.enabled", "true")
-        # .config("spark.memory.offHeap.size", "1g")
-        # .config("spark.driver.memory", "4g")
-        # .config("spark.executor.memory", "4g")
-        # .config("spark.rpc.message.maxSize", "1024")
-        # .config("spark.driver.maxResultSize", "8g")
-        # .config("spark.executor.heartbeatInterval", "20s")
-        # .config("spark.scheduler.mode", "FAIR")
-        # .config("spark.streaming.backpressure.enabled", "true")
         .config(
             "spark.jars.packages",
-            (
-                # Kafka integration
-                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,"
-                "org.apache.kafka:kafka-clients:3.5.1,"
-                # # Iceberg integration
-                # "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.0,"
-                # "org.apache.iceberg:iceberg-aws-bundle:1.7.0,"
-                # "software.amazon.awssdk:bundle:2.26.14,"
-                # "software.amazon.awssdk:url-connection-client:2.26.14,"
-                # # AWS dependencies
-                # "org.apache.hadoop:hadoop-aws:3.3.4,"
-                # "com.amazonaws:aws-java-sdk-bundle:1.12.261,"
-                # "org.apache.spark:spark-hadoop-cloud_2.13:3.5.3,"
-                # # Scala dependencies
-                # "org.scala-lang:scala-library:2.12.18,"
-                # "org.scala-lang:scala-reflect:2.12.18,"
-                # "org.scala-lang:scala-compiler:2.12.18"
-            ),
+            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,"
+            "org.apache.kafka:kafka-clients:3.5.1,",
         )
-        # .config(
-        #     "spark.sql.extensions",
-        #     "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-        # )
-        # # Add Hadoop AWS configurations
-        # .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        # # .config("spark.hadoop.fs.s3a.endpoint", "s3.amazonaws.com")
-        # # .config("spark.hadoop.fs.s3a.path.style.access", "true")
-        # .config(
-        #     "spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog"
-        # )
-        # .config(
-        #     "spark.sql.catalog.glue_catalog.catalog-impl",
-        #     "org.apache.iceberg.aws.glue.GlueCatalog",
-        # )
-        # .config(
-        #     "spark.sql.catalog.glue_catalog.warehouse", "s3://cur-sp-data-aeb/iceberg"
-        # )
-        # .config(
-        #     "spark.sql.catalog.glue_catalog.io-impl",
-        #     "org.apache.iceberg.aws.s3.S3FileIO",
-        # )
         .getOrCreate()
     )
 
@@ -118,11 +63,11 @@ async def run_odds_pipeline(base_ckpt: str, sport: str):
                     result = await odds_connector.fetch_and_publish_odds(
                         sport=sport, topic_name=f"{sport_code}.odds.live"
                     )
-                    logger.info(f"Published {sport} odds data.")
+                    # logger.info(f"Published {sport} odds data.")
 
                 kafka_query.processAllAvailable()
-                logger.info("Processed available odds data")
-                await asyncio.sleep(1800)
+                # logger.info("Processed available odds data")
+                await asyncio.sleep(300)
 
             except Exception as e:
                 logger.error(f"Error in odds fetch loop: {e}")
@@ -130,6 +75,7 @@ async def run_odds_pipeline(base_ckpt: str, sport: str):
 
     except Exception as e:
         logger.error(f"Pipeline error: {e}")
+        raise
     finally:
         if "kafka_query" in locals() and kafka_query.isActive:
             kafka_query.stop()

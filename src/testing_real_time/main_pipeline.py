@@ -3,6 +3,7 @@ import sys
 import logging
 from pathlib import Path
 import time
+from pyspark.sql import SparkSession
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -25,21 +26,41 @@ def create_checkpoint_dirs():
     return checkpoints
 
 
+def create_spark_session(app_name: str):
+    """Create a single SparkSession to be used across all streams."""
+    if SparkSession._instantiatedSession is None:
+        return (
+            SparkSession.builder.appName(app_name)
+            .master("local[*]")
+            .config("spark.sql.streaming.schemaInference", "true")
+            .config(
+                "spark.jars.packages",
+                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3",
+            )
+            .config("spark.streaming.stopGracefullyOnShutdown", "true")
+            .getOrCreate()
+        )
+
+
 def start_pipelines():
-    # Define pipeline scripts with their configurations
+    spark = create_spark_session("sports_pipeline")
+
     pipelines = {
         "games": {
             "script": "games_pipeline.py",
-            "restart_delay": 60,  # Delay before restart in seconds
+            "spark": spark,
+            "restart_delay": 60,
             "dependencies": ["kafka"],
         },
         "odds": {
             "script": "odds_pipeline.py",
+            "spark": spark,
             "restart_delay": 60,
             "dependencies": ["kafka"],
         },
         "weather": {
             "script": "weather_pipeline.py",
+            "spark": spark,
             "restart_delay": 60,
             "dependencies": ["kafka"],
         },
@@ -49,11 +70,6 @@ def start_pipelines():
     restart_times = {}
 
     try:
-        # Create checkpoint directories
-        # checkpoints = create_checkpoint_dirs()
-        # logger.info("Created checkpoint directories")
-
-        # Start each pipeline as a separate process
         for name, config in pipelines.items():
             try:
                 process = subprocess.Popen(
@@ -61,6 +77,7 @@ def start_pipelines():
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     universal_newlines=True,
+                    bufsize=1,  # Line buffered
                 )
                 processes[name] = process
                 restart_times[name] = 0
@@ -68,26 +85,28 @@ def start_pipelines():
             except Exception as e:
                 logger.error(f"Failed to start {name} pipeline: {e}")
 
-        # Monitor processes
         while True:
             for name, process in processes.items():
                 try:
+                    # Read output without blocking
+                    output = process.stdout.readline()
+                    if output:
+                        print(f"[{name}] {output.strip()}")
+
+                    error = process.stderr.readline()
+                    if error:
+                        print(f"[{name}] ERROR: {error.strip()}")
+
                     # Check process status
                     if process.poll() is not None:
                         current_time = time.time()
                         last_restart = restart_times[name]
 
-                        # Check if enough time has passed since last restart
                         if (
                             current_time - last_restart
                             > pipelines[name]["restart_delay"]
                         ):
                             logger.warning(f"{name} pipeline died, restarting...")
-
-                            # Get any error output
-                            _, stderr = process.communicate()
-                            if stderr:
-                                logger.error(f"{name} pipeline error: {stderr}")
 
                             # Restart process
                             process = subprocess.Popen(
@@ -95,6 +114,7 @@ def start_pipelines():
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 universal_newlines=True,
+                                bufsize=1,
                             )
                             processes[name] = process
                             restart_times[name] = current_time
@@ -105,7 +125,7 @@ def start_pipelines():
                 except Exception as e:
                     logger.error(f"Error monitoring {name} pipeline: {e}")
 
-            time.sleep(10)  # Check every 10 seconds
+            time.sleep(0.1)  # Small delay to prevent CPU overuse
 
     except KeyboardInterrupt:
         logger.info("Shutting down pipelines...")
@@ -124,6 +144,7 @@ def start_pipelines():
         for process in processes.values():
             try:
                 process.kill()
+                spark.stop()
             except Exception as e:
                 print(e)
                 pass

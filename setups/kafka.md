@@ -127,7 +127,8 @@ file.delim=+
 # First start kafka in kraft mode then start connector
  
 bin/connect-standalone.sh config/connect-standalone.properties config/connect/s3-sink.properties
-
+```
+```bash
 # Check connector status
 curl -s localhost:8083/connectors/s3-sink-sports/status | jq
 ```
