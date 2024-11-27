@@ -5,6 +5,34 @@ import logging
 import shutil
 from betflow.spark_streaming.event_processor import OddsProcessor
 from betflow.pipeline_utils import get_live_odds
+from datetime import datetime, timezone
+
+
+def calculate_pipeline_timing(odds_data: list) -> tuple:
+    """Calculate pipeline timing based on closest game start time."""
+    if not odds_data:
+        return 1800, 35  # Default 30 mins, 35 mins window
+
+    current_time = datetime.now(timezone.utc)
+    closest_game_time = min(
+        datetime.fromisoformat(game["commence_time"].replace("Z", "+00:00"))
+        for game in odds_data
+    )
+
+    remaining_hours = (closest_game_time - current_time).total_seconds() / 3600
+
+    if any(game.get("status") == "in" for game in odds_data):
+        return 600, 15  # 10 mins, 15 mins window for live games
+    elif remaining_hours >= 4:
+        return 1800, 35  # 30 mins, 35 mins window
+    elif remaining_hours >= 3:
+        return 1500, 30  # 25 mins, 30 mins window
+    elif remaining_hours >= 2:
+        return 1200, 25  # 20 mins, 25 mins window
+    elif remaining_hours >= 1:
+        return 900, 20  # 15 mins, 20 mins window
+    else:
+        return 600, 15  # 10 mins, 15 mins window
 
 
 async def run_odds_pipeline(base_ckpt: str, sport: str):
@@ -31,7 +59,7 @@ async def run_odds_pipeline(base_ckpt: str, sport: str):
     try:
         # Initialize connector
         odds_connector = OddsAPIConnector(
-            api_key="a9fb527ba489184e92779cdf4a572631",
+            api_key="d6f749071922bb6887ef965f83b61fd2",
             kafka_bootstrap_servers="localhost:9092",
         )
 
@@ -46,11 +74,16 @@ async def run_odds_pipeline(base_ckpt: str, sport: str):
         # Start processor
         sport_code = sport.split("_")[1] if "_" in sport else sport
         sport_code = "cfb" if sport_code == "ncaaf" else sport_code
+        pipeline_time, window_time = calculate_pipeline_timing(odds_data)
+        print(
+            f"[Processor] pipeline sleep time @ {pipeline_time} and window @ {window_time}"
+        )
         odds_processor = OddsProcessor(
             spark=spark,
             input_topic=f"{sport_code}.odds.live",
             output_topic=f"{sport_code}_odds_analytics",
             checkpoint_location=f"{base_ckpt}/{sport_code}",
+            window_duration=window_time,
         )
 
         kafka_query = odds_processor.process()
@@ -67,7 +100,11 @@ async def run_odds_pipeline(base_ckpt: str, sport: str):
 
                 kafka_query.processAllAvailable()
                 # logger.info("Processed available odds data")
-                await asyncio.sleep(300)
+                pipeline_time, _ = calculate_pipeline_timing(odds_data)
+                print(
+                    f"[Connector] pipeline sleep time @ {pipeline_time} and window @ {window_time}"
+                )
+                await asyncio.sleep(pipeline_time)
 
             except Exception as e:
                 logger.error(f"Error in odds fetch loop: {e}")

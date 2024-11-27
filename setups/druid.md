@@ -98,6 +98,26 @@ curl -X POST http://localhost:8081/druid/coordinator/v1/datasources/nba_odds_ana
 kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic nba_odds_analytics
 ```
 
+## Scaling middle manager to handle concurrent tasks
+(Cautiously tune params)
+```bash
+# go to middle manager runtime properties
+nano ~druid/conf/druid/single-server/micro-quickstart/middleManager/runtime.properties
+```
+
+```bash
+druid.worker.capacity=4
+# others for below remain same
+druid.indexer.runner.javaOptsArray=["-server","-Xms2g","-Xmx2g","-XX:MaxDirectMemorySize=2g"]
+druid.indexer.fork.property.druid.processing.numMergeBuffers=4
+druid.indexer.fork.property.druid.processing.buffer.sizeBytes=200MiB
+druid.indexer.fork.property.druid.processing.numThreads=2
+
+druid.realtime.cache.useCache=true
+druid.realtime.cache.populateCache=true
+druid.cache.sizeInBytes=400000000
+```
+
 ## Optional (CAUTION: NOT RECOMMENDED)
 ```bash
 # Edit JVM config

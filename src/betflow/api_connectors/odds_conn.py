@@ -212,10 +212,10 @@ class OddsAPIConnector:
                 time_until_game = commence_time - current_time
 
                 # Only publish if:
-                # 1. Game starts within next 3 hours OR
+                # 1. Game starts within next 4 hours OR
                 # 2. Game has already started but not finished
                 if (
-                    timedelta(hours=-4) <= time_until_game <= timedelta(hours=3)
+                    timedelta(hours=-4) <= time_until_game <= timedelta(hours=4)
                     or game_odds.get("status") == "in"
                 ):
                     transformed_data = self.api_raw_odds_data(game_odds)

@@ -37,11 +37,13 @@ class OddsProcessor:
         input_topic: str,
         output_topic: str,
         checkpoint_location: str,
+        window_duration: int,
     ):
         self.spark = spark
         self.input_topic = input_topic
         self.output_topic = output_topic
         self.checkpoint_location = checkpoint_location
+        self.window_duration = window_duration
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.transformer = OddsTransformer()
@@ -138,7 +140,9 @@ class OddsProcessor:
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
-                    window(col("processing_time"), "7 minutes"),  # "1 minute"),
+                    window(
+                        col("processing_time"), f"{self.window_duration} minutes"
+                    ),  # "1 minute"),
                     "game_id",
                     "sport_key",
                 )
