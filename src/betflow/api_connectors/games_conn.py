@@ -5,6 +5,7 @@ import requests
 from kafka import KafkaProducer
 from betflow.api_connectors.conn_utils import RateLimiter
 from kafka.errors import NoBrokersAvailable
+from datetime import datetime, timezone
 
 
 class ESPNConnector:
@@ -586,6 +587,9 @@ class ESPNConnector:
             endpoint = f"{sport}/{league}/scoreboard"
             raw_data = self.make_request(endpoint)
 
+            if not self.check_upcoming_games(raw_data):
+                return False
+
             for game in raw_data.get("events", []):
                 # TODO
                 status = game.get("status", {}).get("type", {}).get("state")
@@ -604,11 +608,25 @@ class ESPNConnector:
                     print(
                         f"Published {topic_name.split('.')[0]} game data for {game.get('name')}"
                     )
-                # else:
-                #     print(f"No games for {sport} with status='in'")
+            return True
+        # else:
+        #     print(f"No games for {sport} with status='in'")
 
         except Exception as e:
             raise Exception(f"Error in fetch and publish pipeline: {e}")
+
+    @staticmethod
+    def check_upcoming_games(raw_data: dict, hours: int = 1) -> bool:
+        """Check if there are any games starting within specified hours."""
+        current_time = datetime.now(timezone.utc)
+        for game in raw_data.get("events", []):
+            game_time = datetime.fromisoformat(game.get("date").replace("Z", "+00:00"))
+            time_until_game = (game_time - current_time).total_seconds() / 3600
+            status = game.get("status", {}).get("type", {}).get("state")
+
+            if status == "in" or (status == "pre" and time_until_game <= hours):
+                return True
+        return False
 
     def close(self) -> None:
         """Closes Kafka producer and cleans up resources."""

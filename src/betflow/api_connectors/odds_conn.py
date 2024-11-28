@@ -200,8 +200,10 @@ class OddsAPIConnector:
                 params=params,
             )
 
-            current_time = datetime.now(timezone.utc)
+            if not self.check_upcoming_odds(raw_data):
+                return False
 
+            current_time = datetime.now(timezone.utc)
             for game_odds in raw_data:
                 # Convert commence_time to datetime
                 commence_time = datetime.fromisoformat(
@@ -223,9 +225,24 @@ class OddsAPIConnector:
                     print(
                         f"Published odds data for {game_odds['sport_title']}: {game_odds['home_team']} vs {game_odds['away_team']}"
                     )
+            return True
 
         except Exception as e:
             raise Exception(f"Failed to fetch and publish odds: {e}")
+
+    @staticmethod
+    def check_upcoming_odds(raw_data: list, hours: int = 4) -> bool:
+        """Check if there are any games with odds starting within specified hours."""
+        current_time = datetime.now(timezone.utc)
+        for game in raw_data:
+            commence_time = datetime.fromisoformat(
+                game.get("commence_time").replace("Z", "+00:00")
+            )
+            time_until_game = (commence_time - current_time).total_seconds() / 3600
+
+            if game.get("status") == "in" or -4 <= time_until_game <= hours:
+                return True
+        return False
 
     def close(self) -> None:
         """Clean up resources."""

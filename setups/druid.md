@@ -73,29 +73,60 @@ druid.indexer.logs.s3Bucket=hist-sp-data-aeb
 druid.indexer.logs.s3Prefix=druid/indexing-logs
 ```
 
+## Clearing aggregated lag issues
 
-## Cleaning, kafka-druid schema change
+Based on the supervisor status, there are several issues indicating why data isn't being ingested properly:
+
+1. **Offset Mismatch**:
+- startingOffsets: 3140
+- latestOffsets: 278
+- This negative lag (minimumLag: -2862) indicates the starting offset is higher than the latest offset, meaning no new data is being read
+
+2. **Empty Current Offsets**:
+- currentOffsets: {} 
+- lag: {}
+- These empty values suggest the tasks aren't actively consuming data
+
+To fix this:
+
+1. Reset the supervisor:
+```bash
+curl -X POST http://localhost:8081/druid/indexer/v1/supervisor/<topic_name>/reset
+```
+
+2. If that doesn't work, terminate and restart:
+```bash
+# Terminate supervisor
+curl -X POST http://localhost:8081/druid/indexer/v1/supervisor/<topic_name>/terminate
+
+# Delete existing datasource
+curl -X POST http://localhost:8081/druid/coordinator/v1/datasources/<topic_name> --data 'kill=true&interval=1000/3000'
+
+# Recreate supervisor with proper offset specification
+```
+
+## Cleaning, kafka-druid schema change (try above first)
 
 To delete a Kafka topic and ensure Druid ingests fresh data with the new schema, follow these steps:
 
 1. Delete the Kafka topic:
 ```bash
-kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic nba_odds_analytics
+~/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic <topic_name>
 ```
 
 2. Delete the Druid supervisor:
 ```bash
-curl -X POST http://localhost:8081/druid/indexer/v1/supervisor/nba_odds_analytics/terminate
+curl -X POST http://localhost:8081/druid/indexer/v1/supervisor/<topic_name>/terminate
 ```
 
 3. Delete the Druid datasource:
 ```bash
-curl -X POST http://localhost:8081/druid/coordinator/v1/datasources/nba_odds_analytics --data 'kill=true&interval=1000/3000'
+curl -X POST http://localhost:8081/druid/coordinator/v1/datasources/<topic_name> --data 'kill=true&interval=1000/3000'
 ```
 
 4. Recreate the Kafka topic:
 ```bash
-kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic nba_odds_analytics
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic <topic_name>
 ```
 
 ## Scaling middle manager to handle concurrent tasks
