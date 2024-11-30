@@ -1,0 +1,52 @@
+
+
+{
+  "type": "kafka",
+  "dataSchema": {
+    "dataSource": "cfb_games_analytics",
+    "timestampSpec": {
+      "column": "window.start",
+      "format": "auto"
+    },
+    "dimensionsSpec": {
+      "dimensions": [
+        "game_id",
+        "venue_name",
+        "venue_city",
+        "venue_state",
+        "broadcasts",
+        "game_state",
+        "status_detail",
+        "status_description",
+        "current_period",
+        "time_remaining",
+        "home_team_name",
+        "away_team_name",
+        "home_team_record",
+        "away_team_record",
+        "home_passing_leader",
+        "home_rushing_leader",
+        "home_receiving_leader",
+        "away_passing_leader",
+        "away_rushing_leader",
+        "away_receiving_leader"
+      ]
+    },
+    "metricsSpec": [
+      { "type": "doubleSum", "name": "home_team_score", "fieldName": "home_team_score" },
+      { "type": "doubleSum", "name": "away_team_score", "fieldName": "away_team_score" },
+      { "type": "doubleSum", "name": "home_scoring_run", "fieldName": "home_scoring_run" },
+      { "type": "doubleSum", "name": "away_scoring_run", "fieldName": "away_scoring_run" }
+    ]
+  },
+  "ioConfig": {
+    "type": "kafka",
+    "consumerProperties": {
+      "bootstrap.servers": "localhost:9092"
+    },
+    "topic": "cfb_games_analytics",
+    "inputFormat": {
+      "type": "json"
+    }
+  }
+}
