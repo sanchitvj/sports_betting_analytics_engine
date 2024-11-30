@@ -49,5 +49,3 @@ bin/kafka-topics.sh --list --bootstrap-server localhost:9092
 log.dirs=/home/ubuntu/kafka/data/kafka
 zookeeper.connect=localhost:2181
 ```
-
-This should resolve the cluster ID mismatch and get your Kafka server running properly. Let me know if you need any clarification!
