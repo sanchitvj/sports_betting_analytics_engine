@@ -29,7 +29,7 @@ class HistoricalOddsConnector:
         self.request_timestamps.append(now)
 
     def generate_game_timestamps(
-        self, game_start: str, game_duration: int = 180
+        self, game_start: str, game_duration: int = 180, interval: int = 30
     ) -> List[str]:
         """Generate 30-min interval timestamps during game"""
         timestamps = []
@@ -39,7 +39,7 @@ class HistoricalOddsConnector:
         current = start_time
         while current <= end_time:
             timestamps.append(current.strftime("%Y-%m-%dT%H:%M:%SZ"))
-            current += timedelta(minutes=30)
+            current += timedelta(minutes=interval)
 
         return timestamps
 
@@ -95,24 +95,24 @@ class HistoricalOddsConnector:
         return game_odds_history
 
     async def fetch_season_odds(
-        self, sport: str, games: List[Dict], batch_size: int = 5
+        self, session, sport: str, games: List[Dict], batch_size: int = 5
     ):
         """Fetch historical odds for a season's games"""
-        async with aiohttp.ClientSession() as session:
-            all_odds_data = []
+        # async with aiohttp.ClientSession() as session:
+        all_odds_data = []
 
-            for i in range(0, len(games), batch_size):
-                batch = games[i : i + batch_size]
-                tasks = [self.process_game_odds(session, sport, game) for game in batch]
+        for i in range(0, len(games), batch_size):
+            batch = games[i : i + batch_size]
+            tasks = [self.process_game_odds(session, sport, game) for game in batch]
 
-                try:
-                    batch_results = await asyncio.gather(*tasks)
-                    for game_odds in batch_results:
-                        all_odds_data.extend(game_odds)
-                except Exception as e:
-                    print(f"Error processing batch: {str(e)}")
+            try:
+                batch_results = await asyncio.gather(*tasks)
+                for game_odds in batch_results:
+                    all_odds_data.extend(game_odds)
+            except Exception as e:
+                print(f"Error processing batch: {str(e)}")
 
-            return all_odds_data
+        return all_odds_data
 
 
 async def main():

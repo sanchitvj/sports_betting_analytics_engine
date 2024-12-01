@@ -11,7 +11,12 @@ class HistoricalConfig:
     ODDS_INTERVAL = 30
 
     # Game status mappings
-    FINISHED_STATUSES = ["FT", "AOT"]  # Finished, After Overtime
+    FINISHED_STATUSES = [
+        "FT",
+        "AOT",
+        "Finished",
+        "After Overtime",
+    ]  # Finished, After Overtime
 
     # S3 paths
     S3_PATHS = {

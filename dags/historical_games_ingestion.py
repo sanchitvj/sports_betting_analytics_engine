@@ -1,8 +1,12 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.amazon.aws.transfers.local_to_s3 import (
-    LocalFilesystemToS3Operator,
-)
+
+# from airflow.operators.bash import BashOperator
+# from airflow.providers.amazon.aws.transfers.local_to_s3 import (
+#     LocalFilesystemToS3Operator,
+# )
+import boto3
+
 import asyncio
 from datetime import datetime, timedelta
 import json
@@ -17,7 +21,7 @@ load_dotenv()
 default_args = {
     "owner": "airflow",
     "depends_on_past": True,  # Enable sequential processing
-    "start_date": datetime(2024, 11, 29),  # NBA season 2025 start date
+    "start_date": datetime(2024, 11, 27),  # NBA season 2025 start date is 2024-10-22
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
@@ -83,7 +87,32 @@ def process_games_data(**context):
     with open(f"{output_dir}/games.json", "w") as f:
         json.dump(games_data, f)
 
+    # for historical odds DAG
+    # context["task_instance"].xcom_push(key="games_data", value=games_data)
+
     return output_dir
+
+
+def upload_to_s3_func(**context):
+    date_str = context["ds"]
+    local_path = (
+        f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{date_str}/games.json"
+    )
+    s3_path = f"{HistoricalConfig.S3_PATHS['games_prefix']}/nba/{date_str}/games.json"
+
+    s3_client = boto3.client("s3")
+    try:
+        s3_client.upload_file(
+            local_path,
+            HistoricalConfig.S3_PATHS["raw_bucket"],
+            s3_path,
+            ExtraArgs={
+                "ServerSideEncryption": "AES256"
+            },  # Add encryption if bucket requires it
+        )
+    except Exception as e:
+        print(f"Error uploading to S3: {str(e)}")
+        raise
 
 
 with DAG(
@@ -105,13 +134,21 @@ with DAG(
         provide_context=True,
     )
 
-    upload_to_s3 = LocalFilesystemToS3Operator(
-        task_id="upload_to_s3",
-        filename=f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{{{{ ds }}}}/games.json",
-        dest_key=f"{HistoricalConfig.S3_PATHS['games_prefix']}/nba/{{{{ ds }}}}/games.json",
-        dest_bucket=HistoricalConfig.S3_PATHS["raw_bucket"],
-        # aws_conn_id=None,  # "aws_default",
-        replace=True,
+    # upload_to_s3 = LocalFilesystemToS3Operator(
+    #     task_id="upload_to_s3",
+    #     filename=f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{{{{ ds }}}}/games.json",
+    #     dest_key=f"{HistoricalConfig.S3_PATHS['games_prefix']}/nba/{{{{ ds }}}}/games.json",
+    #     dest_bucket=HistoricalConfig.S3_PATHS["raw_bucket"],
+    #     # aws_conn_id=None,  # "aws_default",
+    #     replace=True,
+    # )
+    # upload_to_s3 = BashOperator(
+    #     task_id="upload_to_s3",
+    #     bash_command=f'aws s3 sync /tmp/{HistoricalConfig.S3_PATHS["games_prefix"]}/{{{{ ds }}}}/games.json '
+    #     f's3://{HistoricalConfig.S3_PATHS["raw_bucket"]}/{HistoricalConfig.S3_PATHS["games_prefix"]}/nba/{{{{ ds }}}}/games.json',
+    # )
+    upload_to_s3 = PythonOperator(
+        task_id="upload_to_s3", python_callable=upload_to_s3_func, provide_context=True
     )
 
     fetch_daily_games >> process_daily_games >> upload_to_s3
