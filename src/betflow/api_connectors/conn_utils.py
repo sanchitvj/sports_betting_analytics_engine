@@ -32,6 +32,7 @@ class RateLimiter:
 
         # If we've hit the limit, wait
         if len(self.request_times) >= self.requests_per_second:
+
             sleep_time = (
                 self.request_times[0] + timedelta(seconds=1) - now
             ).total_seconds()

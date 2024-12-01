@@ -41,7 +41,6 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "asyncio: mark test as async",
 ]
-
 #[tool.ruff]
 #exclude = ["src/"]
 

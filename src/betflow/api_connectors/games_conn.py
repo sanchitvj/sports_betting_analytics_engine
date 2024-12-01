@@ -3,6 +3,7 @@ import time
 from typing import Dict, Any, Optional
 import requests
 from kafka import KafkaProducer
+
 from betflow.api_connectors.conn_utils import RateLimiter
 from kafka.errors import NoBrokersAvailable
 from datetime import datetime, timezone
@@ -59,6 +60,7 @@ class ESPNConnector:
         self, endpoint: str, params: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """Makes a rate-limited request to the ESPN API."""
+        
         self.rate_limiter.wait_if_needed()
 
         url = f"{self.base_url}/{endpoint}"
