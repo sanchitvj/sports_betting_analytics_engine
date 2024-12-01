@@ -1,5 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.exceptions import AirflowException
+
 from datetime import datetime, timedelta
 import os
 import asyncio
@@ -45,24 +47,25 @@ def fetch_odds_by_date(**context):
 
         # Process odds for completed games
         # all_odds_data = []
-        odds_connector = HistoricalOddsConnector(api_key=os.getenv("ODDS_API_KEY"))
+        try:
+            odds_connector = HistoricalOddsConnector(api_key=os.getenv("ODDS_API_KEY"))
 
-        async with aiohttp.ClientSession() as session:
-            # Fetch all odds for the date in one request
-            odds_data = await odds_connector.fetch_odds_by_date(
-                session, "nba", date_str
-            )
+            async with aiohttp.ClientSession() as session:
+                # Fetch all odds for the date in one request
+                odds_data = await odds_connector.fetch_odds_by_date(
+                    session, "nba", date_str
+                )
 
-            if odds_data:
-                # Write to temporary location
-                output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{logical_date.strftime('%Y-%m-%d')}"
-                os.makedirs(output_dir, exist_ok=True)
+                if odds_data:
+                    # Write to temporary location
+                    output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{logical_date.strftime('%Y-%m-%d')}"
+                    os.makedirs(output_dir, exist_ok=True)
 
-                with open(f"{output_dir}/odds.json", "w") as f:
-                    json.dump(odds_data, f)
+                    with open(f"{output_dir}/odds.json", "w") as f:
+                        json.dump(odds_data, f)
 
-                return odds_data
-            return []
+                    return odds_data
+                return []
         # for game in games_data:
         #     if game["status"] in HistoricalConfig.FINISHED_STATUSES:
         #         # Generate timestamps for game duration
@@ -96,6 +99,9 @@ def fetch_odds_by_date(**context):
         #     json.dump(all_odds_data, f)
         #
         # return len(all_odds_data)
+        except Exception as e:
+            print(f"Error fetching odds: {str(e)}")
+            raise AirflowException(f"Failed to fetch odds: {str(e)}")
 
     return asyncio.run(_fetch())
 

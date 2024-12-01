@@ -32,16 +32,23 @@ class HistoricalOddsConnector:
         """Fetch all odds for a specific date"""
         await self._rate_limit()
         url = f"{self.base_url}/{self.sport_keys[sport]}/odds"
+
+        # Ensure proper ISO8601 format
+        formatted_date = f"{date}T00:00:00Z"
+
         params = {
             "apiKey": self.api_key,
             "regions": "us",
             "markets": "h2h",
-            "date": date,
             "oddsFormat": "american",
+            "date": formatted_date,
         }
 
         async with session.get(url, params=params) as response:
-            return await response.json()
+            data = await response.json()
+            if "error_code" in data:
+                raise Exception(f"API Error: {data['message']}")
+            return data
 
     def generate_game_timestamps(
         self, game_start: str, game_duration: int = 180, interval: int = 30
