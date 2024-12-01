@@ -1,10 +1,10 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-import json
 import os
-import aiohttp
 import asyncio
+import aiohttp
+import json
 import boto3
 from betflow.historical.hist_api_connectors import HistoricalOddsConnector
 from betflow.historical.config import HistoricalConfig
@@ -44,43 +44,58 @@ def fetch_odds_by_date(**context):
             return []
 
         # Process odds for completed games
-        all_odds_data = []
+        # all_odds_data = []
         odds_connector = HistoricalOddsConnector(api_key=os.getenv("ODDS_API_KEY"))
 
-        for game in games_data:
-            if game["status"] in HistoricalConfig.FINISHED_STATUSES:
-                # Generate timestamps for game duration
-                timestamps = odds_connector.generate_game_timestamps(
-                    game["commence_time"],
-                    HistoricalConfig.GAME_DURATIONS["nba"],
-                    HistoricalConfig.ODDS_INTERVAL,
-                )
-                print("timestamps: ", timestamps)
+        async with aiohttp.ClientSession() as session:
+            # Fetch all odds for the date in one request
+            odds_data = await odds_connector.fetch_odds_by_date(
+                session, "nba", date_str
+            )
 
-                # Fetch odds for each timestamp
-                game_odds = []
-                async with aiohttp.ClientSession() as session:
-                    for timestamp in timestamps:
-                        odds = await odds_connector.fetch_odds_snapshot(
-                            session, "nba", game["id"], timestamp
-                        )
-                        if odds:
-                            game_odds.append(
-                                {"timestamp": timestamp, "odds_data": odds}
-                            )
+            if odds_data:
+                # Write to temporary location
+                output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{logical_date.strftime('%Y-%m-%d')}"
+                os.makedirs(output_dir, exist_ok=True)
 
-                if game_odds:
-                    all_odds_data.append(
-                        {"game_id": game["id"], "odds_history": game_odds}
-                    )
+                with open(f"{output_dir}/odds.json", "w") as f:
+                    json.dump(odds_data, f)
 
-        # Write to temporary location
-        output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{date_str}"
-        os.makedirs(output_dir, exist_ok=True)
-        with open(f"{output_dir}/odds.json", "w") as f:
-            json.dump(all_odds_data, f)
-
-        return len(all_odds_data)
+                return odds_data
+            return []
+        # for game in games_data:
+        #     if game["status"] in HistoricalConfig.FINISHED_STATUSES:
+        #         # Generate timestamps for game duration
+        #         timestamps = odds_connector.generate_game_timestamps(
+        #             game["date"],
+        #             HistoricalConfig.GAME_DURATIONS["nba"],
+        #             HistoricalConfig.ODDS_INTERVAL,
+        #         )
+        #
+        #         # Fetch odds for each timestamp
+        #         game_odds = []
+        #         async with aiohttp.ClientSession() as session:
+        #             for timestamp in timestamps:
+        #                 odds = await odds_connector.fetch_odds_snapshot(
+        #                     session, "nba", game["game_id"], timestamp
+        #                 )
+        #                 if odds:
+        #                     game_odds.append(
+        #                         {"timestamp": timestamp, "odds_data": odds}
+        #                     )
+        #
+        #         if game_odds:
+        #             all_odds_data.append(
+        #                 {"game_id": game["game_id"], "odds_history": game_odds}
+        #             )
+        #
+        # # Write to temporary location
+        # output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{date_str}"
+        # os.makedirs(output_dir, exist_ok=True)
+        # with open(f"{output_dir}/odds.json", "w") as f:
+        #     json.dump(all_odds_data, f)
+        #
+        # return len(all_odds_data)
 
     return asyncio.run(_fetch())
 

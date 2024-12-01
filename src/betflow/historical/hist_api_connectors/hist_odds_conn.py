@@ -22,11 +22,26 @@ class HistoricalOddsConnector:
     async def _rate_limit(self):
         """Ensure no more than 300 requests per minute"""
         now = datetime.now()
-        if len(self.request_timestamps) == 300:
+        if len(self.request_timestamps) == 100:
             elapsed = (now - self.request_timestamps[0]).total_seconds()
             if elapsed < 60:
                 await asyncio.sleep(60 - elapsed)
         self.request_timestamps.append(now)
+
+    async def fetch_odds_by_date(self, session, sport: str, date: str) -> Dict:
+        """Fetch all odds for a specific date"""
+        await self._rate_limit()
+        url = f"{self.base_url}/{self.sport_keys[sport]}/odds"
+        params = {
+            "apiKey": self.api_key,
+            "regions": "us",
+            "markets": "h2h",
+            "date": date,
+            "oddsFormat": "american",
+        }
+
+        async with session.get(url, params=params) as response:
+            return await response.json()
 
     def generate_game_timestamps(
         self, game_start: str, game_duration: int = 180, interval: int = 30
@@ -42,6 +57,26 @@ class HistoricalOddsConnector:
             current += timedelta(minutes=interval)
 
         return timestamps
+
+    async def fetch_game_odds_history(self, session, sport: str, game: Dict) -> Dict:
+        """Fetch odds history for a single game"""
+        game_duration = 180 if sport not in ["nfl", "ncaa"] else 240
+        timestamps = self.generate_game_timestamps(game["commence_time"], game_duration)
+
+        game_odds_history = []
+        for timestamp in timestamps:
+            odds_data = await self.fetch_odds_by_date(session, sport, timestamp)
+            if odds_data:
+                # Filter odds for specific game
+                game_odds = next(
+                    (odds for odds in odds_data if odds["id"] == game["id"]), None
+                )
+                if game_odds:
+                    game_odds_history.append(
+                        {"timestamp": timestamp, "odds_data": game_odds}
+                    )
+
+        return {"game_id": game["id"], "odds_history": game_odds_history}
 
     async def fetch_odds_snapshot(
         self, session, sport: str, game_id: str, timestamp: str
