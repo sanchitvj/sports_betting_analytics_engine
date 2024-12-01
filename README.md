@@ -1,4 +1,4 @@
-# sports_betting_analytics_engine
+# Sports Betting Analytics Engine
 
 ### Real-time pipeline
 ```mermaid
