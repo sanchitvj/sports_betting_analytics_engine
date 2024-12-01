@@ -10,7 +10,7 @@ def monitor_analytics():
     print("\nStarting analytics monitor...")
 
     consumer = KafkaConsumer(
-        "weather_analytics",
+        "cfb_weather_analytics",
         bootstrap_servers="localhost:9092",
         value_deserializer=lambda x: json.loads(x.decode("utf-8")),
         auto_offset_reset="latest",  # 'earliest' if you want all data
@@ -34,7 +34,10 @@ def monitor_analytics():
                         print("\n" + "=" * 80)
                         print(f"[{datetime.now()}] Weather Analytics Update")
                         print(f"Venue ID: {analytics.get('venue_id')}")
-
+                        print(f"Games ID: {analytics.get('game_name')}")
+                        print(
+                            f"location and state: {analytics.get('location')}, {analytics.get('state_code')} "
+                        )
                         # Temperature Analytics
                         print("\nTemperature Analytics:")
                         print(
@@ -67,6 +70,7 @@ def monitor_analytics():
                         print(f"Visibility: {analytics.get('avg_visibility')} km")
                         print(f"Cloud Cover: {analytics.get('avg_cloud_cover')}")
                         print(f"Weather Severity: {analytics.get('weather_severity')}")
+                        print(f"location: {analytics.get('location')}")
 
                         print("=" * 80)
             time.sleep(1)

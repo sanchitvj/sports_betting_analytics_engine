@@ -1,11 +1,10 @@
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from kafka import KafkaProducer
 from betflow.api_connectors.conn_utils import RateLimiter
-from betflow.kafka_orch.schemas import WeatherData
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -71,8 +70,10 @@ class OpenWeatherConnector:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Request failed: {e}")
 
+    @staticmethod
     def transform_weather_data(
-        self, raw_data: Dict[str, Any], venue_id: str, game_id: str
+        raw_data: Dict[str, Any],
+        venue: List[str],
     ) -> Dict[str, Any]:
         """Transform raw weather data to standardized format."""
         try:
@@ -80,9 +81,11 @@ class OpenWeatherConnector:
             timestamp = datetime.fromtimestamp(raw_data["dt"])
 
             weather_data = {
-                "weather_id": f"weather_{venue_id}_{int(time.time())}",
-                "venue_id": venue_id,
-                "game_id": game_id,
+                "weather_id": f"weather_{venue['venue_id']}_{int(time.time())}",
+                "venue_id": venue["venue_id"],
+                "game_id": venue["game_id"],
+                "game_name": venue["game_name"],
+                "state_code": venue["state_code"],
                 "timestamp": timestamp.isoformat(),  # Convert to ISO format string
                 "temperature": raw_data["main"]["temp"] - 273.15,  # Convert K to C
                 "feels_like": raw_data["main"]["feels_like"] - 273.15,  # Convert K to C
@@ -93,24 +96,12 @@ class OpenWeatherConnector:
                 "weather_description": raw_data["weather"][0]["description"],
                 "visibility": raw_data["visibility"] / 1000,  # Convert to km
                 "pressure": raw_data["main"]["pressure"],
-                # "precipitation_probability": 0.0,
-                # "uv_index": 0.0,
                 "clouds": raw_data.get("clouds", {}).get("all", 0),
-                # "details": {
-                #     "clouds": raw_data.get("clouds", {}).get("all", 0),
-                #     "rain_1h": raw_data.get("rain", {}).get("1h", 0),
-                #     "snow_1h": raw_data.get("snow", {}).get("1h", 0),
-                # },
                 "location": raw_data["name"],
-                #     "lat": str(raw_data["coord"]["lat"]),  # Convert to string
-                #     "lon": str(raw_data["coord"]["lon"]),  # Convert to string
-                #     "city": raw_data["name"],
-                #     "country": raw_data["sys"]["country"],
-                # },
             }
 
             # Validate against schema
-            return WeatherData(**weather_data).model_dump()
+            return weather_data  # WeatherData(**weather_data).model_dump()
 
         except Exception as e:
             raise ValueError(f"Failed to transform weather data: {e}")
@@ -126,46 +117,54 @@ class OpenWeatherConnector:
     async def fetch_and_publish_weather(
         self,
         topic_name: str,
-        city: str,
-        venue_id: str,
-        game_id: str = None,
-        lat: float = None,
-        lon: float = None,
+        venue: List[str],
     ) -> Dict[str, Any]:
         """Fetch weather data for a city and publish to Kafka."""
         try:
-            # Make API request with proper parameters
+            if not self.check_upcoming_games(venue):
+                return False
+
             params = {
-                "lat": lat,
-                "lon": lon,
-                "appid": self.api_key,  # Add API key here
+                "lat": venue["lat"],
+                "lon": venue["lon"],
+                "appid": self.api_key,
                 # "units": "standard"  # Use Kelvin for consistency
             }
 
             # Add either city or coordinates
-            if lat is not None and lon is not None:
-                params.update({"lat": lat, "lon": lon})
+            if venue["lat"] is not None and venue["lon"] is not None:
+                params.update({"lat": venue["lat"], "lon": venue["lon"]})
             else:
-                params["q"] = city
+                params["q"] = venue["city"]
 
-            # Make the request
             raw_data = self.make_request("weather", params=params)
 
-            # Transform data
             transformed_data = self.transform_weather_data(
-                raw_data, venue_id=venue_id, game_id=game_id
+                raw_data,
+                venue,
             )
 
-            # Publish to Kafka
             self.publish_to_kafka(
                 topic=topic_name,
                 data=transformed_data,
             )
 
-            return transformed_data
+            return True
 
         except Exception as e:
-            raise Exception(f"Failed to fetch/publish weather for {city}: {e}")
+            raise Exception(f"Failed to fetch/publish weather for {venue['city']}: {e}")
+
+    @staticmethod
+    def check_upcoming_games(venue: dict, hours: int = 3) -> bool:
+        """Check if there are any games starting within specified hours."""
+        current_time = datetime.now(timezone.utc)
+        game_time = venue["start_time"]
+        time_until_game = (game_time - current_time).total_seconds() / 3600
+        status = venue["status"]
+
+        if status == "in" or (status == "pre" and time_until_game <= hours):
+            return True
+        return False
 
     def close(self) -> None:
         """Clean up resources."""

@@ -126,14 +126,14 @@ curl -X POST http://localhost:8081/druid/coordinator/v1/datasources/<topic_name>
 
 4. Recreate the Kafka topic:
 ```bash
-kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic <topic_name>
+~/kafka/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic <topic_name>
 ```
 
 ## Scaling middle manager to handle concurrent tasks
 (Cautiously tune params)
 ```bash
 # go to middle manager runtime properties
-nano ~druid/conf/druid/single-server/micro-quickstart/middleManager/runtime.properties
+nano ~/druid/conf/druid/single-server/micro-quickstart/middleManager/runtime.properties
 ```
 
 ```bash

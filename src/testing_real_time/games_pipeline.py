@@ -49,11 +49,9 @@ class GamesPipeline:
             )
 
         try:
-            # Initialize connectors
             espn_connector = ESPNConnector(kafka_bootstrap_servers="localhost:9092")
 
-            # Get live/upcoming games
-            games = get_live_games(espn_connector, sport, league)
+            games = await get_live_games(espn_connector, sport, league)
 
             if not games:
                 self.logger.info(f"No live or upcoming games found for {league}")
@@ -90,8 +88,6 @@ class GamesPipeline:
             # Continuous fetch loop
             while kafka_query.isActive:
                 try:
-                    # for game in games:
-                    #     if game["status"] != "post":  # , "pre"]:  # Live or upcoming games
                     has_games = await espn_connector.fetch_and_publish_games(
                         sport=sport,
                         league=league,  # do not make it topic_league
@@ -117,7 +113,7 @@ class GamesPipeline:
                         self.league_status[topic_league] = True
 
                     kafka_query.processAllAvailable()
-                    await asyncio.sleep(60)  # Update every 30 seconds
+                    await asyncio.sleep(60)
 
                 except Exception as e:
                     self.logger.error(f"Error in fetch loop: {e}")

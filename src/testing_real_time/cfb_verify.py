@@ -9,7 +9,7 @@ def monitor_cfb_analytics():
     print("\nStarting CFB analytics monitor...")
 
     consumer = KafkaConsumer(
-        "cfb_analytics",  # Your output topic
+        "cfb_games_analytics",  # Your output topic
         bootstrap_servers="localhost:9092",
         value_deserializer=lambda x: json.loads(x.decode("utf-8")),
         auto_offset_reset="latest",
@@ -61,18 +61,10 @@ def monitor_cfb_analytics():
 
                             # Home Team Leaders
                             print(f"\n{analytics.get('home_team_name')} Leaders:")
-                            print(f"Passing: {analytics.get('home_passing_leader')}")
-                            print(f"Rushing: {analytics.get('home_rushing_leader')}")
+                            print(f"Passing: {analytics.get('passing_leader_value')}")
+                            print(f"Rushing: {analytics.get('rushing_leader_value')}")
                             print(
-                                f"Receiving: {analytics.get('home_receiving_leader')}"
-                            )
-
-                            # Away Team Leaders
-                            print(f"\n{analytics.get('away_team_name')} Leaders:")
-                            print(f"Passing: {analytics.get('away_passing_leader')}")
-                            print(f"Rushing: {analytics.get('away_rushing_leader')}")
-                            print(
-                                f"Receiving: {analytics.get('away_receiving_leader')}"
+                                f"Receiving: {analytics.get('receiving_leader_value')}"
                             )
 
                             # Game Analytics

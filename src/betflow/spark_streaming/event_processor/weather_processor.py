@@ -10,6 +10,7 @@ from pyspark.sql.functions import (
     first,
     lit,
     coalesce,
+    current_timestamp,
 )
 from pyspark.sql.types import (
     StringType,
@@ -35,6 +36,7 @@ class WeatherProcessor:
         self.input_topic = input_topic
         self.output_topic = output_topic
         self.checkpoint_location = checkpoint_location
+        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.transformer = WeatherTransformer()
@@ -46,6 +48,7 @@ class WeatherProcessor:
                 StructField("weather_id", StringType(), False),
                 StructField("venue_id", StringType(), False),
                 StructField("game_id", StringType(), False),
+                StructField("game_name", StringType(), False),
                 StructField("timestamp", TimestampType(), False),
                 StructField("temperature", FloatType(), False),
                 StructField("feels_like", FloatType(), True),
@@ -57,6 +60,7 @@ class WeatherProcessor:
                 StructField("weather_description", StringType(), True),
                 StructField("visibility", FloatType(), True),
                 StructField("clouds", FloatType(), True),
+                StructField("state_code", StringType(), True),
                 StructField("location", StringType(), True),
             ]
         )
@@ -75,75 +79,14 @@ class WeatherProcessor:
             parsed_df = stream_df.select(
                 from_json(col("value").cast("string"), self._get_schema()).alias("data")
             ).select("data.*")
-            # parsed_df.writeStream.foreachBatch(debug_batch).start()
 
             transformed_df = self.transformer.transform_openweather(parsed_df)
 
-            return transformed_df  # .withColumn("processing_time", current_timestamp())
+            return transformed_df.withColumn("processing_time", current_timestamp())
 
         except Exception as e:
             self.logger.error(f"Error in parse and transform: {e}")
             raise
-
-    def _apply_temperature_analytics(self, df: DataFrame) -> DataFrame:
-        """Calculate temperature-related analytics."""
-        return (
-            df.withWatermark("processing_time", "2 minutes")
-            .groupBy(window(col("processing_time"), "5 minutes"), "venue_id", "game_id")
-            .agg(
-                # Temperature metrics
-                avg("temperature").alias("avg_temperature"),
-                # max("temperature").alias("max_temperature"),
-                # min("temperature").alias("min_temperature"),
-                avg("feels_like").alias("avg_feels_like"),
-                # Temperature comfort index
-                ((avg("temperature") + avg("feels_like")) / 2).alias("comfort_index"),
-                # Additional metrics
-                avg("humidity").alias("avg_humidity"),
-                avg("pressure").alias("avg_pressure"),
-            )
-        )
-
-    def _apply_wind_analytics(self, df: DataFrame) -> DataFrame:
-        """Calculate wind-related analytics."""
-        return (
-            df.withWatermark("processing_time", "2 minutes")
-            .groupBy(window(col("processing_time"), "5 minutes"), "venue_id", "game_id")
-            .agg(
-                # Wind metrics
-                avg("wind_speed").alias("avg_wind_speed"),
-                # max("wind_speed").alias("max_wind_speed"),
-                first("wind_direction").alias("last_wind_direction"),
-                # Wind impact score
-                (avg("wind_speed") * 0.7 + max("wind_speed") * 0.3).alias(
-                    "wind_impact_score"
-                ),
-            )
-        )
-
-    def _apply_condition_analytics(self, df: DataFrame) -> DataFrame:
-        """Analyze weather conditions."""
-        # Create a severity score using case statements
-        severity_expr = (
-            when(col("visibility") < lit(5000), 2).otherwise(0)
-            + when(col("wind_speed") > lit(20), 2).otherwise(0)
-            + when(col("clouds") > lit(80), 1).otherwise(0)
-        )
-
-        return (
-            df.withWatermark("processing_time", "2 minutes")
-            .groupBy(window(col("processing_time"), "5 minutes"), "venue_id", "game_id")
-            .agg(
-                # Weather conditions
-                first("weather_condition").alias("current_condition"),
-                first("weather_description").alias("current_description"),
-                # Basic metrics
-                avg("visibility").alias("avg_visibility"),
-                coalesce(avg("clouds"), lit(0.0)).alias("avg_cloud_cover"),
-                # Weather severity - calculated as a single expression
-                avg(severity_expr).cast("integer").alias("weather_severity"),
-            )
-        )
 
     def process(self):
         """Start processing weather stream."""
@@ -171,14 +114,17 @@ class WeatherProcessor:
             analytics_df = (
                 parsed_df.withWatermark("processing_time", "1 minute")
                 .groupBy(
-                    window(col("processing_time"), "10 minutes"), "venue_id", "game_id"
+                    window(col("processing_time"), "20 minutes"),
+                    "venue_id",
+                    "game_id",
+                    "game_name",
+                    "location",
+                    "state_code",
                 )
                 .agg(
                     # Temperature Analytics
                     col("window.start").alias("timestamp"),
                     avg("temperature").alias("avg_temperature"),
-                    # max("temperature").alias("max_temperature"),
-                    # min("temperature").alias("min_temperature"),
                     avg("feels_like").alias("avg_feels_like"),
                     ((avg("temperature") + avg("feels_like")) / 2).alias(
                         "comfort_index"
@@ -187,7 +133,6 @@ class WeatherProcessor:
                     avg("pressure").alias("avg_pressure"),
                     # Wind Analytics
                     avg("wind_speed").alias("avg_wind_speed"),
-                    # max("wind_speed").alias("max_wind_speed"),
                     first("wind_direction").alias("last_wind_direction"),
                     (avg("wind_speed") * 0.7 + max("wind_speed") * 0.3).alias(
                         "wind_impact_score"

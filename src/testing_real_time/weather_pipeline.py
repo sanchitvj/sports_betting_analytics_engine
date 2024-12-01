@@ -4,9 +4,13 @@ from betflow.api_connectors import OpenWeatherConnector, ESPNConnector
 from betflow.spark_streaming.event_processor import WeatherProcessor
 import logging
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 from betflow.pipeline_utils import get_live_games
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 class WeatherPipeline:
@@ -26,10 +30,11 @@ class WeatherPipeline:
             )
             .getOrCreate()
         )
-
+        self.league_status = {"nfl": True, "cfb": True}
+        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         self.weather_connector = OpenWeatherConnector(
-            api_key="88502b0f64d6f2214f24ebf301936537",
+            api_key=os.getenv("OPEN_WEATHER_API_KEY"),
             kafka_bootstrap_servers="localhost:9092",
         )
         self.espn_connector = ESPNConnector(kafka_bootstrap_servers="localhost:9092")
@@ -39,21 +44,22 @@ class WeatherPipeline:
         sports = [("football", "nfl"), ("football", "college-football")]
 
         for sport, league in sports:
-            games = get_live_games(self.espn_connector, sport, league)
+            games = await get_live_games(self.espn_connector, sport, league)
             for game in games:
                 if game.get("status") in ["pre", "in"] and not game.get(
-                    "venue", {}
-                ).get("indoor", True):
+                    "venue_indoor", True
+                ):
                     venue = {
                         "city": game["venue_city"],
-                        "state": game["venue_state"],
+                        "state_code": game["venue_state"],
                         "venue_id": game["venue_id"],
                         "game_id": game["game_id"],
+                        "game_name": f"{game['home_team']} vs {game['away_team']}",
                         "start_time": datetime.fromisoformat(game["start_time"]),
                         "status": game["status"],
                         "league": league,  # Add league information
                     }
-                    coords = self.get_coordinates(venue["city"], venue["state"])
+                    coords = self.get_coordinates(venue["city"], venue["state_code"])
                     if coords:
                         venue.update(coords)
                         outdoor_venues.append(venue)
@@ -67,7 +73,7 @@ class WeatherPipeline:
             params = {
                 "q": f"{city},{state},US",
                 "limit": 1,
-                "appid": "your_openweather_key",
+                "appid": os.getenv("OPEN_WEATHER_API_KEY"),
             }
             response = requests.get(url, params=params)
             data = response.json()
@@ -80,15 +86,22 @@ class WeatherPipeline:
     @staticmethod
     async def should_stream_weather(venue: dict) -> bool:
         """Determine if weather should be streamed for this venue."""
-        now = datetime.now()
-        start_time = venue["start_time"]
+        now = datetime.now(timezone.utc)  # Make current time timezone-aware
+
+        # Ensure start_time is timezone-aware
+        if isinstance(venue["start_time"], str):
+            start_time = datetime.fromisoformat(
+                venue["start_time"].replace("Z", "+00:00")
+            )
+        else:
+            start_time = venue["start_time"]
 
         # Stream if:
         # 1. Game starts within 6 hours
         # 2. Game is in progress
-        # 3. Game started less than 4 hours ago (typical game duration)
+        # 3. Game started less than 4 hours ago
         if venue["status"] == "pre":
-            return (start_time - now) <= timedelta(hours=6)
+            return (start_time - now) <= timedelta(hours=4)
         elif venue["status"] == "in":
             return (now - start_time) <= timedelta(hours=4)
         return False
@@ -116,6 +129,7 @@ class WeatherPipeline:
             while any(query.isActive for query in queries.values()):
                 try:
                     venues = await self.get_outdoor_venues()
+                    active_leagues = set()
 
                     for venue in venues:
                         if await self.should_stream_weather(venue):
@@ -123,23 +137,34 @@ class WeatherPipeline:
                             topic_league = (
                                 "cfb" if league == "college-football" else league
                             )
+                            active_leagues.add(topic_league)
                             await self.weather_connector.fetch_and_publish_weather(
                                 topic_name=f"{topic_league}.weather.current",
-                                city=venue["city"],
-                                venue_id=venue["venue_id"],
-                                game_id=venue["game_id"],
-                                lat=venue["lat"],
-                                lon=venue["lon"],
-                            )
-                            self.logger.info(
-                                f"Published weather data for {venue['city']} ({league})"
+                                venue=venue,
                             )
                         else:
                             self.logger.info("No weather data to publish.")
 
+                    # Update status for all leagues
+                    for league in self.league_status:
+                        self.league_status[league] = league in active_leagues
+                        if not self.league_status[league]:
+                            self.logger.info(
+                                f"No games in next 3 hours for {league.upper()}. Weather pipeline may stop."
+                            )
+
+                    # Check if all leagues are inactive
+                    if not any(self.league_status.values()):
+                        print("\n" + "=" * 60)
+                        self.logger.info(
+                            "No games for any sport in next 3 hours. STOPPING PIPELINE"
+                        )
+                        print("\n" + "=" * 60)
+                        break
+
                     for query in queries.values():
                         query.processAllAvailable()
-                    await asyncio.sleep(600)
+                    await asyncio.sleep(900)
 
                 except Exception as e:
                     self.logger.error(f"Error in fetch loop: {e}")
