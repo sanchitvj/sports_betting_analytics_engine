@@ -241,11 +241,6 @@ class GameTransformer(BaseGameTransformer):
                 col("home_team_goals").alias("home_goals"),
                 col("home_team_assists").alias("home_assists"),
                 col("home_team_points").alias("home_points"),
-                # col("home_team_penalties").alias("home_penalties"),
-                # col("home_team_penalty_minutes").alias("home_penalty_minutes"),
-                # col("home_team_power_plays").alias("home_power_plays"),
-                # col("home_team_power_play_goals").alias("home_power_play_goals"),
-                # col("home_team_power_play_pct").alias("home_power_play_pct"),
                 col("home_team_record").alias("home_team_record"),
                 # Away team
                 col("away_team_name"),
@@ -257,11 +252,6 @@ class GameTransformer(BaseGameTransformer):
                 col("away_team_goals").alias("away_goals"),
                 col("away_team_assists").alias("away_assists"),
                 col("away_team_points").alias("away_points"),
-                # col("away_team_penalties").alias("away_penalties"),
-                # col("away_team_penalty_minutes").alias("away_penalty_minutes"),
-                # col("away_team_power_plays").alias("away_power_plays"),
-                # col("away_team_power_play_goals").alias("away_power_play_goals"),
-                # col("away_team_power_play_pct").alias("away_power_play_pct"),
                 col("away_team_record").alias("away_team_record"),
                 # Venue information
                 col("venue_name"),

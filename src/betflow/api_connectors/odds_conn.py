@@ -69,7 +69,7 @@ class OddsAPIConnector:
 
             # Check remaining requests
             requests_remaining = response.headers.get("x-requests-remaining")
-            if requests_remaining and int(requests_remaining) < 10:
+            if requests_remaining and float(requests_remaining) < 15000.0:
                 print(f"Warning: Only {requests_remaining} API requests remaining")
 
             return response.json()
@@ -151,7 +151,7 @@ class OddsAPIConnector:
             else None,
             "bookmakers_count": len(raw_data.get("bookmakers", [])),
             "last_update": max(last_updates) if last_updates else None,
-            "timestamp": int(time.time()),
+            "timestamp": float(time.time()),
         }
 
     def publish_to_kafka(self, topic: str, data: Dict[str, Any]) -> None:
@@ -214,10 +214,10 @@ class OddsAPIConnector:
                 time_until_game = commence_time - current_time
 
                 # Only publish if:
-                # 1. Game starts within next 4 hours OR
+                # 1. Game starts within next 3 hours OR
                 # 2. Game has already started but not finished
                 if (
-                    timedelta(hours=-4) <= time_until_game <= timedelta(hours=4)
+                    timedelta(hours=-4) <= time_until_game <= timedelta(hours=3)
                     or game_odds.get("status") == "in"
                 ):
                     transformed_data = self.api_raw_odds_data(game_odds)
@@ -231,7 +231,7 @@ class OddsAPIConnector:
             raise Exception(f"Failed to fetch and publish odds: {e}")
 
     @staticmethod
-    def check_upcoming_odds(raw_data: list, hours: int = 4) -> bool:
+    def check_upcoming_odds(raw_data: list, hours: int = 3) -> bool:
         """Check if there are any games with odds starting within specified hours."""
         current_time = datetime.now(timezone.utc)
         for game in raw_data:

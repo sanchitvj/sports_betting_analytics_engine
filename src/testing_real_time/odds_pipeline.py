@@ -6,6 +6,10 @@ import shutil
 from betflow.spark_streaming.event_processor import OddsProcessor
 from betflow.pipeline_utils import get_live_odds
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 def calculate_pipeline_timing(odds_data: list) -> tuple:
@@ -67,7 +71,7 @@ class OddsPipeline:
         try:
             # Initialize connector
             odds_connector = OddsAPIConnector(
-                api_key="d6f749071922bb6887ef965f83b61fd2",
+                api_key=os.getenv("ODDS_API_KEY"),
                 kafka_bootstrap_servers="localhost:9092",
             )
 

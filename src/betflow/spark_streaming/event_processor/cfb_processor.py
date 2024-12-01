@@ -8,8 +8,8 @@ from pyspark.sql.types import (
     ArrayType,
     StructType,
     LongType,
+    DoubleType,
 )
-from betflow.spark_streaming.event_transformer import GameTransformer
 
 
 class CFBProcessor:
@@ -28,9 +28,8 @@ class CFBProcessor:
         self.input_topic = input_topic
         self.output_topic = output_topic
         self.checkpoint_location = checkpoint_location
+        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(self.__class__.__name__)
-
-        self.transformers = GameTransformer()
 
     @staticmethod
     def _get_schema() -> StructType:
@@ -48,22 +47,31 @@ class CFBProcessor:
                 StructField("clock", StringType(), True),
                 # Home team
                 StructField("home_team_name", StringType(), True),
-                StructField("home_team_abbrev", StringType(), True),
+                StructField("home_team_id", StringType(), True),
+                StructField("home_team_abbreviation", StringType(), True),
                 StructField("home_team_score", StringType(), True),
                 StructField("home_team_record", StringType(), True),
-                # Home team leaders
-                StructField("home_passing_leader", StringType(), True),
-                StructField("home_rushing_leader", StringType(), True),
-                StructField("home_receiving_leader", StringType(), True),
+                StructField("home_team_linescores", ArrayType(DoubleType()), True),
                 # Away team
                 StructField("away_team_name", StringType(), True),
-                StructField("away_team_abbrev", StringType(), True),
+                StructField("away_team_id", StringType(), True),
+                StructField("away_team_abbreviation", StringType(), True),
                 StructField("away_team_score", StringType(), True),
                 StructField("away_team_record", StringType(), True),
-                # Away team leaders
-                StructField("away_passing_leader", StringType(), True),
-                StructField("away_rushing_leader", StringType(), True),
-                StructField("away_receiving_leader", StringType(), True),
+                StructField("away_team_linescores", ArrayType(DoubleType()), True),
+                # leaders
+                StructField("passing_leader_name", StringType(), True),
+                StructField("passing_leader_display_value", StringType(), True),
+                StructField("passing_leader_value", DoubleType(), True),
+                StructField("passing_leader_team", StringType(), True),
+                StructField("rushing_leader_name", StringType(), True),
+                StructField("rushing_leader_display_value", StringType(), True),
+                StructField("rushing_leader_value", DoubleType(), True),
+                StructField("rushing_leader_team", StringType(), True),
+                StructField("receiving_leader_name", StringType(), True),
+                StructField("receiving_leader_display_value", StringType(), True),
+                StructField("receiving_leader_value", DoubleType(), True),
+                StructField("receiving_leader_team", StringType(), True),
                 # Venue information
                 StructField("venue_name", StringType(), True),
                 StructField("venue_city", StringType(), True),
@@ -81,9 +89,7 @@ class CFBProcessor:
                 from_json(col("value").cast("string"), self._get_schema()).alias("data")
             ).select("data.*")
 
-            transformed_df = self.transformers.transform_espn_cfb(parsed_df)
-
-            return transformed_df.withColumn("processing_time", current_timestamp())
+            return parsed_df.withColumn("processing_time", current_timestamp())
 
         except Exception as e:
             self.logger.error(f"Error in parse and transform: {e}")
@@ -113,6 +119,12 @@ class CFBProcessor:
                     "venue_city",
                     "venue_state",
                     "broadcasts",
+                    "home_team_name",
+                    "home_team_id",
+                    "home_team_abbreviation",
+                    "away_team_name",
+                    "away_team_id",
+                    "away_team_abbreviation",
                 )
                 .agg(
                     # Game Status
@@ -122,23 +134,32 @@ class CFBProcessor:
                     first("status_description").alias("status_description"),
                     first("period").alias("current_period"),
                     first("clock").alias("time_remaining"),
-                    # Team Names and Scores
-                    first("home_team_name").alias("home_team_name"),
-                    # first("home_team_abbrev").alias("home_team_abbrev"),
-                    first("away_team_name").alias("away_team_name"),
-                    # first("away_team_abbrev").alias("away_team_abbrev"),
+                    # Team Scores
                     last("home_team_score").alias("home_team_score"),
                     last("away_team_score").alias("away_team_score"),
-                    # Team Records
                     first("home_team_record").alias("home_team_record"),
                     first("away_team_record").alias("away_team_record"),
+                    first("home_team_linescores").alias("home_team_linescores"),
+                    first("away_team_linescores").alias("away_team_linescores"),
                     # Team Leaders
-                    first("home_passing_leader").alias("home_passing_leader"),
-                    first("home_rushing_leader").alias("home_rushing_leader"),
-                    first("home_receiving_leader").alias("home_receiving_leader"),
-                    first("away_passing_leader").alias("away_passing_leader"),
-                    first("away_rushing_leader").alias("away_rushing_leader"),
-                    first("away_receiving_leader").alias("away_receiving_leader"),
+                    first("passing_leader_value").alias("passing_leader_value"),
+                    first("rushing_leader_value").alias("rushing_leader_value"),
+                    first("receiving_leader_value").alias("receiving_leader_value"),
+                    first("passing_leader_name").alias("passing_leader_name"),
+                    first("rushing_leader_name").alias("rushing_leader_name"),
+                    first("receiving_leader_name").alias("receiving_leader_name"),
+                    first("passing_leader_team").alias("passing_leader_team"),
+                    first("rushing_leader_team").alias("rushing_leader_team"),
+                    first("receiving_leader_team").alias("receiving_leader_team"),
+                    first("passing_leader_display_value").alias(
+                        "passing_leader_display_value"
+                    ),
+                    first("rushing_leader_display_value").alias(
+                        "rushing_leader_display_value"
+                    ),
+                    first("receiving_leader_display_value").alias(
+                        "receiving_leader_display_value"
+                    ),
                     # Game Analytics
                     (last("home_team_score") - first("home_team_score")).alias(
                         "home_scoring_run"
@@ -156,7 +177,7 @@ class CFBProcessor:
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
                 .outputMode("update")
-                .trigger(processingTime="30 seconds")
+                # .trigger(processingTime="30 seconds")
                 .start()
             )
 

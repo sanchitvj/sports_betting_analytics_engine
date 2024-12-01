@@ -2,7 +2,7 @@ from typing import Dict, Any
 from datetime import datetime
 from betflow.kafka_orch.schemas import WeatherData
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import udf, col, lit, current_timestamp
+from pyspark.sql.functions import udf, col
 from pyspark.sql.types import StringType
 
 
@@ -33,9 +33,10 @@ class WeatherTransformer:
         try:
             return df.select(
                 # Base fields
-                lit("weather_id"),
-                lit("venue_id"),
-                lit("game_id"),
+                col("weather_id"),
+                col("venue_id"),
+                col("game_id"),
+                col("game_name"),
                 col("timestamp"),
                 # Temperature metrics
                 col("temperature"),
@@ -53,7 +54,8 @@ class WeatherTransformer:
                 col("weather_description"),
                 # Location data
                 col("location"),
-            ).withColumn("processing_time", current_timestamp())
+                col("state_code"),
+            )
         except Exception as e:
             raise ValueError(f"Failed to transform OpenWeather data: {e}")
 

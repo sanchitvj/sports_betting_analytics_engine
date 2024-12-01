@@ -3,7 +3,9 @@ from betflow.api_connectors.odds_conn import OddsAPIConnector
 from datetime import datetime
 
 
-def get_live_games(espn_connector: ESPNConnector, sport: str, league: str) -> list:
+async def get_live_games(
+    espn_connector: ESPNConnector, sport: str, league: str
+) -> list:
     """Get live or upcoming NBA games."""
     try:
         endpoint = f"{sport}/{league}/scoreboard"
@@ -29,6 +31,9 @@ def get_live_games(espn_connector: ESPNConnector, sport: str, league: str) -> li
                 "away_team": away_team.get("team", {}).get("name"),
                 "venue_id": venue.get("id"),
                 "venue_name": venue.get("fullName"),
+                "venue_indoor": venue.get("indoor"),
+                "venue_city": venue.get("address", {}).get("city"),
+                "venue_state": venue.get("address", {}).get("state"),
                 "league": league,
                 "status": game.get("status", {}).get("type", {}).get("state"),
                 "start_time": game.get("date"),

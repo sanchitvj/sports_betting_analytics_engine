@@ -17,8 +17,6 @@ from pyspark.sql.types import (
     LongType,
 )
 
-from betflow.spark_streaming.event_transformer import GameTransformer
-
 
 class NBAProcessor:
     """Process real-time game data streams with analytics."""
@@ -36,8 +34,6 @@ class NBAProcessor:
         self.checkpoint_location = checkpoint_location
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.transformers = GameTransformer()
-
     @staticmethod
     def _get_schema() -> StructType:
         """Get schema for NBA game data."""
@@ -54,7 +50,8 @@ class NBAProcessor:
                 StructField("clock", StringType(), True),
                 # Home team
                 StructField("home_team_name", StringType(), True),
-                StructField("home_team_abbrev", StringType(), True),
+                StructField("home_team_id", StringType(), True),
+                StructField("home_team_abbreviation", StringType(), True),
                 StructField("home_team_score", StringType(), True),
                 # Home team statistics
                 StructField("home_team_field_goals", StringType(), True),
@@ -62,12 +59,10 @@ class NBAProcessor:
                 StructField("home_team_free_throws", StringType(), True),
                 StructField("home_team_rebounds", StringType(), True),
                 StructField("home_team_assists", StringType(), True),
-                # StructField("home_team_steals", StringType(), True),
-                # StructField("home_team_blocks", StringType(), True),
-                # StructField("home_team_turnovers", StringType(), True),
                 # Away team
                 StructField("away_team_name", StringType(), True),
-                StructField("away_team_abbrev", StringType(), True),
+                StructField("away_team_id", StringType(), True),
+                StructField("away_team_abbreviation", StringType(), True),
                 StructField("away_team_score", StringType(), True),
                 # Away team statistics
                 StructField("away_team_field_goals", StringType(), True),
@@ -75,9 +70,6 @@ class NBAProcessor:
                 StructField("away_team_free_throws", StringType(), True),
                 StructField("away_team_rebounds", StringType(), True),
                 StructField("away_team_assists", StringType(), True),
-                # StructField("away_team_steals", StringType(), True),
-                # StructField("away_team_blocks", StringType(), True),
-                # StructField("away_team_turnovers", StringType(), True),
                 # Venue information
                 StructField("venue_name", StringType(), True),
                 StructField("venue_city", StringType(), True),
@@ -95,9 +87,9 @@ class NBAProcessor:
                 from_json(col("value").cast("string"), self._get_schema()).alias("data")
             ).select("data.*")
 
-            transformed_df = self.transformers.transform_espn_nba(parsed_df)
+            # parsed_df = self.transformers.transform_espn_nba(parsed_df)
 
-            return transformed_df.withColumn("processing_time", current_timestamp())
+            return parsed_df.withColumn("processing_time", current_timestamp())
         except Exception as e:
             self.logger.error(f"Error in parse and transform: {e}")
             raise
@@ -126,6 +118,12 @@ class NBAProcessor:
                     "venue_city",
                     "venue_state",
                     "broadcasts",
+                    "home_team_name",
+                    "home_team_id",
+                    "home_team_abbreviation",
+                    "away_team_name",
+                    "away_team_id",
+                    "away_team_abbreviation",
                 )
                 .agg(
                     # Game Status
@@ -136,22 +134,20 @@ class NBAProcessor:
                     first("period").alias("current_period"),
                     first("clock").alias("time_remaining"),
                     # Team Scores
-                    first(col("home_team_name")).alias("home_team_name"),
-                    first(col("away_team_name")).alias("away_team_name"),
                     last(col("home_team_score")).alias("home_team_score"),
                     last(col("away_team_score")).alias("away_team_score"),
                     # home Team Statistics
-                    first(col("home_fg_pct")).alias("home_fg_pct"),
-                    first(col("home_three_pt_pct")).alias("home_three_pt_pct"),
-                    first(col("home_ft_pct")).alias("home_ft_pct"),
-                    first(col("home_rebounds")).alias("home_rebounds"),
-                    first(col("home_assists")).alias("home_assists"),
+                    first(col("home_team_field_goals")).alias("home_fg_pct"),
+                    first(col("home_team_three_pointers")).alias("home_three_pt_pct"),
+                    first(col("home_team_free_throws")).alias("home_ft_pct"),
+                    first(col("home_team_rebounds")).alias("home_rebounds"),
+                    first(col("home_team_assists")).alias("home_assists"),
                     # away
-                    first(col("away_fg_pct")).alias("away_fg_pct"),
-                    first(col("away_three_pt_pct")).alias("away_three_pt_pct"),
-                    first(col("away_ft_pct")).alias("away_ft_pct"),
-                    first(col("away_rebounds")).alias("away_rebounds"),
-                    first(col("away_assists")).alias("away_assists"),
+                    first(col("away_team_field_goals")).alias("away_fg_pct"),
+                    first(col("away_team_three_pointers")).alias("away_three_pt_pct"),
+                    first(col("away_team_free_throws")).alias("away_ft_pct"),
+                    first(col("away_team_rebounds")).alias("away_rebounds"),
+                    first(col("away_team_assists")).alias("away_assists"),
                     # Game Analytics
                     (
                         last(col("home_team_score")) - first(col("home_team_score"))
@@ -169,7 +165,7 @@ class NBAProcessor:
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
                 .outputMode("update")
-                .trigger(processingTime="30 seconds")
+                # .trigger(processingTime="30 seconds")
                 .start()
             )
 

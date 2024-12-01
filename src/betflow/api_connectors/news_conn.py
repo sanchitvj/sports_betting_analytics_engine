@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, List
 import requests
 from kafka import KafkaProducer
 from betflow.api_connectors.conn_utils import RateLimiter
+import hashlib
 
 
 class NewsAPIConnector:
@@ -63,9 +64,14 @@ class NewsAPIConnector:
             raise Exception(f"Request failed: {e}")
 
     @staticmethod
-    def api_raw_news_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_news_id(url: str) -> str:
+        """Generate unique news ID from URL."""
+        return f"news_{hashlib.md5(url.encode()).hexdigest()}"
+
+    def api_raw_news_data(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform raw news data to our schema."""
         return {
+            "news_id": self._generate_news_id(raw_data["url"]),
             "status": raw_data.get("status"),
             "total_results": raw_data.get("totalResults"),
             "articles": [

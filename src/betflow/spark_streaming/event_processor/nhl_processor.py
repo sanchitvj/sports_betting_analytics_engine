@@ -20,8 +20,6 @@ from pyspark.sql.types import (
     BooleanType,
 )
 
-from betflow.spark_streaming.event_transformer import GameTransformer
-
 
 class NHLProcessor:
     """Process real-time game data streams with analytics."""
@@ -39,8 +37,6 @@ class NHLProcessor:
         self.checkpoint_location = checkpoint_location
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.transformers = GameTransformer()
-
     @staticmethod
     def _get_schema() -> StructType:
         """Get schema for NBA game data."""
@@ -57,7 +53,8 @@ class NHLProcessor:
                 StructField("clock", StringType(), True),
                 # Home team
                 StructField("home_team_name", StringType(), True),
-                StructField("home_team_abbrev", StringType(), True),
+                StructField("home_team_id", StringType(), True),
+                StructField("home_team_abbreviation", StringType(), True),
                 StructField("home_team_score", StringType(), True),
                 # Home team statistics
                 StructField("home_team_saves", StringType(), True),
@@ -65,15 +62,11 @@ class NHLProcessor:
                 StructField("home_team_goals", StringType(), True),
                 StructField("home_team_assists", StringType(), True),
                 StructField("home_team_points", StringType(), True),
-                # StructField("home_team_penalties", StringType(), True),
-                # StructField("home_team_penalty_minutes", StringType(), True),
-                # StructField("home_team_power_plays", StringType(), True),
-                # StructField("home_team_power_play_goals", StringType(), True),
-                # StructField("home_team_power_play_pct", StringType(), True),
                 StructField("home_team_record", StringType(), True),
                 # Away team
                 StructField("away_team_name", StringType(), True),
-                StructField("away_team_abbrev", StringType(), True),
+                StructField("away_team_id", StringType(), True),
+                StructField("away_team_abbreviation", StringType(), True),
                 StructField("away_team_score", StringType(), True),
                 # Away team statistics
                 StructField("away_team_saves", StringType(), True),
@@ -81,11 +74,6 @@ class NHLProcessor:
                 StructField("away_team_goals", StringType(), True),
                 StructField("away_team_assists", StringType(), True),
                 StructField("away_team_points", StringType(), True),
-                # StructField("away_team_penalties", StringType(), True),
-                # StructField("away_team_penalty_minutes", StringType(), True),
-                # StructField("away_team_power_plays", StringType(), True),
-                # StructField("away_team_power_play_goals", StringType(), True),
-                # StructField("away_team_power_play_pct", StringType(), True),
                 StructField("away_team_record", StringType(), True),
                 # Venue information
                 StructField("venue_name", StringType(), True),
@@ -105,9 +93,7 @@ class NHLProcessor:
                 from_json(col("value").cast("string"), self._get_schema()).alias("data")
             ).select("data.*")
 
-            transformed_df = self.transformers.transform_espn_nhl(parsed_df)
-
-            return transformed_df.withColumn("processing_time", current_timestamp())
+            return parsed_df.withColumn("processing_time", current_timestamp())
         except Exception as e:
             self.logger.error(f"Error in parse and transform: {e}")
             raise
@@ -135,6 +121,12 @@ class NHLProcessor:
                     "venue_city",
                     "venue_state",
                     "broadcasts",
+                    "home_team_name",
+                    "home_team_id",
+                    "home_team_abbreviation",
+                    "away_team_name",
+                    "away_team_id",
+                    "away_team_abbreviation",
                 )
                 .agg(
                     # Game Status
@@ -142,26 +134,26 @@ class NHLProcessor:
                     first("status_state").alias("game_state"),
                     first("period").alias("current_period"),
                     first("clock").alias("time_remaining"),
-                    # Team Names and Scores
-                    first("home_team_name").alias("home_team_name"),
-                    first("home_team_abbrev").alias("home_team_abbrev"),
-                    first("away_team_name").alias("away_team_name"),
-                    first("away_team_abbrev").alias("away_team_abbrev"),
+                    # Team Scores
                     last("home_team_score").alias("home_team_score"),
                     last("away_team_score").alias("away_team_score"),
                     # Home Team Statistics
-                    avg(col("home_saves").cast("double")).alias("home_saves"),
-                    avg(col("home_save_pct").cast("double")).alias("home_save_pct"),
-                    sum_(col("home_goals").cast("double")).alias("home_goals"),
-                    sum_(col("home_assists").cast("double")).alias("home_assists"),
-                    sum_(col("home_points").cast("double")).alias("home_points"),
+                    avg(col("home_team_saves").cast("double")).alias("home_saves"),
+                    avg(col("home_team_save_pct").cast("double")).alias(
+                        "home_save_pct"
+                    ),
+                    sum_(col("home_team_goals").cast("double")).alias("home_goals"),
+                    sum_(col("home_team_assists").cast("double")).alias("home_assists"),
+                    sum_(col("home_team_points").cast("double")).alias("home_points"),
                     first("home_team_record").alias("home_team_record"),
                     # Away Team Statistics
-                    avg(col("away_saves").cast("double")).alias("away_saves"),
-                    avg(col("away_save_pct").cast("double")).alias("away_save_pct"),
-                    sum_(col("away_goals").cast("double")).alias("away_goals"),
-                    sum_(col("away_assists").cast("double")).alias("away_assists"),
-                    sum_(col("away_points").cast("double")).alias("away_points"),
+                    avg(col("away_team_saves").cast("double")).alias("away_saves"),
+                    avg(col("away_team_save_pct").cast("double")).alias(
+                        "away_save_pct"
+                    ),
+                    sum_(col("away_team_goals").cast("double")).alias("away_goals"),
+                    sum_(col("away_team_assists").cast("double")).alias("away_assists"),
+                    sum_(col("away_team_points").cast("double")).alias("away_points"),
                     first("away_team_record").alias("away_team_record"),
                     # Game Analytics
                     (last("home_team_score") - first("home_team_score")).alias(
@@ -180,7 +172,7 @@ class NHLProcessor:
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", self.checkpoint_location)
                 .outputMode("update")
-                .trigger(processingTime="30 seconds")
+                # .trigger(processingTime="30 seconds")
                 .start()
             )
 

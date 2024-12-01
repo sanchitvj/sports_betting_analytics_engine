@@ -22,7 +22,6 @@ from pyspark.sql.types import (
     StructType,
     DoubleType,
     ArrayType,
-    LongType,
     IntegerType,
 )
 from betflow.spark_streaming.event_transformer import OddsTransformer
@@ -93,7 +92,7 @@ class OddsProcessor:
                 StructField("avg_away_odds", DoubleType(), True),
                 StructField("bookmakers_count", IntegerType(), True),
                 StructField("last_update", StringType(), True),
-                StructField("timestamp", LongType(), True),
+                StructField("timestamp", DoubleType(), True),
             ]
         )
 
@@ -209,7 +208,7 @@ class OddsProcessor:
                 .writeStream.format("kafka")
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("topic", self.output_topic)
-                .option("checkpointLocation", f"{self.checkpoint_location}/kafka")
+                .option("checkpointLocation", f"{self.checkpoint_location}")
                 # .option("cleanSource", "delete-on-success")
                 .outputMode("update")
                 # .trigger(processingTime="1 minute")
