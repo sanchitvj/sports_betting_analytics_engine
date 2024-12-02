@@ -16,7 +16,7 @@ from betflow.api_connectors.raw_game_transformers import (
 
 def fetch_games_by_date(sport_key, **context):
     """Fetch games for a specific date and sport"""
-    logical_date = context.get("data_interval_start")
+    logical_date = context.get("data_interval_start") - 1
     date_str = logical_date.strftime("%Y%m%d")
 
     try:
@@ -42,8 +42,8 @@ def fetch_games_by_date(sport_key, **context):
             elif sport_key == "cfb":
                 game_data = api_raw_cfb_data(game)
 
-            # if game_data["status_state"] in ["post", "STATUS_FINAL"]:
-            processed_games.append(game_data)
+            if game_data["status_state"] in ["post", "STATUS_FINAL"]:
+                processed_games.append(game_data)
 
         if processed_games:
             output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{logical_date.strftime('%Y-%m-%d')}"

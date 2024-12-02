@@ -48,3 +48,7 @@ class ProcessingConfig:
             "end_date": datetime(2024, 12, 1),
         },
     }
+
+    SCRIPT_PATHS = {
+        "nba_games": "src/betflow/historical/batch_processing/nba_glue_job.py"
+    }
