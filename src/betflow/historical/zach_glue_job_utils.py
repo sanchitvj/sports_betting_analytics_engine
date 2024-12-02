@@ -118,7 +118,7 @@ def create_glue_job(
     extra_jars = ",".join(extra_jars_list)
 
     python_modules_list = [
-        f"s3://{s3_bucket}/python-modules/websocket_client-1.8.0.tar.gz",
+        # f"s3://{s3_bucket}/python-modules/websocket_client-1.8.0.tar.gz",
         "git+https://github.com/sanchitvj/sports_betting_analytics_engine.git",
     ]
     python_modules = ",".join(python_modules_list)
