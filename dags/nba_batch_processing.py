@@ -2,9 +2,8 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import timedelta
 from betflow.historical.config import ProcessingConfig
-from betflow.historical.glue_job_utils import create_glue_job
+from betflow.historical.zach_glue_job_utils import create_glue_job
 from dotenv import load_dotenv
-import os
 from airflow.models import Variable
 
 
@@ -189,13 +188,13 @@ with DAG(
         python_callable=create_glue_job,
         op_kwargs={
             "job_name": "backfill_pyspark_example_job",
-            "script_path": ProcessingConfig.SCRIPT_PATHS["nba_games"],
-            "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
-            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "script_location": ProcessingConfig.SCRIPT_PATHS["nba_games"],
+            # "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+            # "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
             "s3_bucket": Variable.get("AWS_S3_BUCKET_TABULAR"),
             "catalog_name": Variable.get("CATALOG_NAME"),
             "aws_region": Variable.get("AWS_GLUE_REGION"),
             "description": "Testing batch processing glue job sports analytics",
-            # "arguments": {"--ds": "{{ ds }}", "--output_table": default_output_table},
+            "arguments": {"--ds": "{{ ds }}"},
         },
     )
