@@ -1,16 +1,20 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from datetime import timedelta
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import explode
 from betflow.historical.config import ProcessingConfig
+import boto3
+from pathlib import Path
+from dotenv import load_dotenv
+import os
+from airflow.models import Variable
+
+load_dotenv()
 
 default_args = {
     "owner": ProcessingConfig.OWNER,
     "depends_on_past": True,
-    "start_date": ProcessingConfig.SPORT_CONFIGS["nba"][
-        "start_date"
-    ],  # datetime(2024, 10, 22),
+    "start_date": ProcessingConfig.SPORT_CONFIGS["nba"]["start_date"],
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
@@ -18,155 +22,76 @@ default_args = {
 }
 
 
-def process_games_data(**context):
-    """Process games data from raw S3 to Iceberg tables"""
-    date_str = context["ds"]
-
-    # Initialize Spark with AWS Glue catalog support
-    spark = (
-        SparkSession.builder.appName("games_processing")
-        .config(
-            "spark.sql.extensions",
-            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-        )
-        .config(
-            "spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog"
-        )
-        .config(
-            "spark.sql.catalog.glue_catalog.catalog-impl",
-            "org.apache.iceberg.aws.glue.GlueCatalog",
-        )
-        .config(
-            "spark.sql.catalog.glue_catalog.warehouse",
-            f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
-        )
-        .config(
-            "spark.sql.catalog.glue_catalog.io-impl",
-            "org.apache.iceberg.aws.s3.S3FileIO",
-        )
-        .getOrCreate()
-    )
-
-    # Create database if not exists
-    spark.sql(
-        f"CREATE DATABASE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}"
-    )
-
-    # Create table with proper schema
-    spark.sql(f"""
-        CREATE TABLE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']} (
-            game_id STRING,
-            start_time TIMESTAMP,
-            status_state STRING,
-            status_detail STRING,
-            status_description STRING,
-            period INT,
-            clock STRING,
-            home_team STRUCT<
-                id: STRING,
-                name: STRING,
-                abbreviation: STRING,
-                score: STRING,
-                field_goals: STRING,
-                three_pointers: STRING,
-                free_throws: STRING,
-                rebounds: STRING,
-                assists: STRING
-            >,
-            away_team STRUCT<
-                id: STRING,
-                name: STRING,
-                abbreviation: STRING,
-                score: STRING,
-                field_goals: STRING,
-                three_pointers: STRING,
-                free_throws: STRING,
-                rebounds: STRING,
-                assists: STRING
-            >,
-            venue STRUCT<
-                name: STRING,
-                city: STRING,
-                state: STRING
-            >,
-            broadcasts ARRAY<STRING>,
-            ingestion_timestamp TIMESTAMP
-        )
-        USING iceberg
-        PARTITIONED BY (year(start_time), month(start_time), day(start_time))
-    """)
-
-    # Read raw games data
-    raw_path = f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['game_prefix']}/nba/{date_str}/games.json"
-    df = spark.read.json(raw_path)
-
-    # Handle multiple games in _1 array
-    games_df = df.select(explode("_1").alias("game"))
-
-    # Create temp view for transformation
-    games_df.createOrReplaceTempView("raw_games")
-
-    # Transform using Spark SQL
-    processed_df = spark.sql("""
-        SELECT 
-            game_id,
-            CAST(start_time as timestamp) as start_time,
-            status_state,
-            status_detail,
-            status_description,
-            CAST(period as int) as period,
-            clock,
-            STRUCT(
-                home_team_id as id,
-                home_team_name as name,
-                home_team_abbreviation as abbreviation,
-                home_team_score as score,
-                home_team_field_goals as field_goals,
-                home_team_three_pointers as three_pointers,
-                home_team_free_throws as free_throws,
-                home_team_rebounds as rebounds,
-                home_team_assists as assists
-            ) as home_team,
-            STRUCT(
-                away_team_id as id,
-                away_team_name as name,
-                away_team_abbreviation as abbreviation,
-                away_team_score as score,
-                away_team_field_goals as field_goals,
-                away_team_three_pointers as three_pointers,
-                away_team_free_throws as free_throws,
-                away_team_rebounds as rebounds,
-                away_team_assists as assists
-            ) as away_team,
-            STRUCT(
-                venue_name as name,
-                venue_city as city,
-                venue_state as state
-            ) as venue,
-            broadcasts,
-            from_unixtime(CAST(timestamp as long)) as ingestion_timestamp
-        FROM raw_games
-        WHERE status_state = 'post'
-    """)
-
-    # Write to Iceberg table with merge strategy
-    processed_df.writeTo(
-        f"glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']}"
-    ).option("merge-schema", "true").append()
-
-    spark.stop()
-    return "Games processing completed"
+def upload_glue_script():
+    """Upload the Glue script to S3 before job execution"""
+    s3_client = boto3.client("s3")
+    # script_path = os.path.join(
+    #     os.path.dirname(__file__), "glue_scripts/nba_games_processing.py"
+    # )
+    curr_dir = Path().resolve()
+    print("curr directory: ", curr_dir)
+    script_path = "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nba_glue_job.py"
+    print(script_path)
+    script_location = f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/glue_scripts/nba_glue_job.py"
+    try:
+        with open(script_path, "rb") as file:
+            s3_client.put_object(
+                Bucket=ProcessingConfig.S3_PATHS["processing_bucket"],
+                Key="glue_scripts/nba_glue_job.py",
+                Body=file,
+            )
+        return script_location
+    except Exception as e:
+        raise Exception(f"Failed to upload Glue script: {str(e)}")
 
 
 with DAG(
     "nba_batch_processing",
     default_args=default_args,
-    description="Process NBA games data into Iceberg tables and glue catalog",
+    description="Process NBA games data into Iceberg tables",
     schedule_interval="@daily",
     catchup=True,
 ) as dag:
-    process_games = PythonOperator(
-        task_id="process_games",
-        python_callable=process_games_data,
+    upload_script = PythonOperator(
+        task_id="upload_script",
+        python_callable=upload_glue_script,
         provide_context=True,
     )
+
+    process_games = GlueJobOperator(
+        task_id="process_games",
+        job_name="nba_games_processing",
+        script_location="{{ task_instance.xcom_pull(task_ids='upload_script') }}",
+        s3_bucket=Variable.get("LOGS_BUCKET"),
+        iam_role_name=str(os.getenv("GLUE_ROLE")),
+        create_job_kwargs={
+            "GlueVersion": "4.0",
+            "NumberOfWorkers": 2,
+            "WorkerType": "G.1X",
+            "DefaultArguments": {
+                "--python-version": "3.11",
+                "--additional-python-modules": f"git+https://{os.getenv('GITHUB_TOKEN')}@github.com/sanchitvj/sports_betting_analytics_engine.git",
+                # "--extra-jars": f's3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
+                "--enable-continuous-cloudwatch-log": "true",
+                "--enable-glue-datacatalog": "true",
+                "--enable-metrics": "true",
+                "--conf": f'spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions --conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog --conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog --conf spark.sql.catalog.glue_catalog.warehouse=s3://{ProcessingConfig.S3_PATHS["processing_bucket"]}/processed --conf spark.jars=s3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
+                "--datalake-formats": "iceberg",
+            },
+            "MaxRetries": 0,  # Set maximum number of retries
+            "Timeout": 300,  # Set timeout in minutes (e.g., 48 hours)
+        },
+        script_args={
+            "JOB_NAME": "nba_games_processing",
+            "--date": "{{ ds }}",
+            "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/nba/",
+            "--database_name": ProcessingConfig.GLUE_DB["db_name"],
+            "--table_name": ProcessingConfig.GLUE_DB["nba_games_table"],
+            "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
+        },
+        region_name="us-east-1",
+        verbose=True,
+        update_config=True,
+    )
+
+    upload_script >> process_games

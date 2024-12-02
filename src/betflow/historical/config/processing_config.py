@@ -17,6 +17,7 @@ class ProcessingConfig:
         "processing_bucket": "cur-sp-data-aeb",
         "games_prefix": "historical/games",
         "odds_prefix": "historical/odds",
+        # "misc_bucket:" ""
     }
 
     GLUE_DB = {
@@ -32,7 +33,7 @@ class ProcessingConfig:
 
     SPORT_CONFIGS = {
         "nba": {
-            "start_date": datetime(2024, 10, 22),  # NBA season start
+            "start_date": datetime(2024, 11, 30),  # NBA season start
             "end_date": datetime(2024, 12, 1),
         },
         "nfl": {
@@ -47,4 +48,8 @@ class ProcessingConfig:
             "start_date": datetime(2024, 8, 26),  # CFB season start
             "end_date": datetime(2024, 12, 1),
         },
+    }
+
+    SCRIPT_PATHS = {
+        "nba_games": "src/betflow/historical/batch_processing/nba_glue_job.py"
     }
