@@ -4,7 +4,6 @@ import aiohttp
 from datetime import datetime, timedelta
 from collections import deque
 import os
-# from betflow.api_connectors.historical import NBAHistoricalConnector
 
 
 class HistoricalOddsConnector:
@@ -28,7 +27,9 @@ class HistoricalOddsConnector:
                 await asyncio.sleep(60 - elapsed)
         self.request_timestamps.append(now)
 
-    async def fetch_odds_by_date(self, session, sport: str, date: str) -> Dict:
+    async def fetch_odds_by_date(
+        self, session: aiohttp.ClientSession, sport: str, date: str
+    ) -> Dict:
         """Fetch all odds for a specific date"""
         await self._rate_limit()
         url = f"{self.base_url}/{self.sport_keys[sport]}/odds"
@@ -65,7 +66,9 @@ class HistoricalOddsConnector:
 
         return timestamps
 
-    async def fetch_game_odds_history(self, session, sport: str, game: Dict) -> Dict:
+    async def fetch_game_odds_history(
+        self, session: aiohttp.ClientSession, sport: str, game: Dict
+    ) -> Dict:
         """Fetch odds history for a single game"""
         game_duration = 180 if sport not in ["nfl", "ncaa"] else 240
         timestamps = self.generate_game_timestamps(game["commence_time"], game_duration)
@@ -86,7 +89,7 @@ class HistoricalOddsConnector:
         return {"game_id": game["id"], "odds_history": game_odds_history}
 
     async def fetch_odds_snapshot(
-        self, session, sport: str, game_id: str, timestamp: str
+        self, session: aiohttp.ClientSession, sport: str, game_id: str, timestamp: str
     ) -> Dict:
         """Fetch odds snapshot for a specific game and time"""
         await self._rate_limit()
@@ -101,7 +104,9 @@ class HistoricalOddsConnector:
         async with session.get(url, params=params) as response:
             return await response.json()
 
-    async def process_game_odds(self, session, sport: str, game: Dict) -> List[Dict]:
+    async def process_game_odds(
+        self, session: aiohttp.ClientSession, sport: str, game: Dict
+    ) -> List[Dict]:
         """Process odds for a single game"""
         game_id = game["id"]
         commence_time = game["commence_time"]

@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import requests
 from kafka import KafkaProducer
 
@@ -25,33 +25,36 @@ class ESPNConnector:
         session (requests.Session): Requests session for connection pooling.
     """
 
-    def __init__(self, kafka_bootstrap_servers: str) -> None:
+    def __init__(
+        self, kafka_bootstrap_servers: Optional[str] = None, historical: bool = False
+    ) -> None:
         self.base_url = "https://site.api.espn.com/apis/site/v2/sports"
         # Add retry logic for Kafka connection
         max_retries = 3
         retry_count = 0
 
-        while retry_count < max_retries:
-            try:
-                self.producer = KafkaProducer(
-                    bootstrap_servers=kafka_bootstrap_servers,
-                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-                    compression_type="gzip",
-                    retries=3,
-                    acks="all",
-                    api_version=(2, 5, 0),  # Add explicit API version
-                    security_protocol="PLAINTEXT",  # Specify security protocol
-                    request_timeout_ms=30000,  # Increase timeout
-                    connections_max_idle_ms=300000,  # Increase idle time
-                )
-                break
-            except NoBrokersAvailable as e:
-                retry_count += 1
-                if retry_count == max_retries:
-                    raise Exception(
-                        f"Failed to connect to Kafka after {max_retries} attempts: {str(e)}"
+        if not historical:
+            while retry_count < max_retries:
+                try:
+                    self.producer = KafkaProducer(
+                        bootstrap_servers=kafka_bootstrap_servers,
+                        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                        compression_type="gzip",
+                        retries=3,
+                        acks="all",
+                        api_version=(2, 5, 0),  # Add explicit API version
+                        security_protocol="PLAINTEXT",  # Specify security protocol
+                        request_timeout_ms=30000,  # Increase timeout
+                        connections_max_idle_ms=300000,  # Increase idle time
                     )
-                time.sleep(3)  # Wait before retrying
+                    break
+                except NoBrokersAvailable as e:
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        raise Exception(
+                            f"Failed to connect to Kafka after {max_retries} attempts: {str(e)}"
+                        )
+                    time.sleep(3)  # Wait before retrying
 
         self.rate_limiter = RateLimiter()
         self.session = requests.Session()
@@ -60,7 +63,7 @@ class ESPNConnector:
         self, endpoint: str, params: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """Makes a rate-limited request to the ESPN API."""
-        
+
         self.rate_limiter.wait_if_needed()
 
         url = f"{self.base_url}/{endpoint}"
@@ -105,6 +108,41 @@ class ESPNConnector:
             raise Exception("Request timed out")
         else:
             raise Exception(f"An error occurred: {error}")
+
+    async def fetch_historical_games_by_date(
+        self, sport: str, league: str, date_str: str
+    ) -> List[Dict]:
+        """Fetch historical games for a specific date"""
+        endpoint = f"{sport}/{league}/scoreboard"
+        params = {
+            "dates": date_str.replace("-", "")  # Format: YYYYMMDD
+        }
+
+        try:
+            url = f"{self.base_url}/{endpoint}"
+            async with self.session.get(url, params=params) as response:
+                response.raise_for_status()
+                data = await response.json()
+
+                # Process each game using existing transformers
+                processed_games = []
+                for game in data.get("events", []):
+                    if league == "nba":
+                        processed_game = self.api_raw_nba_data(game)
+                    elif league == "nfl":
+                        processed_game = self.api_raw_nfl_data(game)
+                    elif league == "nhl":
+                        processed_game = self.api_raw_nhl_data(game)
+                    elif league == "college-football":
+                        processed_game = self.api_raw_cfb_data(game)
+
+                    if processed_game:
+                        processed_games.append(processed_game)
+
+                return processed_games
+
+        except Exception as e:
+            self._handle_request_error(e)
 
     @staticmethod
     def api_raw_cfb_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
