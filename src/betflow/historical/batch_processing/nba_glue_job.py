@@ -7,6 +7,8 @@ from awsglue.context import GlueContext
 from awsglue.job import Job
 from pyspark.sql.functions import explode
 from betflow.historical.config import ProcessingConfig
+from pyspark.sql import SparkSession
+
 
 args = getResolvedOptions(
     sys.argv,
@@ -22,26 +24,24 @@ args = getResolvedOptions(
 
 sc = SparkContext()
 glueContext = GlueContext(sc)
-spark = glueContext.spark_session
+
+# spark = glueContext.spark_session
+spark = (
+    SparkSession.builder.config(
+        "spark.sql.extensions",
+        "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+    )
+    .config("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
+    .config(
+        "spark.sql.catalog.glue_catalog.catalog-impl",
+        "org.apache.iceberg.aws.glue.GlueCatalog",
+    )
+    .config("spark.sql.catalog.glue_catalog.warehouse", args["warehouse_path"])
+    .getOrCreate()
+)
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-# Configure Iceberg catalog
-spark.conf.set(
-    "spark.sql.extensions",
-    "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-)
-spark.conf.set(
-    "spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog"
-)
-spark.conf.set(
-    "spark.sql.catalog.glue_catalog.catalog-impl",
-    "org.apache.iceberg.aws.glue.GlueCatalog",
-)
-spark.conf.set("spark.sql.catalog.glue_catalog.warehouse", args["warehouse_path"])
-spark.conf.set(
-    "spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"
-)
 
 # Create database if not exists
 spark.sql(
