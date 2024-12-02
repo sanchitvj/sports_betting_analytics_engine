@@ -16,7 +16,7 @@ load_dotenv()
 
 
 default_args = {
-    "owner": "airflow",
+    "owner": "PENGUIN_DB",
     "depends_on_past": True,
     "start_date": datetime(2024, 11, 29),  # NBA season 2025 start date is 2024-10-22
     "end_date": datetime(2024, 12, 1),  # Today's date
