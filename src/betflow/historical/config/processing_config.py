@@ -32,7 +32,7 @@ class ProcessingConfig:
 
     SPORT_CONFIGS = {
         "nba": {
-            "start_date": datetime(2024, 10, 22),  # NBA season start
+            "start_date": datetime(2024, 11, 30),  # NBA season start
             "end_date": datetime(2024, 12, 1),
         },
         "nfl": {

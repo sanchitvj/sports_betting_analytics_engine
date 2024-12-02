@@ -108,9 +108,9 @@ def create_glue_job(
 
     # Adding compatibility with Kafka and Iceberg here
     extra_jars_list = [
-        f"s3://{s3_bucket}/jars/iceberg-spark-runtime-3.5_2.13-1.7.0.jar",
-        f"s3://{s3_bucket}/jars/iceberg-aws-bundle-1.7.0.jar",
-        f"s3://{s3_bucket}/jars/spark-sql-kafka-0-10_2.13-3.5.2.jar",
+        f"s3://{s3_bucket}/jars/iceberg-spark-runtime-3.3_2.12-1.5.2.jar",
+        f"s3://{s3_bucket}/jars/iceberg-aws-bundle-1.5.2.jar",
+        f"s3://{s3_bucket}/jars/spark-sql-kafka-0-10_2.12-3.5.1.jar",
         f"s3://{s3_bucket}/jars/hadoop-aws-3.2.0.jar",
     ]
 

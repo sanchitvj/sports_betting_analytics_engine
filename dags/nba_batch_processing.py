@@ -5,7 +5,7 @@ from betflow.historical.config import ProcessingConfig
 from betflow.historical.zach_glue_job_utils import create_glue_job
 from dotenv import load_dotenv
 from airflow.models import Variable
-
+import os
 
 load_dotenv()
 
@@ -188,9 +188,9 @@ with DAG(
         python_callable=create_glue_job,
         op_kwargs={
             "job_name": "backfill_pyspark_example_job",
-            "script_location": ProcessingConfig.SCRIPT_PATHS["nba_games"],
-            # "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
-            # "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "script_path": ProcessingConfig.SCRIPT_PATHS["nba_games"],
+            "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
             "s3_bucket": Variable.get("AWS_S3_BUCKET_TABULAR"),
             "catalog_name": Variable.get("CATALOG_NAME"),
             "aws_region": Variable.get("AWS_GLUE_REGION"),
