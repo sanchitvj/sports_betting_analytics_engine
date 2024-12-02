@@ -5,7 +5,7 @@ import requests
 from kafka import KafkaProducer
 
 from betflow.api_connectors.conn_utils import RateLimiter
-from betflow.api_connectors.raw_game_transformers import (
+from betflow.spark_streaming.raw_game_transformers import (
     api_raw_nba_data,
     api_raw_nfl_data,
     api_raw_nhl_data,
