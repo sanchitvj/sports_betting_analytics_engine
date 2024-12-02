@@ -17,6 +17,7 @@ class ProcessingConfig:
         "processing_bucket": "cur-sp-data-aeb",
         "games_prefix": "historical/games",
         "odds_prefix": "historical/odds",
+        # "misc_bucket:" ""
     }
 
     GLUE_DB = {

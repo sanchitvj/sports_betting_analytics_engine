@@ -33,7 +33,7 @@ def check_job_status(glue_client, job_name, job_run_id):
 
 def create_glue_job(
     job_name,
-    script_location,
+    script_path,
     aws_region,
     raw_bucket,
     processed_bucket,
@@ -53,7 +53,7 @@ def create_glue_job(
 
     # Add required JARs for Iceberg
     extra_jars_list = [
-        "iceberg-spark-runtime-3.4_2.12:1.3.1",
+        "iceberg-spark-runtime-3.5_2.12:1.3.1",
         "iceberg-aws-bundle:1.3.1",
         "hadoop-aws:3.3.4",
     ]
@@ -68,7 +68,7 @@ def create_glue_job(
         "ExecutionProperty": {"MaxConcurrentRuns": 3},
         "Command": {
             "Name": "glueetl",
-            "ScriptLocation": script_location,
+            "ScriptLocation": script_path,
             "PythonVersion": "3",
         },
         "DefaultArguments": {
@@ -119,3 +119,47 @@ def create_glue_job(
         time.sleep(30)
 
     return job_name
+
+
+def create_nba_processing_job(
+    job_name: str,
+    script_location: str,
+    aws_region: str,
+    raw_bucket: str,
+    processed_bucket: str,
+):
+    spark_configurations = [
+        "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        "spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog",
+        "spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog",
+        f"spark.sql.catalog.glue_catalog.warehouse=s3://{processed_bucket}/processed",
+        "spark.sql.catalog.glue_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO",
+    ]
+
+    job_args = {
+        "Description": "Process NBA games data into Iceberg format",
+        "Role": "AWSGlueServiceRole-NBA-Processing",
+        "Command": {
+            "Name": "glueetl",
+            "ScriptLocation": script_location,
+            "PythonVersion": "3",
+        },
+        "DefaultArguments": {
+            "--conf": " --conf ".join(spark_configurations),
+            "--additional-python-modules": "git+https://github.com/yourusername/betflow.git",
+            "--enable-continuous-cloudwatch-log": "true",
+            "--enable-metrics": "true",
+        },
+        "GlueVersion": "4.0",
+        "WorkerType": "G.1X",
+        "NumberOfWorkers": 2,
+    }
+
+    glue_client = boto3.client("glue", region_name=aws_region)
+
+    try:
+        glue_client.get_job(JobName=job_name)
+        glue_client.update_job(JobName=job_name, JobUpdate=job_args)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "EntityNotFoundException":
+            glue_client.create_job(Name=job_name, **job_args)
