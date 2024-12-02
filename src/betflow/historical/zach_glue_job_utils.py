@@ -78,6 +78,7 @@ def create_glue_job(
     description="Transform CSV data to Parquet format",
     kafka_credentials=None,
     polygon_credentials=None,
+    max_concurrent_runs=5,
     **kwargs,
 ):
     script_path = upload_to_s3(script_path, s3_bucket, "jobscripts/" + script_path)
@@ -124,7 +125,7 @@ def create_glue_job(
     job_args = {
         "Description": description,
         "Role": "AWSGlueServiceRole",
-        "ExecutionProperty": {"MaxConcurrentRuns": 3},
+        "ExecutionProperty": {"MaxConcurrentRuns": int(max_concurrent_runs)},
         "Command": {
             "Name": "glueetl",
             "ScriptLocation": script_path,

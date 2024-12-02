@@ -196,5 +196,6 @@ with DAG(
             "aws_region": Variable.get("AWS_GLUE_REGION"),
             "description": "Testing batch processing glue job sports analytics",
             "arguments": {"--ds": "{{ ds }}"},
+            "max_concurrent_runs": "25",
         },
     )
