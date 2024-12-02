@@ -8,8 +8,14 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 RUN git clone https://github.com/sanchitvj/sports_betting_analytics_engine.git
 WORKDIR /app/sports_betting_analytics_engine
+RUN git checkout dev
 RUN pip install .
 
+RUN pip install --upgrade awscli
+
+#RUN curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip" \
+#    unzip awscli-bundle.zip \
+#    sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
 #USER root
 #COPY ./dbt_project ./dbt_project
 #COPY --chown=astro:0 . .

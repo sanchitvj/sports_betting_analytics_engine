@@ -1,117 +1,121 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.amazon.aws.transfers.local_to_s3 import (
-    LocalFilesystemToS3Operator,
-)
-import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
 import os
-import aiohttp
-from betflow.historical.hist_api_connectors import NBAHistoricalConnector
+import boto3
+from betflow.historical.hist_api_connectors import ESPNBatchConnector
 from betflow.historical.config import HistoricalConfig
-from dotenv import load_dotenv
-
-load_dotenv()
-
-default_args = {
-    "owner": "airflow",
-    "depends_on_past": True,  # Enable sequential processing
-    "start_date": datetime(2024, 11, 29),  # NBA season 2025 start date
-    "email_on_failure": False,
-    "retries": 0,
-    "retry_delay": timedelta(minutes=5),
-    # "dagrun_timeout": timedelta(minutes=60),  # Add timeout
-    "tags": ["nba", "historical", "games"],  # Add tags
-}
+from betflow.api_connectors.raw_game_transformers import (
+    api_raw_nba_data,
+    api_raw_nfl_data,
+    api_raw_nhl_data,
+    api_raw_cfb_data,
+)
 
 
-def fetch_games_by_date(**context):
-    async def _fetch():
-        """Fetch games and their statistics for a specific date"""
-        logical_date = context.get("data_interval_start", context.get("logical_date"))
-        if not logical_date:
-            raise ValueError("No execution date found in context")
-        date_str = logical_date.strftime("%Y-%m-%d")
+def fetch_games_by_date(sport_key, **context):
+    """Fetch games for a specific date and sport"""
+    logical_date = context.get("data_interval_start")
+    date_str = logical_date.strftime("%Y%m%d")
 
-        async with aiohttp.ClientSession() as session:
-            games_connector = NBAHistoricalConnector(
-                api_key=os.getenv("API_SPORTS_IO_KEY")
+    try:
+        espn_connector = ESPNBatchConnector()
+        endpoint = HistoricalConfig.SPORT_CONFIGS[sport_key]["endpoint"]
+        params = {"dates": date_str}
+
+        raw_data = espn_connector.make_request(endpoint, params)
+
+        # Check if events exist
+        if not raw_data.get("events"):
+            print(f"No games found for date {date_str}")
+            return 0  # Return success but zero games
+
+        processed_games = []
+        for game in raw_data.get("events", []):
+            if sport_key == "nba":
+                game_data = api_raw_nba_data(game)
+            elif sport_key == "nfl":
+                game_data = api_raw_nfl_data(game)
+            elif sport_key == "nhl":
+                game_data = api_raw_nhl_data(game)
+            elif sport_key == "cfb":
+                game_data = api_raw_cfb_data(game)
+
+            # if game_data["status_state"] in ["post", "STATUS_FINAL"]:
+            processed_games.append(game_data)
+
+        if processed_games:
+            output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{logical_date.strftime('%Y-%m-%d')}"
+            os.makedirs(output_dir, exist_ok=True)
+
+            with open(f"{output_dir}/games.json", "w") as f:
+                json.dump(processed_games, f)
+
+            context["task_instance"].xcom_push(
+                key=f"{sport_key}_games_data", value=processed_games
             )
+            return len(processed_games)
+        return 0
 
-            # First fetch games for the date
-            conn_response = await games_connector.fetch_games_by_date(
-                session, "standard", 2024, date_str
-            )
-            games_data = conn_response["response"]
-            complete_games_data = []
-            for game in games_data:
-                game_id = str(game["id"])
-                game_stats = await games_connector.fetch_game_statistics(
-                    session, game_id
-                )
-
-                # Process and combine game and statistics data
-                processed_game = games_connector.process_game_data(game, game_stats)
-                complete_games_data.append(processed_game)
-
-            if complete_games_data:
-                context["task_instance"].xcom_push(
-                    key="games_data", value=complete_games_data
-                )
-                context["task_instance"].xcom_push(key="date", value=date_str)
-
-            return len(complete_games_data)
-
-    # Run async code in sync context
-    return asyncio.run(_fetch())
+    except Exception as e:
+        print(f"Error fetching {sport_key} games for date {date_str}: {str(e)}")
+        raise
 
 
-def process_games_data(**context):
-    """Store processed games data to S3"""
-    games_data = context["task_instance"].xcom_pull(key="games_data")
-    date_str = context["task_instance"].xcom_pull(key="date")
-
-    if not games_data:
-        print("No games data found for processing")
-        return None
-
-    # Use config for output paths
-    output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{date_str}"
-    os.makedirs(output_dir, exist_ok=True)
-
-    with open(f"{output_dir}/games.json", "w") as f:
-        json.dump(games_data, f)
-
-    return output_dir
-
-
-with DAG(
-    "historical_games_ingestion",
-    default_args=default_args,
-    description="Ingest historical games data with backfill support",
-    schedule_interval="@daily",
-    catchup=True,  # Enable backfilling
-) as dag:
-    fetch_daily_games = PythonOperator(
-        task_id="fetch_daily_games",
-        python_callable=fetch_games_by_date,
-        provide_context=True,
+def upload_to_s3_func(sport_key, **context):
+    """Upload processed games data to S3"""
+    date_str = context["ds"]
+    local_path = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{date_str}/games.json"
+    s3_path = (
+        f"{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{date_str}/games.json"
     )
 
-    process_daily_games = PythonOperator(
-        task_id="process_daily_games",
-        python_callable=process_games_data,
-        provide_context=True,
-    )
+    if not os.path.exists(local_path):
+        print(f"No data file found for {sport_key} on {date_str}, skipping upload")
+        return 0
 
-    upload_to_s3 = LocalFilesystemToS3Operator(
-        task_id="upload_to_s3",
-        filename=f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{{{{ ds }}}}/games.json",
-        dest_key=f"{HistoricalConfig.S3_PATHS['games_prefix']}/nba/{{{{ ds }}}}/games.json",
-        dest_bucket=HistoricalConfig.S3_PATHS["raw_bucket"],
-        # aws_conn_id=None,  # "aws_default",
-        replace=True,
-    )
+    s3_client = boto3.client("s3")
+    try:
+        s3_client.upload_file(
+            local_path, HistoricalConfig.S3_PATHS["raw_bucket"], s3_path
+        )
+        return 1
+    except Exception as e:
+        print(f"Error uploading {sport_key} data to S3: {str(e)}")
+        raise
 
-    fetch_daily_games >> process_daily_games >> upload_to_s3
+
+# Create DAGs for each sport
+for sport_key, config in HistoricalConfig.SPORT_CONFIGS.items():
+    with DAG(
+        f"historical_{sport_key}_games_ingestion",
+        default_args={
+            "owner": "PENGUIN_DB",
+            "depends_on_past": True,
+            "start_date": config["start_date"],
+            # "end_date": config["end_date"],
+            "email_on_failure": False,
+            "retries": 2,
+            "retry_delay": timedelta(minutes=5),
+            "tags": [sport_key, "historical", "games"],
+        },
+        description=f"Ingest historical {sport_key.upper()} games data with backfill support",
+        schedule_interval="@daily",
+        catchup=True,
+    ) as dag:
+        fetch_daily_games = PythonOperator(
+            task_id=f"fetch_daily_{sport_key}_games",
+            python_callable=fetch_games_by_date,
+            op_kwargs={"sport_key": sport_key},
+            provide_context=True,
+        )
+
+        upload_to_s3 = PythonOperator(
+            task_id=f"upload_{sport_key}_to_s3",
+            python_callable=upload_to_s3_func,
+            op_kwargs={"sport_key": sport_key},
+            provide_context=True,
+        )
+
+        fetch_daily_games >> upload_to_s3

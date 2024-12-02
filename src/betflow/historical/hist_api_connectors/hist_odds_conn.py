@@ -4,7 +4,6 @@ import aiohttp
 from datetime import datetime, timedelta
 from collections import deque
 import os
-# from betflow.api_connectors.historical import NBAHistoricalConnector
 
 
 class HistoricalOddsConnector:
@@ -22,14 +21,38 @@ class HistoricalOddsConnector:
     async def _rate_limit(self):
         """Ensure no more than 300 requests per minute"""
         now = datetime.now()
-        if len(self.request_timestamps) == 300:
+        if len(self.request_timestamps) == 100:
             elapsed = (now - self.request_timestamps[0]).total_seconds()
             if elapsed < 60:
                 await asyncio.sleep(60 - elapsed)
         self.request_timestamps.append(now)
 
+    async def fetch_odds_by_date(
+        self, session: aiohttp.ClientSession, sport: str, date: str
+    ) -> Dict:
+        """Fetch all odds for a specific date"""
+        await self._rate_limit()
+        url = f"{self.base_url}/{self.sport_keys[sport]}/odds"
+
+        # Ensure proper ISO8601 format
+        formatted_date = f"{date}T00:00:00Z"
+
+        params = {
+            "apiKey": self.api_key,
+            "regions": "us",
+            "markets": "h2h",
+            "oddsFormat": "american",
+            "date": formatted_date,
+        }
+
+        async with session.get(url, params=params) as response:
+            data = await response.json()
+            if "error_code" in data:
+                raise Exception(f"API Error: {data['message']}")
+            return data
+
     def generate_game_timestamps(
-        self, game_start: str, game_duration: int = 180
+        self, game_start: str, game_duration: int = 180, interval: int = 30
     ) -> List[str]:
         """Generate 30-min interval timestamps during game"""
         timestamps = []
@@ -39,12 +62,34 @@ class HistoricalOddsConnector:
         current = start_time
         while current <= end_time:
             timestamps.append(current.strftime("%Y-%m-%dT%H:%M:%SZ"))
-            current += timedelta(minutes=30)
+            current += timedelta(minutes=interval)
 
         return timestamps
 
+    async def fetch_game_odds_history(
+        self, session: aiohttp.ClientSession, sport: str, game: Dict
+    ) -> Dict:
+        """Fetch odds history for a single game"""
+        game_duration = 180 if sport not in ["nfl", "ncaa"] else 240
+        timestamps = self.generate_game_timestamps(game["commence_time"], game_duration)
+
+        game_odds_history = []
+        for timestamp in timestamps:
+            odds_data = await self.fetch_odds_by_date(session, sport, timestamp)
+            if odds_data:
+                # Filter odds for specific game
+                game_odds = next(
+                    (odds for odds in odds_data if odds["id"] == game["id"]), None
+                )
+                if game_odds:
+                    game_odds_history.append(
+                        {"timestamp": timestamp, "odds_data": game_odds}
+                    )
+
+        return {"game_id": game["id"], "odds_history": game_odds_history}
+
     async def fetch_odds_snapshot(
-        self, session, sport: str, game_id: str, timestamp: str
+        self, session: aiohttp.ClientSession, sport: str, game_id: str, timestamp: str
     ) -> Dict:
         """Fetch odds snapshot for a specific game and time"""
         await self._rate_limit()
@@ -59,7 +104,9 @@ class HistoricalOddsConnector:
         async with session.get(url, params=params) as response:
             return await response.json()
 
-    async def process_game_odds(self, session, sport: str, game: Dict) -> List[Dict]:
+    async def process_game_odds(
+        self, session: aiohttp.ClientSession, sport: str, game: Dict
+    ) -> List[Dict]:
         """Process odds for a single game"""
         game_id = game["id"]
         commence_time = game["commence_time"]
@@ -95,24 +142,24 @@ class HistoricalOddsConnector:
         return game_odds_history
 
     async def fetch_season_odds(
-        self, sport: str, games: List[Dict], batch_size: int = 5
+        self, session, sport: str, games: List[Dict], batch_size: int = 5
     ):
         """Fetch historical odds for a season's games"""
-        async with aiohttp.ClientSession() as session:
-            all_odds_data = []
+        # async with aiohttp.ClientSession() as session:
+        all_odds_data = []
 
-            for i in range(0, len(games), batch_size):
-                batch = games[i : i + batch_size]
-                tasks = [self.process_game_odds(session, sport, game) for game in batch]
+        for i in range(0, len(games), batch_size):
+            batch = games[i : i + batch_size]
+            tasks = [self.process_game_odds(session, sport, game) for game in batch]
 
-                try:
-                    batch_results = await asyncio.gather(*tasks)
-                    for game_odds in batch_results:
-                        all_odds_data.extend(game_odds)
-                except Exception as e:
-                    print(f"Error processing batch: {str(e)}")
+            try:
+                batch_results = await asyncio.gather(*tasks)
+                for game_odds in batch_results:
+                    all_odds_data.extend(game_odds)
+            except Exception as e:
+                print(f"Error processing batch: {str(e)}")
 
-            return all_odds_data
+        return all_odds_data
 
 
 async def main():
