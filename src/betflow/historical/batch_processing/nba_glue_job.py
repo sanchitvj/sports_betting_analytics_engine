@@ -9,6 +9,7 @@ from pyspark.sql.functions import explode
 from betflow.historical.config import ProcessingConfig
 from pyspark.sql import SparkSession
 
+
 args = getResolvedOptions(
     sys.argv,
     [
@@ -23,6 +24,7 @@ args = getResolvedOptions(
 
 sc = SparkContext()
 glueContext = GlueContext(sc)
+
 # spark = glueContext.spark_session
 spark = (
     SparkSession.builder.config(
