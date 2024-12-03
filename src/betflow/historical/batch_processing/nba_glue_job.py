@@ -53,6 +53,9 @@ spark.sql(f"""
     CREATE TABLE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']} (
         game_id STRING,
         start_time TIMESTAMP,
+        year INT,
+        month INT,
+        day INT,
         status_state STRING,
         status_detail STRING,
         status_description STRING,
@@ -89,7 +92,7 @@ spark.sql(f"""
         ingestion_timestamp TIMESTAMP
     )
     USING iceberg
-    PARTITIONED BY (year(start_time), month(start_time), day(start_time))
+    PARTITIONED BY (year, month, day)
 """)
 
 
@@ -99,47 +102,50 @@ df = spark.read.json(raw_path)
 games_df = df.select(explode("_1").alias("game"))
 games_df.createOrReplaceTempView("raw_games")
 
-# Your existing transformation SQL
+# Modify the transformation SQL to include partition columns
 processed_df = spark.sql("""
     SELECT 
-            game_id,
-            CAST(start_time as timestamp) as start_time,
-            status_state,
-            status_detail,
-            status_description,
-            CAST(period as int) as period,
-            clock,
-            STRUCT(
-                home_team_id as id,
-                home_team_name as name,
-                home_team_abbreviation as abbreviation,
-                home_team_score as score,
-                home_team_field_goals as field_goals,
-                home_team_three_pointers as three_pointers,
-                home_team_free_throws as free_throws,
-                home_team_rebounds as rebounds,
-                home_team_assists as assists
-            ) as home_team,
-            STRUCT(
-                away_team_id as id,
-                away_team_name as name,
-                away_team_abbreviation as abbreviation,
-                away_team_score as score,
-                away_team_field_goals as field_goals,
-                away_team_three_pointers as three_pointers,
-                away_team_free_throws as free_throws,
-                away_team_rebounds as rebounds,
-                away_team_assists as assists
-            ) as away_team,
-            STRUCT(
-                venue_name as name,
-                venue_city as city,
-                venue_state as state
-            ) as venue,
-            broadcasts,
-            from_unixtime(CAST(timestamp as long)) as ingestion_timestamp
-        FROM raw_games
-        WHERE status_state = 'post'
+        game_id,
+        CAST(start_time as timestamp) as start_time,
+        YEAR(CAST(start_time as timestamp)) as year,
+        MONTH(CAST(start_time as timestamp)) as month,
+        DAY(CAST(start_time as timestamp)) as day,
+        status_state,
+        status_detail,
+        status_description,
+        CAST(period as int) as period,
+        clock,
+        STRUCT(
+            home_team_id as id,
+            home_team_name as name,
+            home_team_abbreviation as abbreviation,
+            home_team_score as score,
+            home_team_field_goals as field_goals,
+            home_team_three_pointers as three_pointers,
+            home_team_free_throws as free_throws,
+            home_team_rebounds as rebounds,
+            home_team_assists as assists
+        ) as home_team,
+        STRUCT(
+            away_team_id as id,
+            away_team_name as name,
+            away_team_abbreviation as abbreviation,
+            away_team_score as score,
+            away_team_field_goals as field_goals,
+            away_team_three_pointers as three_pointers,
+            away_team_free_throws as free_throws,
+            away_team_rebounds as rebounds,
+            away_team_assists as assists
+        ) as away_team,
+        STRUCT(
+            venue_name as name,
+            venue_city as city,
+            venue_state as state
+        ) as venue,
+        broadcasts,
+        from_unixtime(CAST(timestamp as long)) as ingestion_timestamp
+    FROM raw_games
+    WHERE status_state = 'post'
 """)
 
 # Write to Iceberg table
