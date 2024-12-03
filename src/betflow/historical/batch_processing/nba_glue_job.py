@@ -5,7 +5,6 @@ from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
-from pyspark.sql.functions import explode
 from betflow.historical.config import ProcessingConfig
 from pyspark.sql import SparkSession
 
@@ -44,8 +43,12 @@ job.init(args["JOB_NAME"], args)
 
 
 # Create database if not exists
+# spark.sql(
+#     f"CREATE DATABASE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}"
+# )
+
 spark.sql(
-    f"CREATE DATABASE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}"
+    f"DROP TABLE IF EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']}"
 )
 
 # Create table with proper schema
@@ -53,9 +56,9 @@ spark.sql(f"""
     CREATE TABLE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']} (
         game_id STRING,
         start_time TIMESTAMP,
-        year INT,
-        month INT,
-        day INT,
+        partition_year INT,
+        partition_month INT,
+        partition_day INT,
         status_state STRING,
         status_detail STRING,
         status_description STRING,
@@ -92,24 +95,23 @@ spark.sql(f"""
         ingestion_timestamp TIMESTAMP
     )
     USING iceberg
-    PARTITIONED BY (year, month, day)
+    PARTITIONED BY (partition_year, partition_month, partition_day)
 """)
 
 
 # Read and process data
 raw_path = f"{args['source_path']}{args['date']}/games.json"
 df = spark.read.json(raw_path)
-games_df = df.select(explode("_1").alias("game"))
-games_df.createOrReplaceTempView("raw_games")
+df.createOrReplaceTempView("raw_games")
 
 # Modify the transformation SQL to include partition columns
 processed_df = spark.sql("""
     SELECT 
         game_id,
         CAST(start_time as timestamp) as start_time,
-        YEAR(CAST(start_time as timestamp)) as year,
-        MONTH(CAST(start_time as timestamp)) as month,
-        DAY(CAST(start_time as timestamp)) as day,
+        YEAR(CAST(start_time as timestamp)) as partition_year,
+        MONTH(CAST(start_time as timestamp)) as partition_month,
+        DAY(CAST(start_time as timestamp)) as partition_day,
         status_state,
         status_detail,
         status_description,
@@ -143,7 +145,7 @@ processed_df = spark.sql("""
             venue_state as state
         ) as venue,
         broadcasts,
-        from_unixtime(CAST(timestamp as long)) as ingestion_timestamp
+        CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
     FROM raw_games
     WHERE status_state = 'post'
 """)
@@ -151,6 +153,8 @@ processed_df = spark.sql("""
 # Write to Iceberg table
 processed_df.writeTo(
     f"glue_catalog.{args['database_name']}.{args['table_name']}"
-).option("merge-schema", "true").append()
+).partitionedBy("partition_year", "partition_month", "partition_day").option(
+    "merge-schema", "true"
+).append()
 
 job.commit()

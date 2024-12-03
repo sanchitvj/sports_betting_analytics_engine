@@ -1,13 +1,12 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from datetime import timedelta
 from betflow.historical.config import ProcessingConfig
 import boto3
 from pathlib import Path
 from dotenv import load_dotenv
+from betflow.historical.zach_glue_job_utils import create_glue_job
 import os
-from airflow.models import Variable
 
 load_dotenv()
 
@@ -15,6 +14,7 @@ default_args = {
     "owner": ProcessingConfig.OWNER,
     "depends_on_past": True,
     "start_date": ProcessingConfig.SPORT_CONFIGS["nba"]["start_date"],
+    "end_date": ProcessingConfig.SPORT_CONFIGS["nba"]["end_date"],
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
@@ -52,46 +52,32 @@ with DAG(
     schedule_interval="@daily",
     catchup=True,
 ) as dag:
-    upload_script = PythonOperator(
-        task_id="upload_script",
-        python_callable=upload_glue_script,
-        provide_context=True,
-    )
+    # upload_script = PythonOperator(
+    #     task_id="upload_script",
+    #     python_callable=upload_glue_script,
+    #     provide_context=True,
+    # )
 
-    process_games = GlueJobOperator(
-        task_id="process_games",
-        job_name="nba_games_processing",
-        script_location="{{ task_instance.xcom_pull(task_ids='upload_script') }}",
-        s3_bucket=Variable.get("LOGS_BUCKET"),
-        iam_role_name=str(os.getenv("GLUE_ROLE")),
-        create_job_kwargs={
-            "GlueVersion": "4.0",
-            "NumberOfWorkers": 2,
-            "WorkerType": "G.1X",
-            "DefaultArguments": {
-                # "--python-version": "3.11",
-                "--additional-python-modules": f"git+https://{os.getenv('GITHUB_TOKEN')}@github.com/sanchitvj/sports_betting_analytics_engine.git",
-                # "--extra-jars": f's3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
-                "--enable-continuous-cloudwatch-log": "true",
-                "--enable-glue-datacatalog": "true",
-                "--enable-metrics": "true",
-                "--conf": f'spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions --conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog --conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog --conf spark.sql.catalog.glue_catalog.warehouse=s3://{ProcessingConfig.S3_PATHS["processing_bucket"]}/processed',  # --conf spark.jars=s3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
-                "--datalake-formats": "iceberg",
+    run_job = PythonOperator(
+        task_id="run_glue_job",
+        python_callable=create_glue_job,
+        op_kwargs={
+            "job_name": "backfill_pyspark_example_job",
+            "script_path": "~/aeb_/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nba_glue_job.py",
+            "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            # "tabular_credential": tabular_credential,
+            "s3_bucket": "Zachwilsonorganization-522 bucket",
+            "catalog_name": "glue_catalog",
+            "aws_region": os.getenv("AWS_DEFAULT_REGION"),
+            "description": "Testing Job Spark",
+            "arguments": {
+                "--JOB_NAME": "nba_games_processing",
+                "--date": "{{ ds }}",
+                "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/nba/",
+                "--database_name": ProcessingConfig.GLUE_DB["db_name"],
+                "--table_name": ProcessingConfig.GLUE_DB["nba_games_table"],
+                "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
             },
-            "MaxRetries": 0,  # Set maximum number of retries
-            "Timeout": 300,  # Set timeout in minutes (e.g., 48 hours)
         },
-        script_args={
-            "JOB_NAME": "nba_games_processing",
-            "--date": "{{ ds }}",
-            "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/nba/",
-            "--database_name": ProcessingConfig.GLUE_DB["db_name"],
-            "--table_name": ProcessingConfig.GLUE_DB["nba_games_table"],
-            "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
-        },
-        region_name="us-east-1",
-        verbose=True,
-        update_config=True,
     )
-
-    upload_script >> process_games
