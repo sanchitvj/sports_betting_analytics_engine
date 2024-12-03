@@ -53,6 +53,9 @@ spark.sql(f"""
     CREATE TABLE IF NOT EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']} (
         game_id STRING,
         start_time TIMESTAMP,
+        start_time_year INT,
+        start_time_month INT, 
+        start_time_day INT,
         status_state STRING,
         status_detail STRING,
         status_description STRING,
@@ -89,9 +92,8 @@ spark.sql(f"""
         ingestion_timestamp TIMESTAMP
     )
     USING iceberg
-    PARTITIONED BY (year(start_time), month(start_time), day(start_time))
+    PARTITIONED BY (start_time_year, start_time_month, start_time_day)
 """)
-
 
 # Read and process data
 raw_path = f"{args['source_path']}{args['date']}/games.json"
@@ -104,6 +106,9 @@ processed_df = spark.sql("""
     SELECT 
             game_id,
             CAST(start_time as timestamp) as start_time,
+            YEAR(start_time) as start_time_year,
+            MONTH(start_time) as start_time_month,
+            DAY(start_time) as start_time_day,
             status_state,
             status_detail,
             status_description,
