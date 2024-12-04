@@ -45,16 +45,16 @@ class HistoricalConfig:
         "nfl": {
             "endpoint": "football/nfl/scoreboard",
             "start_date": datetime(2024, 9, 7),  # NFL season start
-            "end_date": datetime(2024, 12, 1),
+            "end_date": datetime(2024, 9, 8),
         },
         "nhl": {
             "endpoint": "hockey/nhl/scoreboard",
             "start_date": datetime(2024, 10, 10),  # NHL season start
-            "end_date": datetime(2024, 12, 1),
+            "end_date": datetime(2024, 10, 11),
         },
         "cfb": {
             "endpoint": "football/college-football/scoreboard",
             "start_date": datetime(2024, 8, 26),  # CFB season start
-            "end_date": datetime(2024, 12, 1),
+            "end_date": datetime(2024, 8, 27),
         },
     }
