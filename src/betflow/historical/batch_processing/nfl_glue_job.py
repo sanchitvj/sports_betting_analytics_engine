@@ -41,7 +41,7 @@ job.init(args["JOB_NAME"], args)
 spark.sql(f"CREATE DATABASE IF NOT EXISTS glue_catalog.{args['database_name']}")
 
 spark.sql(f"""
-    CREATE TABLE IF NOT EXISTS glue_catalog.{args['database_name']}.{{args['table_name']}} (
+    CREATE TABLE IF NOT EXISTS glue_catalog.{args['database_name']}.{args['table_name']} (
         game_id STRING,
         start_time TIMESTAMP,
         partition_year INT,

@@ -12,9 +12,9 @@ class HistoricalOddsConnector:
         self.base_url = "https://api.the-odds-api.com/v4/historical/sports"
         self.sport_keys = {
             "nfl": "americanfootball_nfl",
-            "ncaa": "americanfootball_ncaaf",
+            "cfb": "americanfootball_ncaaf",
             "nba": "basketball_nba",
-            "nhl": "hockey_nhl",
+            "nhl": "icehockey_nhl",
         }
         self.request_timestamps = deque(maxlen=300)
 

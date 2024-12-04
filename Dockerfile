@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 RUN git clone https://github.com/sanchitvj/sports_betting_analytics_engine.git
 WORKDIR /app/sports_betting_analytics_engine
-RUN git checkout dev
+#RUN git checkout dev
 RUN pip install .
 
 RUN pip install --upgrade awscli

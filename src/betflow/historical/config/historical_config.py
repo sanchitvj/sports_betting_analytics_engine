@@ -37,7 +37,9 @@ class HistoricalConfig:
     SPORT_CONFIGS = {
         "nba": {
             "endpoint": "basketball/nba/scoreboard",
-            "start_date": datetime(2024, 10, 22),  # NBA season start
+            "start_date": datetime(
+                2024, 12, 2
+            ),  # NBA season start original:(2024, 10, 22) but data already present
             "end_date": datetime(2024, 12, 1),
         },
         "nfl": {

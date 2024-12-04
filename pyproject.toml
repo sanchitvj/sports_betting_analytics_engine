@@ -7,7 +7,7 @@ name = "betflow"
 dynamic = ["version"]
 description = "A simple package for sports betting analytics"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Sanchit Vijay", email = "sanchitvj1026@gmail.com" }, ]
 

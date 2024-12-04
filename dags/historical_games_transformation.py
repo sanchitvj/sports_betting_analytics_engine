@@ -84,14 +84,6 @@ def create_or_update_glue_job(sport: str):
     return _setup
 
 
-# Create DAGs for each sport
-sports_config = {
-    "nba": {"script": "nba"},
-    "nhl": {"script": "nhl"},
-    "nfl": {"script": "football"},
-    "cfb": {"script": "football"},
-}
-
 for sport, config in ProcessingConfig.SPORT_CONFIGS.items():
     with DAG(
         f"{sport}_batch_processing",
