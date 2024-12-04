@@ -12,7 +12,7 @@ from betflow.historical.hist_api_connectors import HistoricalOddsConnector
 from betflow.historical.config import HistoricalConfig
 from dotenv import load_dotenv
 
-load_dotenv("zach.env")
+load_dotenv(".env")
 load_dotenv("my.env")
 
 
@@ -20,7 +20,7 @@ def fetch_odds_by_date(sport_key, **context):
     """Fetch odds data for games on a specific date"""
 
     async def _fetch():
-        logical_date = context.get("data_interval_start") - timedelta(1)
+        logical_date = context.get("data_interval_start") - timedelta(days=1)
         date_str = logical_date.strftime("%Y-%m-%d")
 
         # Get completed games for the date from previous games DAG
@@ -95,7 +95,7 @@ for sport, config in HistoricalConfig.SPORT_CONFIGS.items():
             "owner": "PENGUIN_DB",
             "depends_on_past": True,
             "start_date": config["start_date"],
-            # "end_date": config["end_date"],  # datetime(2024, 12, 1),  # Today's date
+            "end_date": config["end_date"],  # datetime(2024, 12, 1),  # Today's date
             "email_on_failure": False,
             "retries": 0,
             "retry_delay": timedelta(minutes=5),

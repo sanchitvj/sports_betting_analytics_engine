@@ -5,7 +5,7 @@ class HistoricalConfig:
     # Game duration in minutes
     GAME_DURATIONS = {
         "nfl": 240,  # 4 hours including breaks
-        "ncaa": 240,  # 4 hours including breaks
+        "cfb": 240,  # 4 hours including breaks
         "nba": 180,  # 3 hours including breaks
         "nhl": 180,  # 3 hours including breaks
     }
