@@ -1,6 +1,5 @@
 import sys
 
-# from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
@@ -39,15 +38,8 @@ spark = (
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-
-# Create database if not exists
 spark.sql(f"CREATE DATABASE IF NOT EXISTS glue_catalog.{args['database_name']}")
 
-# spark.sql(
-#     f"DROP TABLE IF EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']}"
-# )
-
-# Create table with proper schema
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS glue_catalog.{args['database_name']}.{args['table_name']} (
         game_id STRING,
@@ -65,27 +57,40 @@ spark.sql(f"""
             name: STRING,
             abbreviation: STRING,
             score: STRING,
-            field_goals: STRING,
-            three_pointers: STRING,
-            free_throws: STRING,
-            rebounds: STRING,
-            assists: STRING
+            saves: STRING,
+            save_pct: STRING,
+            goals: STRING,
+            assists: STRING,
+            points: STRING,
+            penalties: STRING,
+            penalty_minutes: STRING,
+            power_plays: STRING,
+            power_play_goals: STRING,
+            power_play_pct: STRING,
+            record: STRING
         >,
         away_team STRUCT<
             id: STRING,
             name: STRING,
             abbreviation: STRING,
             score: STRING,
-            field_goals: STRING,
-            three_pointers: STRING,
-            free_throws: STRING,
-            rebounds: STRING,
-            assists: STRING
+            saves: STRING,
+            save_pct: STRING,
+            goals: STRING,
+            assists: STRING,
+            points: STRING,
+            penalties: STRING,
+            penalty_minutes: STRING,
+            power_plays: STRING,
+            power_play_goals: STRING,
+            power_play_pct: STRING,
+            record: STRING
         >,
         venue STRUCT<
             name: STRING,
             city: STRING,
-            state: STRING
+            state: STRING,
+            indoor: BOOLEAN
         >,
         broadcasts ARRAY<STRING>,
         ingestion_timestamp TIMESTAMP
@@ -104,7 +109,6 @@ try:
         sys.exit(0)
     df.createOrReplaceTempView("raw_games")
 
-    # Modify the transformation SQL to include partition columns
     processed_df = spark.sql("""
         SELECT 
             game_id,
@@ -122,27 +126,40 @@ try:
                 home_team_name as name,
                 home_team_abbreviation as abbreviation,
                 home_team_score as score,
-                home_team_field_goals as field_goals,
-                home_team_three_pointers as three_pointers,
-                home_team_free_throws as free_throws,
-                home_team_rebounds as rebounds,
-                home_team_assists as assists
+                home_team_saves as saves,
+                home_team_save_pct as save_pct,
+                home_team_goals as goals,
+                home_team_assists as assists,
+                home_team_points as points,
+                home_team_penalties as penalties,
+                home_team_penalty_minutes as penalty_minutes,
+                home_team_power_plays as power_plays,
+                home_team_power_play_goals as power_play_goals,
+                home_team_power_play_pct as power_play_pct,
+                home_team_record as record
             ) as home_team,
             STRUCT(
                 away_team_id as id,
                 away_team_name as name,
                 away_team_abbreviation as abbreviation,
                 away_team_score as score,
-                away_team_field_goals as field_goals,
-                away_team_three_pointers as three_pointers,
-                away_team_free_throws as free_throws,
-                away_team_rebounds as rebounds,
-                away_team_assists as assists
+                away_team_saves as saves,
+                away_team_save_pct as save_pct,
+                away_team_goals as goals,
+                away_team_assists as assists,
+                away_team_points as points,
+                away_team_penalties as penalties,
+                away_team_penalty_minutes as penalty_minutes,
+                away_team_power_plays as power_plays,
+                away_team_power_play_goals as power_play_goals,
+                away_team_power_play_pct as power_play_pct,
+                away_team_record as record
             ) as away_team,
             STRUCT(
                 venue_name as name,
                 venue_city as city,
-                venue_state as state
+                venue_state as state,
+                venue_indoor as indoor
             ) as venue,
             broadcasts,
             CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
@@ -150,10 +167,6 @@ try:
         WHERE status_state = 'post'
     """)
 
-    # # Add before writing
-    # print("Partition Values:")
-    # processed_df.select("partition_year", "partition_month", "partition_day").show()
-    # processed_df.printSchema()
     if processed_df.count() > 0:
         (
             processed_df.writeTo(

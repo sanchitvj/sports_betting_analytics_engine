@@ -1,6 +1,5 @@
 import sys
 
-# from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
@@ -39,17 +38,10 @@ spark = (
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-
-# Create database if not exists
 spark.sql(f"CREATE DATABASE IF NOT EXISTS glue_catalog.{args['database_name']}")
 
-# spark.sql(
-#     f"DROP TABLE IF EXISTS glue_catalog.{ProcessingConfig.GLUE_DB['db_name']}.{ProcessingConfig.GLUE_DB['nba_games_table']}"
-# )
-
-# Create table with proper schema
 spark.sql(f"""
-    CREATE TABLE IF NOT EXISTS glue_catalog.{args['database_name']}.{args['table_name']} (
+    CREATE TABLE IF NOT EXISTS glue_catalog.{args['database_name']}.{{args['table_name']}} (
         game_id STRING,
         start_time TIMESTAMP,
         partition_year INT,
@@ -64,28 +56,43 @@ spark.sql(f"""
             id: STRING,
             name: STRING,
             abbreviation: STRING,
-            score: STRING,
-            field_goals: STRING,
-            three_pointers: STRING,
-            free_throws: STRING,
-            rebounds: STRING,
-            assists: STRING
+            score: INT,
+            record: STRING,
+            linescores: ARRAY<INT>
         >,
         away_team STRUCT<
             id: STRING,
             name: STRING,
             abbreviation: STRING,
-            score: STRING,
-            field_goals: STRING,
-            three_pointers: STRING,
-            free_throws: STRING,
-            rebounds: STRING,
-            assists: STRING
+            score: INT,
+            record: STRING,
+            linescores: ARRAY<INT>
+        >,
+        leaders STRUCT<
+            passing: STRUCT<
+                name: STRING,
+                display_value: STRING,
+                value: INT,
+                team: STRING
+            >,
+            rushing: STRUCT<
+                name: STRING,
+                display_value: STRING,
+                value: INT,
+                team: STRING
+            >,
+            receiving: STRUCT<
+                name: STRING,
+                display_value: STRING,
+                value: INT,
+                team: STRING
+            >
         >,
         venue STRUCT<
             name: STRING,
             city: STRING,
-            state: STRING
+            state: STRING,
+            indoor: BOOLEAN
         >,
         broadcasts ARRAY<STRING>,
         ingestion_timestamp TIMESTAMP
@@ -93,7 +100,6 @@ spark.sql(f"""
     USING iceberg
     PARTITIONED BY (partition_year, partition_month, partition_day)
 """)
-
 
 raw_path = f"{args['source_path']}{args['date']}/games.json"
 try:
@@ -104,7 +110,6 @@ try:
         sys.exit(0)
     df.createOrReplaceTempView("raw_games")
 
-    # Modify the transformation SQL to include partition columns
     processed_df = spark.sql("""
         SELECT 
             game_id,
@@ -121,28 +126,43 @@ try:
                 home_team_id as id,
                 home_team_name as name,
                 home_team_abbreviation as abbreviation,
-                home_team_score as score,
-                home_team_field_goals as field_goals,
-                home_team_three_pointers as three_pointers,
-                home_team_free_throws as free_throws,
-                home_team_rebounds as rebounds,
-                home_team_assists as assists
+                CAST(home_team_score as INT) as score,
+                home_team_record as record,
+                home_team_linescores as linescores
             ) as home_team,
             STRUCT(
                 away_team_id as id,
                 away_team_name as name,
                 away_team_abbreviation as abbreviation,
-                away_team_score as score,
-                away_team_field_goals as field_goals,
-                away_team_three_pointers as three_pointers,
-                away_team_free_throws as free_throws,
-                away_team_rebounds as rebounds,
-                away_team_assists as assists
+                CAST(away_team_score as INT) as score,
+                away_team_record as record,
+                away_team_linescores as linescores
             ) as away_team,
+            STRUCT(
+                STRUCT(
+                    passing_leader_name as name,
+                    passing_leader_display_value as display_value,
+                    CAST(passing_leader_value as INT) as value,
+                    passing_leader_team as team
+                ) as passing,
+                STRUCT(
+                    rushing_leader_name as name,
+                    rushing_leader_display_value as display_value,
+                    CAST(rushing_leader_value as INT) as value,
+                    rushing_leader_team as team
+                ) as rushing,
+                STRUCT(
+                    receiving_leader_name as name,
+                    receiving_leader_display_value as display_value,
+                    CAST(receiving_leader_value as INT) as value,
+                    receiving_leader_team as team
+                ) as receiving
+            ) as leaders,
             STRUCT(
                 venue_name as name,
                 venue_city as city,
-                venue_state as state
+                venue_state as state,
+                venue_indoor as indoor
             ) as venue,
             broadcasts,
             CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
@@ -150,10 +170,6 @@ try:
         WHERE status_state = 'post'
     """)
 
-    # # Add before writing
-    # print("Partition Values:")
-    # processed_df.select("partition_year", "partition_month", "partition_day").show()
-    # processed_df.printSchema()
     if processed_df.count() > 0:
         (
             processed_df.writeTo(

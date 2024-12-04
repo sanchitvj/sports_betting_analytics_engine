@@ -44,20 +44,20 @@ def upload_glue_script():
 
 def create_or_update_glue_job(**context):
     """Create or update the Glue job configuration"""
-    glue_client = boto3.client("glue")
+    glue_client = boto3.client("glue", region_name="us-east-1")
     script_location = context["task_instance"].xcom_pull(task_ids="upload_script")
 
     job_config = {
-        "Name": "nba_games_processing",
+        # "Name": "nba_games_processing",
         "Role": str(os.getenv("GLUE_ROLE")),
-        "ExecutionProperty": {"MaxConcurrentRuns": 15},
+        "ExecutionProperty": {"MaxConcurrentRuns": 30},
         "Command": {
             "Name": "glueetl",
             "ScriptLocation": script_location,
             "PythonVersion": "3",
         },
         "DefaultArguments": {
-            "--additional-python-modules": f"git+https://{os.getenv('GITHUB_TOKEN')}@github.com/sanchitvj/sports_betting_analytics_engine.git",
+            # "--additional-python-modules": f"git+https://{os.getenv('GITHUB_TOKEN')}@github.com/sanchitvj/sports_betting_analytics_engine.git",
             "--enable-continuous-cloudwatch-log": "true",
             "--enable-glue-datacatalog": "true",
             "--enable-metrics": "true",
@@ -71,10 +71,17 @@ def create_or_update_glue_job(**context):
     }
 
     try:
+        # Check if job exists
         glue_client.get_job(JobName="nba_games_processing")
+        # Update existing job
         glue_client.update_job(JobName="nba_games_processing", JobUpdate=job_config)
+        print("Updated existing Glue job")
     except glue_client.exceptions.EntityNotFoundException:
+        # Create new job
         glue_client.create_job(**job_config)
+        print("Created new Glue job")
+
+    return True
 
 
 with DAG(
@@ -110,45 +117,7 @@ with DAG(
         },
         region_name="us-east-1",
         verbose=True,
+        wait_for_completion=True,
     )
 
     upload_script >> setup_glue_job >> process_games
-
-    # process_games = GlueJobOperator(
-    #     task_id="process_games",
-    #     job_name="nba_games_processing",
-    #     script_location="{{ task_instance.xcom_pull(task_ids='upload_script') }}",
-    #     s3_bucket=Variable.get("LOGS_BUCKET"),
-    #     iam_role_name=str(os.getenv("GLUE_ROLE")),
-    #     create_job_kwargs={
-    #         "GlueVersion": "4.0",
-    #         "NumberOfWorkers": 2,
-    #         "WorkerType": "G.1X",
-    #         "ExecutionProperty": {"MaxConcurrentRuns": 15},
-    #         "DefaultArguments": {
-    #             # "--python-version": "3.11",
-    #             "--additional-python-modules": f"git+https://{os.getenv('GITHUB_TOKEN')}@github.com/sanchitvj/sports_betting_analytics_engine.git",
-    #             # "--extra-jars": f's3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
-    #             "--enable-continuous-cloudwatch-log": "true",
-    #             "--enable-glue-datacatalog": "true",
-    #             "--enable-metrics": "true",
-    #             "--conf": f'spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions --conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog --conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog --conf spark.sql.catalog.glue_catalog.warehouse=s3://{ProcessingConfig.S3_PATHS["processing_bucket"]}/processed',  # --conf spark.jars=s3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
-    #             "--datalake-formats": "iceberg",
-    #         },
-    #         "MaxRetries": 0,  # Set maximum number of retries
-    #         "Timeout": 300,  # Set timeout in minutes (e.g., 48 hours)
-    #     },
-    #     script_args={
-    #         "--JOB_NAME": "nba_games_processing",
-    #         "--date": "{{ ds }}",
-    #         "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/nba/",
-    #         "--database_name": ProcessingConfig.GLUE_DB["db_name"],
-    #         "--table_name": ProcessingConfig.GLUE_DB["nba_games_table"],
-    #         "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
-    #     },
-    #     region_name="us-east-1",
-    #     verbose=True,
-    #     update_config=True,
-    # )
-    #
-    # upload_script >> process_games

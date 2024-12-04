@@ -33,23 +33,26 @@ class ProcessingConfig:
 
     SPORT_CONFIGS = {
         "nba": {
-            "start_date": datetime(2024, 11, 30),  # NBA season start
-            "end_date": datetime(2024, 12, 1),
+            "start_date": datetime(2024, 10, 22),  # NBA season start
+            # "end_date": datetime(2024, 12, 1),
         },
         "nfl": {
             "start_date": datetime(2024, 9, 7),  # NFL season start
-            "end_date": datetime(2024, 12, 1),
+            #             "end_date": datetime(2024, 12, 1),
         },
         "nhl": {
             "start_date": datetime(2024, 10, 10),  # NHL season start
-            "end_date": datetime(2024, 12, 1),
+            #             "end_date": datetime(2024, 12, 1),
         },
         "cfb": {
             "start_date": datetime(2024, 8, 26),  # CFB season start
-            "end_date": datetime(2024, 12, 1),
+            #             "end_date": datetime(2024, 12, 1),
         },
     }
 
     SCRIPT_PATHS = {
-        "nba_games": "src/betflow/historical/batch_processing/nba_glue_job.py"
+        "nba_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nba_glue_job.py",
+        "nhl_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nhl_glue_job.py",
+        "nfl_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nfl_glue_job.py",
+        "cfb_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/cfb_glue_job.py",
     }

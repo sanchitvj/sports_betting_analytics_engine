@@ -16,7 +16,7 @@ from betflow.api_connectors.raw_game_transformers import (
 
 def fetch_games_by_date(sport_key, **context):
     """Fetch games for a specific date and sport"""
-    logical_date = context.get("data_interval_start") - 1
+    logical_date = context.get("data_interval_start") - timedelta(days=1)
     date_str = logical_date.strftime("%Y%m%d")
 
     try:
