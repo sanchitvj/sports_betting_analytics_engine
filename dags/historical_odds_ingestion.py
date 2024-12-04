@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
 import sys
-from datetime import timedelta
+from datetime import timedelta, datetime
 import os
 import asyncio
 import aiohttp
@@ -13,7 +13,7 @@ from betflow.historical.config import HistoricalConfig
 from dotenv import load_dotenv
 
 load_dotenv(".env")
-# load_dotenv("my.env")
+load_dotenv("my.env")
 # commented because weird issue where astro dev restart not updating code if using 2 env files
 
 
@@ -23,7 +23,6 @@ def fetch_odds_by_date(sport_key, **context):
     async def _fetch():
         logical_date = context.get("data_interval_start") - timedelta(days=1)
         date_str = logical_date.strftime("%Y-%m-%d")
-
         # Get completed games for the date from previous games DAG
         games_data = context["task_instance"].xcom_pull(
             dag_id=f"historical_{sport_key}_games_ingestion",
@@ -66,6 +65,9 @@ def fetch_odds_by_date(sport_key, **context):
 
 def upload_to_s3_func(sport_key, **context):
     date_str = context["ds"]
+    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
+    date_str = date_frmt.strftime("%Y-%m-%d")
+
     local_path = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}/odds.json"
     s3_path = (
         f"{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}/odds.json"
@@ -97,7 +99,7 @@ for sport, config in HistoricalConfig.SPORT_CONFIGS.items():
             "owner": "PENGUIN_DB",
             "depends_on_past": True,
             "start_date": config["start_date"],
-            "end_date": config["end_date"],  # datetime(2024, 12, 1),  # Today's date
+            "end_date": config["start_date"],  # datetime(2024, 12, 1),  # Today's date
             "email_on_failure": False,
             "retries": 0,
             "retry_delay": timedelta(minutes=5),

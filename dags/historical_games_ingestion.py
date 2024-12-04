@@ -65,7 +65,7 @@ def fetch_games_by_date(sport_key, **context):
 
 def upload_to_s3_func(sport_key, **context):
     """Upload processed games data to S3"""
-    date_str = context["ds"]
+    date_str = context["ds"] - timedelta(days=1)
     local_path = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{date_str}/games.json"
     s3_path = (
         f"{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{date_str}/games.json"
