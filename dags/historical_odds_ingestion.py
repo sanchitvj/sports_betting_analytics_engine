@@ -12,7 +12,8 @@ from betflow.historical.hist_api_connectors import HistoricalOddsConnector
 from betflow.historical.config import HistoricalConfig
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv("zach.env")
+load_dotenv("my.env")
 
 
 def fetch_odds_by_date(sport_key, **context):

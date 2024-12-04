@@ -8,7 +8,7 @@ from betflow.historical.config import ProcessingConfig
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv("my.env")
 
 default_args = {
     "owner": ProcessingConfig.OWNER,

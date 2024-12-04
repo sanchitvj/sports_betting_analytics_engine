@@ -10,7 +10,7 @@ from betflow.pipeline_utils import get_live_games
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv("my.env")
 
 
 class WeatherPipeline:
