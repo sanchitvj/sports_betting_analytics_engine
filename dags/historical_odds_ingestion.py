@@ -10,10 +10,10 @@ import json
 import boto3
 from betflow.historical.hist_api_connectors import HistoricalOddsConnector
 from betflow.historical.config import HistoricalConfig
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(".env")
-load_dotenv("my.env")
+load_dotenv(find_dotenv(".env"))
+load_dotenv(find_dotenv("my.env"), override=True)
 # commented because weird issue where astro dev restart not updating code if using 2 env files
 
 
