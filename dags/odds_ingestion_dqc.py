@@ -19,6 +19,7 @@ default_args = {
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
+    "tags": ["ingestion", "historical", "odds", "dqc"],
 }
 
 

@@ -48,9 +48,9 @@ def validate_sports_game_data(game):
 
     # Validate timestamp format
     try:
-        datetime.strptime(game["start_time"], "%Y-%m-%dT%H:%M:%SZ")
+        datetime.strptime(game["start_time"], "%Y-%m-%dT%H:%MZ")
     except ValueError:
-        raise ValueError("Invalid start_time format")
+        raise ValueError(f"Invalid start_time format, {game['start_time']}")
 
     # Validate status values
     valid_states = ["pre", "in", "post"]
