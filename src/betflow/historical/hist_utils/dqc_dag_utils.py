@@ -12,6 +12,15 @@ def validate_sports_json_structure(sport_key, **context):
     date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
     date_str = date_frmt.strftime("%Y-%m-%d")
 
+    s3_path = f"historical/games/{sport_key}/{date_str}/games.json"
+    try:
+        s3_client.head_object(
+            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"], Key=s3_path
+        )
+    except (s3_client.exceptions.NoSuchKey, botocore.exceptions.ClientError):
+        print(f"No games data found for {sport_key} on {date_str}")
+        return True
+
     try:
         response = s3_client.get_object(
             Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
@@ -27,15 +36,15 @@ def validate_sports_json_structure(sport_key, **context):
 
         return True
 
-    except s3_client.exceptions.NoSuchKey:
-        print(f"No games data found for {sport_key} on {date_str}")
-        return True
-
-    except botocore.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "AccessDenied":
-            print(f"No games data exists for {sport_key} on {date_str}")
-            return True
-        raise
+    # except s3_client.exceptions.NoSuchKey:
+    #     print(f"No games data found for {sport_key} on {date_str}")
+    #     return True
+    #
+    # except botocore.exceptions.ClientError as e:
+    #     if e.response["Error"]["Code"] == "AccessDenied":
+    #         print(f"No games data exists for {sport_key} on {date_str}")
+    #         return True
+    #     raise
 
     except Exception as e:
         print(f"Validation failed: {str(e)}")
@@ -129,6 +138,20 @@ def validate_odds_json_structure(sport_key, **context):
             validate_bookmaker_data(game["bookmakers"])
 
         return True
+
+    except s3_client.exceptions.NoSuchKey:
+        print(f"No games data found for {sport_key} on {date_str}")
+        return True
+
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "AccessDenied":
+            print(f"No games data exists for {sport_key} on {date_str}")
+            return True
+        raise
+
+    except Exception as e:
+        print(f"Validation failed: {str(e)}")
+        raise
 
     except Exception as e:
         print(f"Validation failed: {str(e)}")

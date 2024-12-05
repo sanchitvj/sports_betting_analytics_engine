@@ -1,6 +1,6 @@
 from datetime import timedelta, datetime
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.task_group import TaskGroup
 
 from betflow.historical.config import HistoricalConfig
@@ -42,11 +42,11 @@ with DAG(
             # )
 
             # Data validation tasks
-            validate_data = PythonOperator(
+            validate_data = ShortCircuitOperator(
                 task_id=f"validate_{sport}_json",
                 python_callable=validate_sports_json_structure,
                 op_kwargs={"sport_key": sport},
-                trigger_rule="none_failed",  # Run only if check_data passes
+                trigger_rule="all_done",
             )
 
             # validate_games = PythonOperator(
@@ -71,6 +71,7 @@ with DAG(
                 task_id=f"upload_{sport}_s3",
                 python_callable=upload_to_s3_func,
                 op_kwargs={"sport_key": sport, "kind": "games"},
+                trigger_rule="none_failed",
             )
 
             # skip_sport = EmptyOperator(
