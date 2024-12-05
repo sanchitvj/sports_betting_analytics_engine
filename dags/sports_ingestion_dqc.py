@@ -34,7 +34,7 @@ with DAG(
             fetch_games = PythonOperator(
                 task_id=f"fetch_{sport}_games",
                 python_callable=fetch_games_by_date,
-                op_kwargs={"sport": sport},
+                op_kwargs={"sport_key": sport},
             )
 
             # check_data = ShortCircuitOperator(
@@ -47,7 +47,7 @@ with DAG(
             validate_data = PythonOperator(
                 task_id=f"validate_{sport}_json",
                 python_callable=validate_sports_json_structure,
-                op_kwargs={"sport": sport},
+                op_kwargs={"sport_key": sport},
                 trigger_rule="none_failed",  # Run only if check_data passes
             )
 
@@ -72,7 +72,7 @@ with DAG(
             upload_to_s3 = PythonOperator(
                 task_id=f"upload_{sport}_s3",
                 python_callable=upload_to_s3_func,
-                op_kwargs={"sport": sport, "kind": "games"},
+                op_kwargs={"sport_key": sport, "kind": "games"},
             )
 
             # skip_sport = EmptyOperator(

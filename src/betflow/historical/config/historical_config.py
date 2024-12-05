@@ -2,6 +2,8 @@ from datetime import datetime
 
 
 class HistoricalConfig:
+    OWNER = "PENGUIN_DB"
+
     # Game duration in minutes
     GAME_DURATIONS = {
         "nfl": 240,  # 4 hours including breaks

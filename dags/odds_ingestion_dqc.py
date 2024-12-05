@@ -23,9 +23,9 @@ default_args = {
 
 
 with DAG(
-    "sports_odds_ingestion_and_validation",
+    "odds_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2022, 7, 1),
+    start_date=datetime(2024, 12, 5),
     schedule_interval="@daily",
     catchup=True,
     # start_date=min(
@@ -37,13 +37,13 @@ with DAG(
             fetch_odds = PythonOperator(
                 task_id=f"fetch_{sport}_odds",
                 python_callable=fetch_odds_by_date,
-                op_kwargs={"sport": sport},
+                op_kwargs={"sport_key": sport},
             )
 
             validate_data = PythonOperator(
                 task_id=f"validate_{sport}_odds_json",
                 python_callable=validate_odds_json_structure,
-                op_kwargs={"sport": sport},
+                op_kwargs={"sport_key": sport},
             )
 
             # validate_games = PythonOperator(
@@ -61,7 +61,7 @@ with DAG(
             upload_to_s3 = PythonOperator(
                 task_id=f"upload_{sport}_s3",
                 python_callable=upload_to_s3_func,
-                op_kwargs={"sport": sport},
+                op_kwargs={"sport_key": sport, "kind": "odds"},
             )
 
             fetch_odds >> validate_data >> upload_to_s3
