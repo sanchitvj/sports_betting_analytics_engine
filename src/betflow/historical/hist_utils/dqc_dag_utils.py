@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import boto3
+from botocore.exceptions import ClientError
 import json
 from betflow.historical.config import ProcessingConfig
 
@@ -25,6 +26,16 @@ def validate_sports_json_structure(sport_key, **context):
             validate_venue_data(game)
 
         return True
+
+    except s3_client.exceptions.NoSuchKey:
+        print(f"No games data found for {sport_key} on {date_str}")
+        return True
+
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "AccessDenied":
+            print(f"No games data exists for {sport_key} on {date_str}")
+            return True
+        raise
 
     except Exception as e:
         print(f"Validation failed: {str(e)}")
