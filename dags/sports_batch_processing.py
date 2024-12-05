@@ -1,6 +1,8 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
+from airflow.utils.task_group import TaskGroup
+
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from datetime import timedelta
 import boto3
@@ -49,8 +51,11 @@ def create_or_update_glue_job(sport: str):
     def _setup(**context):
         glue_client = boto3.client("glue", region_name="us-east-1")
         script_location = context["task_instance"].xcom_pull(
-            task_ids=f"upload_{sport}_script"
+            task_ids=f"{sport}_tasks.upload_{sport}_script", key="return_value"
         )
+
+        if not script_location:
+            raise ValueError(f"Script location not found for {sport}")
 
         job_config = {
             # "Name": f"{sport}_games_processing",
@@ -85,48 +90,46 @@ def create_or_update_glue_job(sport: str):
     return _setup
 
 
-for sport, config in ProcessingConfig.SPORT_CONFIGS.items():
-    with DAG(
-        f"{sport}_batch_processing",
-        default_args={
-            **default_args,
-            "start_date": config["start_date"],
-            "tags": ProcessingConfig.TAGS[f"{sport}_games"],
-        },
-        description=f"Process historical {sport.upper()} games data into Iceberg tables",
-        schedule_interval="@daily",
-        # schedule_interval="5 0 * * *",
-        catchup=True,
-        # max_active_runs=3,
-    ) as dag:
-        upload_script = PythonOperator(
-            task_id=f"upload_{sport}_script",
-            python_callable=upload_glue_script(sport),
-            provide_context=True,
-        )
+with DAG(
+    "sports_batch_processing",
+    default_args=default_args,
+    description="Process all sports games data into Iceberg tables",
+    schedule_interval="@daily",
+    catchup=True,
+    start_date=min(
+        config["start_date"] for config in ProcessingConfig.SPORT_CONFIGS.values()
+    ),
+) as dag:
+    for sport, config in ProcessingConfig.SPORT_CONFIGS.items():
+        with TaskGroup(group_id=f"{sport}_tasks") as sport_tasks:
+            upload_script = PythonOperator(
+                task_id=f"upload_{sport}_script",
+                python_callable=upload_glue_script(sport),
+                provide_context=True,
+            )
 
-        setup_glue_job = PythonOperator(
-            task_id=f"setup_{sport}_glue_job",
-            python_callable=create_or_update_glue_job(sport),
-            provide_context=True,
-        )
+            setup_glue_job = PythonOperator(
+                task_id=f"setup_{sport}_glue_job",
+                python_callable=create_or_update_glue_job(sport),
+                provide_context=True,
+            )
 
-        process_games = GlueJobOperator(
-            task_id=f"process_{sport}_games",
-            job_name=f"{sport}_games_processing",
-            s3_bucket=Variable.get("LOGS_BUCKET"),
-            script_args={
-                "--JOB_NAME": f"{sport}_games_processing",
-                "--date": "{{ macros.ds_add(ds, -1) }}",  # Previous day's data
-                "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/{sport}/",
-                "--database_name": ProcessingConfig.GLUE_DB["db_name"],
-                "--table_name": ProcessingConfig.GLUE_DB[f"{sport}_games_table"],
-                "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
-            },
-            region_name="us-east-1",
-            trigger_rule="all_done",  # Continue even if upstream tasks fail
-        )
+            process_games = GlueJobOperator(
+                task_id=f"process_{sport}_games",
+                job_name=f"{sport}_games_processing",
+                s3_bucket=Variable.get("LOGS_BUCKET"),
+                script_args={
+                    "--JOB_NAME": f"{sport}_games_processing",
+                    "--date": "{{ macros.ds_add(ds, -1) }}",  # Previous day's data
+                    "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/{sport}/",
+                    "--database_name": ProcessingConfig.GLUE_DB["db_name"],
+                    "--table_name": ProcessingConfig.GLUE_DB[f"{sport}_games_table"],
+                    "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
+                },
+                region_name="us-east-1",
+                trigger_rule="all_done",  # Continue even if upstream tasks fail
+            )
 
-        upload_script >> setup_glue_job >> process_games
+            upload_script >> setup_glue_job >> process_games
 
-    globals()[f"{sport}_dag"] = dag
+    # globals()[f"{sport}_dag"] = dag

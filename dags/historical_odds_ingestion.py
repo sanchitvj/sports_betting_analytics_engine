@@ -1,7 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
-import sys
 from datetime import timedelta, datetime
 import os
 import asyncio
@@ -14,7 +13,6 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(".env"))
 load_dotenv(find_dotenv("my.env"), override=True)
-# commented because weird issue where astro dev restart not updating code if using 2 env files
 
 
 def fetch_odds_by_date(sport_key, **context):
@@ -75,8 +73,8 @@ def upload_to_s3_func(sport_key, **context):
 
     if not os.path.exists(local_path):
         print(f"No odds data file found for {sport_key} on {date_str}, skipping upload")
-        # return 0
-        sys.exit(1)
+        return 0
+        # sys.exit(1)
 
     s3_client = boto3.client("s3")
     try:
@@ -99,7 +97,7 @@ for sport, config in HistoricalConfig.SPORT_CONFIGS.items():
             "owner": "PENGUIN_DB",
             "depends_on_past": True,
             "start_date": config["start_date"],
-            "end_date": config["start_date"],  # datetime(2024, 12, 1),  # Today's date
+            # "end_date": config["start_date"],  # datetime(2024, 12, 1),  # Today's date
             "email_on_failure": False,
             "retries": 0,
             "retry_delay": timedelta(minutes=5),
