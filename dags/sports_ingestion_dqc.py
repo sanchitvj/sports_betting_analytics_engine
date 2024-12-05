@@ -10,21 +10,19 @@ from betflow.historical.hist_utils import (
     upload_to_s3_func,
 )
 
-default_args = (
-    {
-        "owner": HistoricalConfig.OWNER,
-        "depends_on_past": True,
-        "email_on_failure": False,
-        "retries": 2,
-        "retry_delay": timedelta(minutes=5),
-        "tags": ["ingestion", "historical", "sports", "dqc"],
-    },
-)
+default_args = {
+    "owner": HistoricalConfig.OWNER,
+    "depends_on_past": True,
+    "email_on_failure": False,
+    "retries": 0,
+    "retry_delay": timedelta(minutes=5),
+    "tags": ["ingestion", "historical", "sports", "dqc"],
+}
 
 with DAG(
     "sports_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2024, 12, 5),
+    start_date=datetime(2024, 12, 4),
     schedule_interval="@daily",
     catchup=True,
 ) as dag:
