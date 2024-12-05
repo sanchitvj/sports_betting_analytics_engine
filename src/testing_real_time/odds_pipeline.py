@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv("my.env")
 
 
 def calculate_pipeline_timing(odds_data: list) -> tuple:

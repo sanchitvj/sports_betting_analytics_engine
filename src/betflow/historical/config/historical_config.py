@@ -2,10 +2,12 @@ from datetime import datetime
 
 
 class HistoricalConfig:
+    OWNER = "PENGUIN_DB"
+
     # Game duration in minutes
     GAME_DURATIONS = {
         "nfl": 240,  # 4 hours including breaks
-        "ncaa": 240,  # 4 hours including breaks
+        "cfb": 240,  # 4 hours including breaks
         "nba": 180,  # 3 hours including breaks
         "nhl": 180,  # 3 hours including breaks
     }
@@ -37,22 +39,24 @@ class HistoricalConfig:
     SPORT_CONFIGS = {
         "nba": {
             "endpoint": "basketball/nba/scoreboard",
-            "start_date": datetime(2024, 10, 22),  # NBA season start
+            "start_date": datetime(
+                2024, 10, 22
+            ),  # NBA season start original:(2024, 10, 22) but data already present
             "end_date": datetime(2024, 12, 1),
         },
         "nfl": {
             "endpoint": "football/nfl/scoreboard",
             "start_date": datetime(2024, 9, 7),  # NFL season start
-            "end_date": datetime(2024, 12, 1),
+            "end_date": datetime(2024, 9, 8),
         },
         "nhl": {
             "endpoint": "hockey/nhl/scoreboard",
             "start_date": datetime(2024, 10, 10),  # NHL season start
-            "end_date": datetime(2024, 12, 1),
+            "end_date": datetime(2024, 10, 11),
         },
         "cfb": {
             "endpoint": "football/college-football/scoreboard",
             "start_date": datetime(2024, 8, 26),  # CFB season start
-            "end_date": datetime(2024, 12, 1),
+            "end_date": datetime(2024, 8, 27),
         },
     }

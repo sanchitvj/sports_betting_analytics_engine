@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import timedelta
+from datetime import timedelta, datetime
 import json
 import os
 import boto3
@@ -16,7 +16,7 @@ from betflow.api_connectors.raw_game_transformers import (
 
 def fetch_games_by_date(sport_key, **context):
     """Fetch games for a specific date and sport"""
-    logical_date = context.get("data_interval_start") - 1
+    logical_date = context.get("data_interval_start") - timedelta(days=1)
     date_str = logical_date.strftime("%Y%m%d")
 
     try:
@@ -66,6 +66,9 @@ def fetch_games_by_date(sport_key, **context):
 def upload_to_s3_func(sport_key, **context):
     """Upload processed games data to S3"""
     date_str = context["ds"]
+    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
+    date_str = date_frmt.strftime("%Y-%m-%d")
+
     local_path = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{date_str}/games.json"
     s3_path = (
         f"{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{date_str}/games.json"

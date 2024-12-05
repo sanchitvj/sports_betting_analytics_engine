@@ -7,9 +7,17 @@ class ProcessingConfig:
 
     TAGS = {
         "nba_games": ["nba_games", "batch", "process"],
+        "nba_odds": ["nba_odds", "batch", "process"],
         "nfl_games": ["nfl_games", "batch", "process"],
+        "nfl_odds": ["nfl_odds", "batch", "process"],
         "nhl_games": ["nhl_games", "batch", "process"],
+        "nhl_odds": ["nhl_odds", "batch", "process"],
         "cfb_games": ["cfb_games", "batch", "process"],
+        "cfb_odds": ["cfb_odds", "batch", "process"],
+        "nba_source_dqc": ["nba", "source", "data_quality_check"],
+        "nhl_source_dqc": ["nhl", "source", "data_quality_check"],
+        "nfl_source_dqc": ["nfl", "source", "data_quality_check"],
+        "cfb_source_dqc": ["cfb", "source", "data_quality_check"],
     }
 
     S3_PATHS = {
@@ -23,9 +31,13 @@ class ProcessingConfig:
     GLUE_DB = {
         "db_name": "aeb_glue_db",
         "nba_games_table": "nba_games",
+        "nba_odds_table": "nba_odds",
         "nfl_games_table": "nfl_games",
+        "nfl_odds_table": "nfl_odds",
         "nhl_games_table": "nhl_games",
+        "nhl_odds_table": "nhl_odds",
         "cfb_games_table": "cfb_games",
+        "cfb_odds_table": "cfb_odds",
     }
 
     # League IDs
@@ -33,8 +45,8 @@ class ProcessingConfig:
 
     SPORT_CONFIGS = {
         "nba": {
-            "start_date": datetime(2024, 11, 30),  # NBA season start
-            "end_date": datetime(2024, 12, 1),
+            "start_date": datetime(2024, 10, 22),  # NBA season start
+            "end_date": datetime(2024, 10, 26),
         },
         "nfl": {
             "start_date": datetime(2024, 9, 7),  # NFL season start
@@ -51,5 +63,9 @@ class ProcessingConfig:
     }
 
     SCRIPT_PATHS = {
-        "nba_games": "src/betflow/historical/batch_processing/nba_glue_job.py"
+        "nba_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nba_glue_job.py",
+        "nhl_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nhl_glue_job.py",
+        "nfl_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nfl_glue_job.py",
+        "cfb_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/cfb_glue_job.py",
+        "odds_processing": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/odds_glue_job.py",
     }

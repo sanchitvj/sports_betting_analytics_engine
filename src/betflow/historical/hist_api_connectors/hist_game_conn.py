@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 import aiohttp
 
-load_dotenv()
+load_dotenv("my.env")
 
 
 class BaseHistoricalConnector(ABC):

@@ -1,8 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
-
-from datetime import timedelta
+from datetime import timedelta, datetime
 import os
 import asyncio
 import aiohttp
@@ -10,39 +9,23 @@ import json
 import boto3
 from betflow.historical.hist_api_connectors import HistoricalOddsConnector
 from betflow.historical.config import HistoricalConfig
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
-
-
-default_args = {
-    "owner": "PENGUIN_DB",
-    "depends_on_past": True,
-    "start_date": HistoricalConfig.SPORT_CONFIGS["nba"][
-        "start_date"
-    ],  # datetime(2024, 11, 29),  # NBA season 2025 start date is 2024-10-22
-    "end_date": HistoricalConfig.SPORT_CONFIGS["nba"][
-        "end_date"
-    ],  # datetime(2024, 12, 1),  # Today's date
-    "email_on_failure": False,
-    "retries": 0,
-    "retry_delay": timedelta(minutes=5),
-    "tags": ["nba", "historical", "odds"],
-}
+load_dotenv(find_dotenv(".env"))
+load_dotenv(find_dotenv("my.env"), override=True)
 
 
-def fetch_odds_by_date(**context):
+def fetch_odds_by_date(sport_key, **context):
     """Fetch odds data for games on a specific date"""
 
     async def _fetch():
-        logical_date = context.get("data_interval_start")
+        logical_date = context.get("data_interval_start") - timedelta(days=1)
         date_str = logical_date.strftime("%Y-%m-%d")
-
         # Get completed games for the date from previous games DAG
         games_data = context["task_instance"].xcom_pull(
-            dag_id="historical_nba_games_ingestion",
-            task_ids="fetch_daily_nba_games",
-            key="nba_games_data",
+            dag_id=f"historical_{sport_key}_games_ingestion",
+            task_ids=f"fetch_daily_{sport_key}_games",
+            key=f"{sport_key}_games_data",
         )
 
         if not games_data:
@@ -57,12 +40,12 @@ def fetch_odds_by_date(**context):
             async with aiohttp.ClientSession() as session:
                 # Fetch all odds for the date in one request
                 odds_data = await odds_connector.fetch_odds_by_date(
-                    session, "nba", date_str
+                    session, sport_key, date_str
                 )
 
                 if odds_data:
                     # Write to temporary location
-                    output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{logical_date.strftime('%Y-%m-%d')}"
+                    output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}"
                     os.makedirs(output_dir, exist_ok=True)
 
                     with open(f"{output_dir}/odds.json", "w") as f:
@@ -78,14 +61,20 @@ def fetch_odds_by_date(**context):
     return asyncio.run(_fetch())
 
 
-def upload_to_s3_func(**context):
+def upload_to_s3_func(sport_key, **context):
     date_str = context["ds"]
-    local_path = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{date_str}/odds.json"
-    s3_path = f"{HistoricalConfig.S3_PATHS['odds_prefix']}/nba/{date_str}/odds.json"
+    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
+    date_str = date_frmt.strftime("%Y-%m-%d")
+
+    local_path = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}/odds.json"
+    s3_path = (
+        f"{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}/odds.json"
+    )
 
     if not os.path.exists(local_path):
-        print(f"No odds data file found for {date_str}, skipping upload")
+        print(f"No odds data file found for {sport_key} on {date_str}, skipping upload")
         return 0
+        # sys.exit(1)
 
     s3_client = boto3.client("s3")
     try:
@@ -101,21 +90,37 @@ def upload_to_s3_func(**context):
         raise
 
 
-with DAG(
-    "historical_odds_ingestion",
-    default_args=default_args,
-    description="Ingest historical odds data with backfill support",
-    schedule_interval="@daily",
-    catchup=True,
-) as dag:
-    fetch_daily_odds = PythonOperator(
-        task_id="fetch_daily_odds",
-        python_callable=fetch_odds_by_date,
-        provide_context=True,
-    )
+for sport, config in HistoricalConfig.SPORT_CONFIGS.items():
+    with DAG(
+        f"historical_{sport}_odds_ingestion",
+        default_args={
+            "owner": "PENGUIN_DB",
+            "depends_on_past": True,
+            "start_date": config["start_date"],
+            # "end_date": config["start_date"],  # datetime(2024, 12, 1),  # Today's date
+            "email_on_failure": False,
+            "retries": 0,
+            "retry_delay": timedelta(minutes=5),
+            "tags": [sport, "historical", "odds"],
+        },
+        description="Ingest historical odds data with backfill support",
+        schedule_interval="@daily",
+        catchup=True,
+    ) as dag:
+        fetch_daily_odds = PythonOperator(
+            task_id=f"fetch_daily_{sport}_odds",
+            python_callable=fetch_odds_by_date,
+            op_kwargs={"sport_key": sport},
+            provide_context=True,
+        )
 
-    upload_to_s3 = PythonOperator(
-        task_id="upload_to_s3", python_callable=upload_to_s3_func, provide_context=True
-    )
+        upload_to_s3 = PythonOperator(
+            task_id="upload_to_s3",
+            python_callable=upload_to_s3_func,
+            op_kwargs={"sport_key": sport},
+            provide_context=True,
+        )
 
-    fetch_daily_odds >> upload_to_s3
+        fetch_daily_odds >> upload_to_s3
+
+    globals()[f"{sport}_odds_dag"] = dag

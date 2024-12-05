@@ -15,7 +15,7 @@ url = "https://v1.american-football.api-sports.io/odds?game=7532"
 
 headers = {
     "x-rapidapi-host": "v1.american-football.api-sports.io",
-    "x-rapidapi-key": "c54f42706414f8038ffb982f49ca404e",
+    "x-rapidapi-key": "**************",
 }
 
 response = requests.get(url, headers=headers)
