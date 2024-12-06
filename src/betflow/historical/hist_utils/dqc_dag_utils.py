@@ -35,7 +35,7 @@ def validate_upload_sports_json(sport_key, **context):
             Key=s3_path,
             Body=json.dumps(games_data),
         )
-        return True
+        return len(games_data)
 
     except Exception as e:
         print(f"Validation/Upload failed: {str(e)}")
@@ -135,7 +135,7 @@ def validate_upload_odds_json(sport_key, **context):
             Body=json.dumps(odds_data),
         )
 
-        return True
+        return len(odds_data)
 
     except Exception as e:
         print(f"Validation failed: {str(e)}")

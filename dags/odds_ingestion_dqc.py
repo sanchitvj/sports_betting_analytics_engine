@@ -6,14 +6,14 @@ from betflow.historical.hist_utils import (
     fetch_odds_by_date,
     validate_upload_odds_json,
 )
-from betflow.historical.config import ProcessingConfig
+from betflow.historical.config import HistoricalConfig
 from dotenv import load_dotenv, find_dotenv
 
 
 load_dotenv(find_dotenv("my.env"), override=True)
 
 default_args = {
-    "owner": ProcessingConfig.OWNER,
+    "owner": HistoricalConfig.OWNER,
     "depends_on_past": True,
     "email_on_failure": False,
     "retries": 0,
@@ -25,25 +25,26 @@ default_args = {
 with DAG(
     "odds_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2024, 12, 5),
+    start_date=datetime(2024, 11, 29),
+    end_date=datetime(2024, 11, 30),
     schedule_interval="@daily",
     catchup=True,
     # start_date=min(
     #     config["start_date"] for config in ProcessingConfig.SPORT_CONFIGS.values()
     # ),
 ) as dag:
-    for sport in ["nba", "nfl", "cfb", "nhl"]:
-        with TaskGroup(f"{sport}_pipeline") as sport_group:
+    for sport_key, config in HistoricalConfig.SPORT_CONFIGS.items():
+        with TaskGroup(f"{sport_key}_pipeline") as sport_group:
             fetch_odds = PythonOperator(
-                task_id=f"fetch_{sport}_odds",
+                task_id=f"fetch_{sport_key}_odds",
                 python_callable=fetch_odds_by_date,
-                op_kwargs={"sport_key": sport},
+                op_kwargs={"sport_key": sport_key},
             )
 
             validate_data = PythonOperator(
-                task_id=f"validate_{sport}_odds_json",
+                task_id=f"validate_{sport_key}_odds_json",
                 python_callable=validate_upload_odds_json,
-                op_kwargs={"sport_key": sport},
+                op_kwargs={"sport_key": sport_key},
             )
 
             fetch_odds >> validate_data
