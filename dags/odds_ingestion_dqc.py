@@ -25,8 +25,8 @@ default_args = {
 with DAG(
     "odds_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2024, 11, 29),
-    end_date=datetime(2024, 11, 30),
+    start_date=datetime(2022, 11, 27),
+    end_date=datetime(2022, 11, 30),
     schedule_interval="@daily",
     catchup=True,
     # start_date=min(

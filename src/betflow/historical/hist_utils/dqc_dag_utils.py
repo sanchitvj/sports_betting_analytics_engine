@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import boto3
 import json
-from betflow.historical.config import ProcessingConfig
+from betflow.historical.config import HistoricalConfig
 
 
 def validate_upload_sports_json(sport_key, **context):
@@ -31,7 +31,7 @@ def validate_upload_sports_json(sport_key, **context):
         s3_path = f"historical/games/{sport_key}/{date_str}/games.json"
 
         s3_client.put_object(
-            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
+            Bucket=HistoricalConfig.S3_PATHS["raw_bucket"],
             Key=s3_path,
             Body=json.dumps(games_data),
         )
@@ -130,7 +130,7 @@ def validate_upload_odds_json(sport_key, **context):
         )
         s3_path = f"historical/odds/{sport_key}/{date_str}/odds.json"
         s3_client.put_object(
-            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
+            Bucket=HistoricalConfig.S3_PATHS["raw_bucket"],
             Key=s3_path,
             Body=json.dumps(odds_data),
         )
