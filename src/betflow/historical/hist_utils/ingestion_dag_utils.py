@@ -63,12 +63,6 @@ def fetch_games_by_date(sport_key, **context):
                 processed_games.append(game_data)
 
         if processed_games:
-            # output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{logical_date.strftime('%Y-%m-%d')}"
-            # os.makedirs(output_dir, exist_ok=True)
-            #
-            # with open(f"{output_dir}/games.json", "w") as f:
-            #     json.dump(processed_games, f)
-
             context["task_instance"].xcom_push(
                 key=f"{sport_key}_games_data", value=processed_games
             )
@@ -133,13 +127,6 @@ def fetch_odds_by_date(sport_key, **context):
                 )
 
                 if odds_data:
-                    # # Write to temporary location
-                    # output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}"
-                    # os.makedirs(output_dir, exist_ok=True)
-                    #
-                    # with open(f"{output_dir}/odds.json", "w") as f:
-                    #     json.dump(odds_data, f)
-
                     context["task_instance"].xcom_push(
                         key=f"{sport_key}_odds_data", value=odds_data
                     )
