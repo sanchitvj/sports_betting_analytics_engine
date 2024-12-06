@@ -114,9 +114,9 @@ def fetch_odds_by_date(sport_key, **context):
         date_str = logical_date.strftime("%Y-%m-%d")
         # Get completed games for the date from previous games DAG
         games_data = context["task_instance"].xcom_pull(
-            dag_id=f"historical_{sport_key}_games_ingestion",
-            task_ids=f"fetch_daily_{sport_key}_games",
-            key=f"{sport_key}_games_data",
+            dag_id="sports_ingestion_dqc",
+            task_ids=f"{sport_key}_pipeline.validate_{sport_key}_json",
+            key="return_value",
         )
 
         if not games_data:
