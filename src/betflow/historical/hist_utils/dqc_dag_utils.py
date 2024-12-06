@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import boto3
 import json
 from betflow.historical.config import HistoricalConfig
@@ -24,9 +24,9 @@ def validate_upload_sports_json(sport_key, **context):
             validate_venue_data(game)
 
         # If validation passes, upload to S3
-        date_str = (context["data_interval_start"] - timedelta(days=1)).strftime(
+        date_str = (context["data_interval_start"]).strftime(
             "%Y-%m-%d"
-        )
+        )  #  - timedelta(days=1)
         s3_client = boto3.client("s3")
         s3_path = f"historical/games/{sport_key}/{date_str}/games.json"
 
@@ -125,9 +125,9 @@ def validate_upload_odds_json(sport_key, **context):
             validate_bookmaker_data(odds["bookmakers"])
 
         s3_client = boto3.client("s3")
-        date_str = (context["data_interval_start"] - timedelta(days=1)).strftime(
+        date_str = (context["data_interval_start"]).strftime(
             "%Y-%m-%d"
-        )
+        )  #  - timedelta(days=1)
         s3_path = f"historical/odds/{sport_key}/{date_str}/odds.json"
         s3_client.put_object(
             Bucket=HistoricalConfig.S3_PATHS["raw_bucket"],

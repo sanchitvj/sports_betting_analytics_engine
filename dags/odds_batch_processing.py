@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from airflow.utils.task_group import TaskGroup
-from datetime import timedelta
+from datetime import timedelta, datetime
 import boto3
 from betflow.historical.config import ProcessingConfig
 from dotenv import load_dotenv, find_dotenv
@@ -81,14 +81,14 @@ def create_or_update_glue_job(sport: str):
 
 
 with DAG(
-    "sports_odds_processing",
+    "odds_batch_processing",
     default_args=default_args,
     description="Process all sports odds data into Iceberg tables",
-    schedule_interval="@daily",
+    schedule_interval="5 0 * * *",  # "@daily",
     catchup=True,
-    start_date=min(
-        config["start_date"] for config in ProcessingConfig.SPORT_CONFIGS.values()
-    ),
+    start_date=datetime(2022, 8, 1),  # min(
+    # config["start_date"] for config in ProcessingConfig.SPORT_CONFIGS.values()
+    # ),
 ) as dag:
     with TaskGroup("common_tasks") as common_tasks:
         upload_script = PythonOperator(

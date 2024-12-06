@@ -11,6 +11,7 @@ from dotenv import load_dotenv, find_dotenv
 
 
 load_dotenv(find_dotenv("my.env"), override=True)
+# do not uncomment and unpause DAG
 
 default_args = {
     "owner": HistoricalConfig.OWNER,
@@ -25,8 +26,11 @@ default_args = {
 with DAG(
     "odds_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2022, 11, 28),
-    end_date=datetime(2022, 11, 28),
+    # start_date=datetime(2022, 8, 1),
+    start_date=datetime(
+        2024, 12, 2
+    ),  # don't change only backfill for current season now
+    # end_date=datetime(2022, 11, 28),
     schedule_interval="@daily",
     catchup=True,
     # start_date=min(

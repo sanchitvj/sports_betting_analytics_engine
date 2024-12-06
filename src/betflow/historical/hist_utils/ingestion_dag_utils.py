@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime
+from datetime import datetime
 import os
 import boto3
 import aiohttp
@@ -33,7 +33,7 @@ def check_games_data(sport_key, **context):
 
 def fetch_games_by_date(sport_key, **context):
     """Fetch games for a specific date and sport"""
-    logical_date = context.get("data_interval_start") - timedelta(days=1)
+    logical_date = context.get("data_interval_start")  # - timedelta(days=1)
     date_str = logical_date.strftime("%Y%m%d")
 
     try:
@@ -77,7 +77,7 @@ def fetch_games_by_date(sport_key, **context):
 def upload_to_s3_func(sport_key: str, kind: str, **context):
     """Upload processed games and odds data to S3"""
     date_str = context["ds"]
-    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
+    date_frmt = datetime.strptime(date_str, "%Y-%m-%d")  # - timedelta(days=1)
     date_str = date_frmt.strftime("%Y-%m-%d")
 
     local_path = f"/tmp/historical/{kind}/{sport_key}/{date_str}/{kind}.json"
@@ -104,7 +104,7 @@ def fetch_odds_by_date(sport_key, **context):
     """Fetch odds data for games on a specific date"""
 
     async def _fetch():
-        logical_date = context.get("data_interval_start") - timedelta(days=1)
+        logical_date = context.get("data_interval_start")  # - timedelta(days=1)
         date_str = logical_date.strftime("%Y-%m-%d")
         # Get completed games for the date from previous games DAG
         games_data = context["task_instance"].xcom_pull(

@@ -1,15 +1,13 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.models import Variable
 from airflow.utils.task_group import TaskGroup
-
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
-from datetime import timedelta
+from datetime import timedelta, datetime
 import boto3
 from betflow.historical.config import ProcessingConfig
 from dotenv import load_dotenv, find_dotenv
 import os
-# from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
 
 
 load_dotenv(find_dotenv("my.env"), override=True)
@@ -21,6 +19,25 @@ default_args = {
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
 }
+
+
+def check_source_data(sport: str, **context):
+    """Check if source data exists in S3"""
+    s3_client = boto3.client("s3")
+    date_str = (context["data_interval_start"]).strftime(
+        "%Y-%m-%d"
+    )  # - timedelta(days=1)
+
+    try:
+        s3_client.head_object(
+            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
+            Key=f"{ProcessingConfig.S3_PATHS['games_prefix']}/{sport}/{date_str}/games.json",
+        )
+        print(f"Found source data for {sport} on {date_str}")
+        return True
+    except Exception as e:
+        print(f"No source data found for {sport} on {date_str}: {str(e)}")
+        return False
 
 
 def upload_glue_script(sport: str):
@@ -95,13 +112,19 @@ with DAG(
     default_args=default_args,
     description="Process all sports games data into Iceberg tables",
     schedule_interval="@daily",
+    # schedule_interval="5 0 * * *",
     catchup=True,
-    start_date=min(
-        config["start_date"] for config in ProcessingConfig.SPORT_CONFIGS.values()
-    ),
+    start_date=datetime(2024, 12, 2),
 ) as dag:
-    for sport, config in ProcessingConfig.SPORT_CONFIGS.items():
+    for sport in ["nba"]:
         with TaskGroup(group_id=f"{sport}_tasks") as sport_tasks:
+            check_data = ShortCircuitOperator(
+                task_id=f"check_{sport}_data",
+                python_callable=check_source_data,
+                op_kwargs={"sport": sport},
+                provide_context=True,
+            )
+
             upload_script = PythonOperator(
                 task_id=f"upload_{sport}_script",
                 python_callable=upload_glue_script(sport),
@@ -120,7 +143,7 @@ with DAG(
                 s3_bucket=Variable.get("LOGS_BUCKET"),
                 script_args={
                     "--JOB_NAME": f"{sport}_games_processing",
-                    "--date": "{{ macros.ds_add(ds, -1) }}",  # Previous day's data
+                    "--date": "{{ ds }}",  # Previous day's data: macros.ds_add(ds, -1)
                     "--source_path": f"s3://{ProcessingConfig.S3_PATHS['raw_bucket']}/{ProcessingConfig.S3_PATHS['games_prefix']}/{sport}/",
                     "--database_name": ProcessingConfig.GLUE_DB["db_name"],
                     "--table_name": ProcessingConfig.GLUE_DB[f"{sport}_games_table"],
@@ -130,6 +153,6 @@ with DAG(
                 trigger_rule="all_done",  # Continue even if upstream tasks fail
             )
 
-            upload_script >> setup_glue_job >> process_games
+            check_data >> upload_script >> setup_glue_job >> process_games
 
     # globals()[f"{sport}_dag"] = dag
