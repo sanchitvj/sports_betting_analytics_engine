@@ -4,8 +4,7 @@ from airflow.utils.task_group import TaskGroup
 from datetime import timedelta, datetime
 from betflow.historical.hist_utils import (
     fetch_odds_by_date,
-    upload_to_s3_func,
-    validate_odds_json_structure,
+    validate_upload_odds_json,
 )
 from betflow.historical.config import ProcessingConfig
 from dotenv import load_dotenv, find_dotenv
@@ -43,30 +42,8 @@ with DAG(
 
             validate_data = PythonOperator(
                 task_id=f"validate_{sport}_odds_json",
-                python_callable=validate_odds_json_structure,
+                python_callable=validate_upload_odds_json,
                 op_kwargs={"sport_key": sport},
             )
 
-            # validate_games = PythonOperator(
-            #     task_id=f"validate_{sport}_odds_games",
-            #     python_callable=validate_odds_game_data,
-            #     op_kwargs={"sport": sport},
-            # )
-            #
-            # validate_bookmakers = PythonOperator(
-            #     task_id=f"validate_{sport}_bookmakers",
-            #     python_callable=validate_bookmaker_data,
-            #     op_kwargs={"sport": sport},
-            # )
-
-            upload_to_s3 = PythonOperator(
-                task_id=f"upload_{sport}_s3",
-                python_callable=upload_to_s3_func,
-                op_kwargs={"sport_key": sport, "kind": "odds"},
-            )
-
-            fetch_odds >> validate_data >> upload_to_s3
-            # Set dependencies
-            # fetch_odds >> validate_json
-            # validate_json >> [validate_games, validate_bookmakers]
-            # [validate_games, validate_bookmakers] >> upload_to_s3
+            fetch_odds >> validate_data

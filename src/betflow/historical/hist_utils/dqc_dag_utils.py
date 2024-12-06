@@ -1,53 +1,44 @@
 from datetime import datetime, timedelta
 import boto3
-import botocore
 import json
 from betflow.historical.config import ProcessingConfig
 
 
-def validate_sports_json_structure(sport_key, **context):
-    """Validate required fields and data types in raw JSON"""
-    s3_client = boto3.client("s3")
-    date_str = context["ds"]
-    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
-    date_str = date_frmt.strftime("%Y-%m-%d")
+def validate_upload_sports_json(sport_key, **context):
+    """Validate JSON data before uploading to S3"""
+    # Get data from XCom that was fetched in previous task
+    games_data = context["task_instance"].xcom_pull(
+        task_ids=f"{sport_key}_pipeline.fetch_{sport_key}_games",
+        key=f"{sport_key}_games_data",
+    )
 
-    s3_path = f"historical/games/{sport_key}/{date_str}/games.json"
-    try:
-        s3_client.head_object(
-            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"], Key=s3_path
-        )
-    except (s3_client.exceptions.NoSuchKey, botocore.exceptions.ClientError):
-        print(f"No games data found for {sport_key} on {date_str}")
+    if not games_data:
+        print(f"No games data found for {sport_key}")
         return True
 
     try:
-        response = s3_client.get_object(
-            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
-            Key=f"historical/games/{sport_key}/{date_str}/games.json",
-        )
-        data = json.loads(response["Body"].read().decode("utf-8"))
-
-        # Game level validations
-        for game in data:
+        # Validate the data before upload
+        for game in games_data:
             validate_sports_game_data(game)
             validate_team_data(game)
             validate_venue_data(game)
 
+        # If validation passes, upload to S3
+        date_str = (context["data_interval_start"] - timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )
+        s3_client = boto3.client("s3")
+        s3_path = f"historical/games/{sport_key}/{date_str}/games.json"
+
+        s3_client.put_object(
+            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
+            Key=s3_path,
+            Body=json.dumps(games_data),
+        )
         return True
 
-    # except s3_client.exceptions.NoSuchKey:
-    #     print(f"No games data found for {sport_key} on {date_str}")
-    #     return True
-    #
-    # except botocore.exceptions.ClientError as e:
-    #     if e.response["Error"]["Code"] == "AccessDenied":
-    #         print(f"No games data exists for {sport_key} on {date_str}")
-    #         return True
-    #     raise
-
     except Exception as e:
-        print(f"Validation failed: {str(e)}")
+        print(f"Validation/Upload failed: {str(e)}")
         raise
 
 
@@ -110,48 +101,41 @@ def validate_venue_data(game):
         raise ValueError(f"Missing venue fields: {venue_fields}")
 
 
-def validate_odds_json_structure(sport_key, **context):
+def validate_upload_odds_json(sport_key, **context):
     """Validate required fields and data types in raw JSON"""
-    s3_client = boto3.client("s3")
-    date_str = context["ds"]
-    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
-    date_str = date_frmt.strftime("%Y-%m-%d")
+
+    odds_data = context["task_instance"].xcom_pull(
+        task_ids=f"{sport_key}_pipeline.fetch_{sport_key}_odds",
+        key=f"{sport_key}_odds_data",
+    )
+
+    if not odds_data:
+        print(f"No odds data found for {sport_key}")
+        return True
 
     try:
-        response = s3_client.get_object(
-            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
-            Key=f"historical/odds/{sport_key}/{date_str}/odds.json",
-        )
-        data = json.loads(response["Body"].read().decode("utf-8"))
-
         # Required root level fields
         required_fields = ["timestamp", "data"]
-        if not all(field in data for field in required_fields):
+        if not all(field in odds_data for field in required_fields):
             raise ValueError(f"Missing required fields: {required_fields}")
 
         # Game level validations
-        for game in data["data"]:
-            validate_odds_game_data(game)
+        for odds in odds_data["data"]:
+            validate_odds_game_data(odds)
+            validate_bookmaker_data(odds["bookmakers"])
 
-        # Bookmaker level validations
-        for game in data["data"]:
-            validate_bookmaker_data(game["bookmakers"])
+        s3_client = boto3.client("s3")
+        date_str = (context["data_interval_start"] - timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )
+        s3_path = f"historical/odds/{sport_key}/{date_str}/odds.json"
+        s3_client.put_object(
+            Bucket=ProcessingConfig.S3_PATHS["raw_bucket"],
+            Key=s3_path,
+            Body=json.dumps(odds_data),
+        )
 
         return True
-
-    except s3_client.exceptions.NoSuchKey:
-        print(f"No games data found for {sport_key} on {date_str}")
-        return True
-
-    except botocore.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "AccessDenied":
-            print(f"No games data exists for {sport_key} on {date_str}")
-            return True
-        raise
-
-    except Exception as e:
-        print(f"Validation failed: {str(e)}")
-        raise
 
     except Exception as e:
         print(f"Validation failed: {str(e)}")
