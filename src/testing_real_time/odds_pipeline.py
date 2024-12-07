@@ -6,10 +6,10 @@ import shutil
 from betflow.spark_streaming.event_processor import OddsProcessor
 from betflow.pipeline_utils import get_live_odds
 from datetime import datetime, timezone
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import os
 
-load_dotenv("my.env")
+load_dotenv(find_dotenv("my.env"), override=True)
 
 
 def calculate_pipeline_timing(odds_data: list) -> tuple:

@@ -32,6 +32,8 @@ with DAG(
     start_date=datetime(2022, 7, 31),
     # start_date=datetime(2024, 11, 28),
     # end_date=datetime(2024, 12, 1),
+    max_active_runs=16,  # Increase concurrent DAG runs
+    concurrency=32,  # Increase task concurrency
 ) as dag:
     with TaskGroup("common_tasks") as common_tasks:
         upload_script = PythonOperator(
