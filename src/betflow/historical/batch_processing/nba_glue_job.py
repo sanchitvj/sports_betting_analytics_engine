@@ -206,8 +206,9 @@ if (
     and reconciliation_check.count() == 0
 ):
     (
-        processed_df.drop("validation_status")
-        .writeTo(f"glue_catalog.{args['database_name']}.{args['table_name']}")
+        processed_df.writeTo(
+            f"glue_catalog.{args['database_name']}.{args['table_name']}"
+        )
         .tableProperty("format-version", "2")
         .option("check-nullability", "false")
         .option("merge-schema", "true")

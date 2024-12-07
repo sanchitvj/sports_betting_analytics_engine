@@ -40,11 +40,4 @@ with DAG(
                 op_kwargs={"sport_key": sport},
             )
 
-            # upload_to_s3 = PythonOperator(
-            #     task_id=f"upload_{sport}_s3",
-            #     python_callable=upload_to_s3_func,
-            #     op_kwargs={"sport_key": sport, "kind": "games"},
-            #     trigger_rule="none_failed",
-            # )
-
             fetch_games >> validate_and_upload

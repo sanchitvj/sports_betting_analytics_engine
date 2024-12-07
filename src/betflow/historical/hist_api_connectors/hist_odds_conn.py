@@ -19,9 +19,9 @@ class HistoricalOddsConnector:
         self.request_timestamps = deque(maxlen=300)
 
     async def _rate_limit(self):
-        """Ensure no more than 300 requests per minute"""
+        """Ensure no more than 30 requests per minute"""
         now = datetime.now()
-        if len(self.request_timestamps) == 100:
+        if len(self.request_timestamps) == 30:
             elapsed = (now - self.request_timestamps[0]).total_seconds()
             if elapsed < 60:
                 await asyncio.sleep(60 - elapsed)
