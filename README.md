@@ -6,25 +6,22 @@ graph LR
     classDef ingestion fill:#e6f3ff,stroke:#3498db
     classDef processing fill:#e6ffe6,stroke:#2ecc71
     classDef storage fill:#fff0e6,stroke:#e67e22
-    classDef visualization fill:#ffe6e6,stroke:#e74c3c
-    
-    A[APIs] -->|Fetch Data| B[Kafka]
-    B -->|Stream| C[Spark Streaming]
-    C -->|Process| D[Apache Druid]
-    D -->|Visualize| E[Grafana Dashboards]
-    
-    B -.->|Archive| F[S3 Raw]
-    C -.->|Persist| G[Iceberg Tables]
-    D -.->|Historical| H[Druid Storage]
-    H -.->|Long-term| I[S3/HDFS]
-    
-    F & G -->|Catalog| J[AWS Glue]
-    
+    classDef analytics fill:#ffe6e6,stroke:#e74c3c
+    classDef monitoring fill:#f0e6ff,stroke:#9b59b6
+
+    %% Real-time Pipeline
+    A[Real-time APIs] -->|Stream| B[Kafka]
+    B -->|Process| C[Spark Streaming]
+    B -->|Backup| D[raw-s3/topics]
+    C -->|Real-time Analytics| E[Apache Druid]
+    E -->|Live Dashboard| F[Grafana RT]
+    E -->|Archive| G[hist-s3/druid/segments]
+
     A & B:::ingestion
-    C & D:::processing
-    F & G & H & I:::storage
-    E:::visualization
-    J:::processing
+    C:::processing
+    D & G:::storage
+    E:::analytics
+    F:::monitoring
 ```
 
 ### Batch pipeline
@@ -34,19 +31,79 @@ graph LR
     classDef processing fill:#e6ffe6,stroke:#2ecc71
     classDef storage fill:#fff0e6,stroke:#e67e22
     classDef analytics fill:#ffe6e6,stroke:#e74c3c
-    
-    A[Historical Data] -->|Load| B[Airflow]
-    B -->|Extract| C[S3]
-    C -->|Transform| D[Iceberg Tables]
-    D -->|Load| E[Snowflake]
-    E -->|Transform| F[dbt Models]
-    F -->|Visualize| G[Grafana Dashboards]
-    
-    C & D -->|Catalog| H[AWS Glue]
-    
+    classDef quality fill:#f5f5f5,stroke:#7f8c8d
+
+    %% Batch Pipeline
+    A[Historical APIs] -->|Ingest| B[Airflow DAGs]
+    B -->|Raw Data| C[raw-s3/historical]
+    C -->|Transform| D[AWS Glue]
+    D -->|Process| E[Iceberg Tables]
+    E -->|Load| F[Snowflake Gold]
+    F -->|Model| G[dbt]
+    G -->|Visualize| H[Grafana Batch]
+
+    E -->|Catalog| I[Glue Catalog]
+    E -->|Store| J[cur-s3/processed]
+
     A:::source
-    B & H:::processing
-    C & D:::storage
-    E & F:::analytics
-    G:::analytics
+    B & D:::processing
+    C & J:::storage
+    F & G:::analytics
+    H:::analytics
+    I:::quality
+```
+
+### DAGs
+```mermaid
+graph TB
+    classDef source fill:#e6f3ff,stroke:#3498db
+    classDef validation fill:#ffe6e6,stroke:#e74c3c
+    classDef storage fill:#fff0e6,stroke:#e67e22
+    classDef processing fill:#e6ffe6,stroke:#2ecc71
+    classDef task fill:#f0e6ff,stroke:#9b59b6
+
+    subgraph "Ingestion DAG"
+        A[Historical APIs]:::source --> B[Check Source Data]:::validation
+        B --> C{Data Exists?}
+        C -->|Yes| D[Fetch Data]:::task
+        D --> E[Validate JSON]:::validation
+        E --> F[Upload to S3]:::storage
+        C -->|No| G[Skip Processing]:::task
+    end
+```
+
+```mermaid
+graph TB
+    classDef source fill:#e6f3ff,stroke:#3498db
+    classDef validation fill:#ffe6e6,stroke:#e74c3c
+    classDef storage fill:#fff0e6,stroke:#e67e22
+    classDef processing fill:#e6ffe6,stroke:#2ecc71
+    classDef task fill:#f0e6ff,stroke:#9b59b6
+    subgraph "Processing DAG"
+        H[Raw S3 Data]:::source --> I[Check Data Availability]:::validation
+        I --> J{Data Ready?}
+        J -->|Yes| K[Upload Glue Script]:::task
+        K --> L[Setup Glue Job]:::task
+        L --> M[Process Data]:::processing
+        M --> N[Quality Checks]:::validation
+        N --> O[Iceberg Tables]:::storage
+        J -->|No| P[Skip Day]:::task
+    end
+```
+
+```mermaid
+graph TB
+    classDef source fill:#e6f3ff,stroke:#3498db
+    classDef validation fill:#ffe6e6,stroke:#e74c3c
+    classDef storage fill:#fff0e6,stroke:#e67e22
+    classDef processing fill:#e6ffe6,stroke:#2ecc71
+    classDef task fill:#f0e6ff,stroke:#9b59b6
+    subgraph "Task Groups"
+        Q[NBA Pipeline]:::task
+        R[NFL Pipeline]:::task
+        S[NHL Pipeline]:::task
+        T[NCAAF Pipeline]:::task
+        
+        Q & R & S & T --> U[Parallel Processing]:::processing
+    end
 ```
