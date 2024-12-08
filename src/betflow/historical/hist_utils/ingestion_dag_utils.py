@@ -1,5 +1,4 @@
-from datetime import timedelta, datetime
-import json
+from datetime import datetime
 import os
 import boto3
 import aiohttp
@@ -34,7 +33,7 @@ def check_games_data(sport_key, **context):
 
 def fetch_games_by_date(sport_key, **context):
     """Fetch games for a specific date and sport"""
-    logical_date = context.get("data_interval_start") - timedelta(days=1)
+    logical_date = context.get("data_interval_start")  # - timedelta(days=1)
     date_str = logical_date.strftime("%Y%m%d")
 
     try:
@@ -64,17 +63,11 @@ def fetch_games_by_date(sport_key, **context):
                 processed_games.append(game_data)
 
         if processed_games:
-            output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['games_prefix']}/{sport_key}/{logical_date.strftime('%Y-%m-%d')}"
-            os.makedirs(output_dir, exist_ok=True)
-
-            with open(f"{output_dir}/games.json", "w") as f:
-                json.dump(processed_games, f)
-
             context["task_instance"].xcom_push(
                 key=f"{sport_key}_games_data", value=processed_games
             )
-            return len(processed_games)
-        return 0
+            return processed_games
+        return []
 
     except Exception as e:
         print(f"Error fetching {sport_key} games for date {date_str}: {str(e)}")
@@ -84,7 +77,7 @@ def fetch_games_by_date(sport_key, **context):
 def upload_to_s3_func(sport_key: str, kind: str, **context):
     """Upload processed games and odds data to S3"""
     date_str = context["ds"]
-    date_frmt = datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)
+    date_frmt = datetime.strptime(date_str, "%Y-%m-%d")  # - timedelta(days=1)
     date_str = date_frmt.strftime("%Y-%m-%d")
 
     local_path = f"/tmp/historical/{kind}/{sport_key}/{date_str}/{kind}.json"
@@ -111,18 +104,18 @@ def fetch_odds_by_date(sport_key, **context):
     """Fetch odds data for games on a specific date"""
 
     async def _fetch():
-        logical_date = context.get("data_interval_start") - timedelta(days=1)
+        logical_date = context.get("data_interval_start")  # - timedelta(days=1)
         date_str = logical_date.strftime("%Y-%m-%d")
         # Get completed games for the date from previous games DAG
-        games_data = context["task_instance"].xcom_pull(
-            dag_id=f"historical_{sport_key}_games_ingestion",
-            task_ids=f"fetch_daily_{sport_key}_games",
-            key=f"{sport_key}_games_data",
-        )
-
-        if not games_data:
-            print(f"No completed games found for date {date_str}")
-            return []
+        # games_data = context["task_instance"].xcom_pull(
+        #     dag_id="sports_ingestion_dqc",
+        #     task_ids=f"{sport_key}_pipeline.validate_{sport_key}_json",
+        #     key="return_value",
+        # )
+        #
+        # if not games_data:
+        #     print(f"No completed games found for date {date_str}")
+        #     return []
 
         try:
             odds_connector = HistoricalOddsConnector(api_key=os.getenv("ODDS_API_KEY"))
@@ -134,13 +127,9 @@ def fetch_odds_by_date(sport_key, **context):
                 )
 
                 if odds_data:
-                    # Write to temporary location
-                    output_dir = f"/tmp/{HistoricalConfig.S3_PATHS['odds_prefix']}/{sport_key}/{date_str}"
-                    os.makedirs(output_dir, exist_ok=True)
-
-                    with open(f"{output_dir}/odds.json", "w") as f:
-                        json.dump(odds_data, f)
-
+                    context["task_instance"].xcom_push(
+                        key=f"{sport_key}_odds_data", value=odds_data
+                    )
                     return odds_data
                 return []
 

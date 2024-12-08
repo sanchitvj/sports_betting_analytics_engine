@@ -63,6 +63,7 @@ class ProcessingConfig:
     }
 
     SCRIPT_PATHS = {
+        "base_path": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing",
         "nba_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nba_glue_job.py",
         "nhl_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nhl_glue_job.py",
         "nfl_games": "/home/ubuntu/sports_betting_analytics_engine/src/betflow/historical/batch_processing/nfl_glue_job.py",

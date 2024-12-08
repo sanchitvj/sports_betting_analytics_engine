@@ -101,88 +101,132 @@ spark.sql(f"""
 
 
 raw_path = f"{args['source_path']}{args['date']}/games.json"
-try:
-    df = spark.read.json(raw_path)
-    if df.count() == 0:
-        print(f"No games found for date: {args['date']}")
-        job.commit()
-        sys.exit(0)
-    df.createOrReplaceTempView("raw_games")
+df = spark.read.json(raw_path)
+if df.count() == 0:
+    print(f"No games found for date: {args['date']}")
+    job.commit()
+    sys.exit(0)
+df.createOrReplaceTempView("raw_games")
 
-    processed_df = spark.sql("""
-        SELECT 
-            game_id,
-            CAST(start_time as timestamp) as start_time,
-            CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
-            CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
-            CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
-            status_state,
-            status_detail,
-            status_description,
-            CAST(period as int) as period,
-            clock,
-            STRUCT(
-                home_team_id as id,
-                home_team_name as name,
-                home_team_abbreviation as abbreviation,
-                home_team_score as score,
-                home_team_saves as saves,
-                home_team_save_pct as save_pct,
-                home_team_goals as goals,
-                home_team_assists as assists,
-                home_team_points as points,
-                home_team_penalties as penalties,
-                home_team_penalty_minutes as penalty_minutes,
-                home_team_power_plays as power_plays,
-                home_team_power_play_goals as power_play_goals,
-                home_team_power_play_pct as power_play_pct,
-                home_team_record as record
-            ) as home_team,
-            STRUCT(
-                away_team_id as id,
-                away_team_name as name,
-                away_team_abbreviation as abbreviation,
-                away_team_score as score,
-                away_team_saves as saves,
-                away_team_save_pct as save_pct,
-                away_team_goals as goals,
-                away_team_assists as assists,
-                away_team_points as points,
-                away_team_penalties as penalties,
-                away_team_penalty_minutes as penalty_minutes,
-                away_team_power_plays as power_plays,
-                away_team_power_play_goals as power_play_goals,
-                away_team_power_play_pct as power_play_pct,
-                away_team_record as record
-            ) as away_team,
-            STRUCT(
-                venue_name as name,
-                venue_city as city,
-                venue_state as state,
-                venue_indoor as indoor
-            ) as venue,
-            broadcasts,
-            CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
-        FROM raw_games
-        WHERE status_state = 'post'
+processed_df = spark.sql("""
+    SELECT 
+        game_id,
+        CAST(start_time as timestamp) as start_time,
+        CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
+        CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
+        CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
+        status_state,
+        status_detail,
+        status_description,
+        CAST(period as int) as period,
+        clock,
+        STRUCT(
+            home_team_id as id,
+            home_team_name as name,
+            home_team_abbreviation as abbreviation,
+            home_team_score as score,
+            home_team_saves as saves,
+            home_team_save_pct as save_pct,
+            home_team_goals as goals,
+            home_team_assists as assists,
+            home_team_points as points,
+            home_team_penalties as penalties,
+            home_team_penalty_minutes as penalty_minutes,
+            home_team_power_plays as power_plays,
+            home_team_power_play_goals as power_play_goals,
+            home_team_power_play_pct as power_play_pct,
+            home_team_record as record
+        ) as home_team,
+        STRUCT(
+            away_team_id as id,
+            away_team_name as name,
+            away_team_abbreviation as abbreviation,
+            away_team_score as score,
+            away_team_saves as saves,
+            away_team_save_pct as save_pct,
+            away_team_goals as goals,
+            away_team_assists as assists,
+            away_team_points as points,
+            away_team_penalties as penalties,
+            away_team_penalty_minutes as penalty_minutes,
+            away_team_power_plays as power_plays,
+            away_team_power_play_goals as power_play_goals,
+            away_team_power_play_pct as power_play_pct,
+            away_team_record as record
+        ) as away_team,
+        STRUCT(
+            venue_name as name,
+            venue_city as city,
+            venue_state as state,
+            venue_indoor as indoor
+        ) as venue,
+        broadcasts,
+        CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
+    FROM raw_games
+    WHERE status_state = 'post'
+""")
+
+partition_check = processed_df.filter(
+    "partition_year IS NULL OR partition_month IS NULL OR partition_day IS NULL"
+).count()
+# print(f"Records with null partitions: {partition_check}")
+
+
+# Check for duplicate game IDs
+duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
+if duplicate_check.count() > 0:
+    print("Duplicate game IDs found:")
+    duplicate_check.show()
+
+# Verify timestamp conversions
+# print("Timestamp Distribution:")
+# processed_df.groupBy("partition_year", "partition_month").count().show()
+
+raw_count = df.count()
+processed_count = processed_df.count()
+
+processed_df.createOrReplaceTempView("processed_df")
+reconciliation_check = spark.sql("""
+        WITH raw_counts AS (
+            SELECT DATE(start_time) as game_date,
+                   COUNT(DISTINCT game_id) as raw_count
+            FROM raw_games
+            WHERE status_state = 'post'
+            GROUP BY 1
+        ),
+        processed_counts AS (
+            SELECT DATE(start_time) as game_date,
+                   COUNT(DISTINCT game_id) as processed_count
+            FROM processed_df
+            GROUP BY 1
+        )
+        SELECT r.game_date, 
+               r.raw_count, 
+               p.processed_count,
+               CASE WHEN r.raw_count != p.processed_count THEN 'Mismatch'
+                    ELSE 'Match' END as status
+        FROM raw_counts r
+        LEFT JOIN processed_counts p ON r.game_date = p.game_date
+        WHERE r.raw_count != p.processed_count
     """)
 
-    if processed_df.count() > 0:
-        (
-            processed_df.writeTo(
-                f"glue_catalog.{args['database_name']}.{args['table_name']}"
-            )
-            .tableProperty("format-version", "2")
-            .option("check-nullability", "false")
-            .option("merge-schema", "true")
-            .tableProperty("write.format.default", "parquet")
-            .partitionedBy("partition_year", "partition_month", "partition_day")
-            .append()
-        )
-    job.commit()
+# print("\nGame-level Reconciliation:")
+# reconciliation_check.show()
 
-except Exception as e:
-    if "no such file or directory" in str(e).lower():
-        print(f"No data file found for date: {args['date']}")
-        job.commit()
-        sys.exit(0)
+if (
+    partition_check == 0
+    and raw_count == processed_count
+    and reconciliation_check.count() == 0
+):
+    (
+        processed_df.writeTo(
+            f"glue_catalog.{args['database_name']}.{args['table_name']}"
+        )
+        .tableProperty("format-version", "2")
+        .option("check-nullability", "false")
+        .option("merge-schema", "true")
+        .tableProperty("write.format.default", "parquet")
+        .partitionedBy("partition_year", "partition_month", "partition_day")
+        .append()
+    )
+job.commit()

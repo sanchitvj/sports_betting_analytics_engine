@@ -5,9 +5,8 @@ from airflow.utils.task_group import TaskGroup
 
 from betflow.historical.config import HistoricalConfig
 from betflow.historical.hist_utils import (
-    validate_sports_json_structure,
     fetch_games_by_date,
-    upload_to_s3_func,
+    validate_upload_sports_json,
 )
 
 default_args = {
@@ -22,7 +21,7 @@ default_args = {
 with DAG(
     "sports_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2024, 12, 4),
+    start_date=datetime(2022, 8, 1),  # keeping this because all spots start after this
     schedule_interval="@daily",
     catchup=True,
 ) as dag:
@@ -35,51 +34,10 @@ with DAG(
                 op_kwargs={"sport_key": sport},
             )
 
-            # check_data = ShortCircuitOperator(
-            #     task_id=f"check_{sport}_data",
-            #     python_callable=check_games_data,
-            #     op_kwargs={"sport_key": sport},
-            # )
-
-            # Data validation tasks
-            validate_data = PythonOperator(
+            validate_and_upload = PythonOperator(
                 task_id=f"validate_{sport}_json",
-                python_callable=validate_sports_json_structure,
+                python_callable=validate_upload_sports_json,
                 op_kwargs={"sport_key": sport},
-                trigger_rule="none_failed",  # Run only if check_data passes
             )
 
-            # validate_games = PythonOperator(
-            #     task_id=f"validate_{sport}_games",
-            #     python_callable=validate_sports_game_data,
-            #     op_kwargs={"sport": sport},
-            # )
-            #
-            # validate_teams = PythonOperator(
-            #     task_id=f"validate_{sport}_teams",
-            #     python_callable=validate_team_data,
-            #     op_kwargs={"sport": sport},
-            # )
-            #
-            # validate_venues = PythonOperator(
-            #     task_id=f"validate_{sport}_venues",
-            #     python_callable=validate_venue_data,
-            #     op_kwargs={"sport": sport},
-            # )
-
-            upload_to_s3 = PythonOperator(
-                task_id=f"upload_{sport}_s3",
-                python_callable=upload_to_s3_func,
-                op_kwargs={"sport_key": sport, "kind": "games"},
-            )
-
-            # skip_sport = EmptyOperator(
-            #     task_id=f"skip_{sport}_processing", trigger_rule="none_failed"
-            # )
-
-            fetch_games >> validate_data >> upload_to_s3
-            # Set dependencies
-            # fetch_games >> check_data
-            # check_data >> [validate_json, skip_sport]
-            # validate_json >> [validate_games, validate_teams, validate_venues]
-            # [validate_games, validate_teams, validate_venues] >> upload_to_s3
+            fetch_games >> validate_and_upload
