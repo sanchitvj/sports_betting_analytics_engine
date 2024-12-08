@@ -107,3 +107,21 @@ graph TB
         Q & R & S & T --> U[Parallel Processing]:::processing
     end
 ```
+
+```mermaid
+graph TB
+    subgraph "Data Sources"
+        A[Iceberg Tables] -->|Load| B[Snowflake External Tables]
+    end
+    
+    subgraph "dbt Transformations"
+        B -->|Transform| C[Base Models]
+        C -->|Aggregate| D[Intermediate Models]
+        D -->|Business Logic| E[Gold Tables]
+    end
+    
+    subgraph "Analytics"
+        E -->|Query| F[BI Dashboards]
+        E -->|Analysis| G[ML Models]
+    end
+```
