@@ -125,12 +125,18 @@ file.delim=+
 4. Start Kafka Connect
 ```bash
 # First start kafka in kraft mode then start connector
- 
 bin/connect-standalone.sh config/connect-standalone.properties config/connect/s3-sink.properties
 ```
 ```bash
 # Check connector status
 curl -s localhost:8083/connectors/s3-sink-sports/status | jq
+```
+
+5. If there is an issue where Kafka broker is unable to register with the controller quorum in KRaft mode.
+```bash
+rm -rf /home/ubuntu/kafka/kraft-combined-logs/*
+KAFKA_CLUSTER_ID="$(./bin/kafka-storage.sh random-uuid)"
+./bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
 ```
 
 ## Legacy Setup (with Zookeeper)

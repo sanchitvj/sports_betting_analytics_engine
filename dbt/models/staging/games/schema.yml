@@ -1,0 +1,12 @@
+version: 2
+models:
+  - name: stg_nba_games
+    description: Staged NBA games data
+    columns:
+      - name: game_id
+        tests:
+          - unique
+          - not_null
+      - name: start_time
+        tests:
+          - not_null

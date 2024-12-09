@@ -1,2 +1,0 @@
-requests~=2.32.3
-pendulum~=3.0.0
