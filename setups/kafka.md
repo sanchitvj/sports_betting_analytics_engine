@@ -96,10 +96,10 @@ connector.class=io.confluent.connect.s3.S3SinkConnector
 tasks.max=1
 
 # Topics by sport
-topics=nba_games_analytics,nba_odds_analytics,nba_news_analytics,nba_weather_analytics,\
+topics=nba_games_analytics,nba_odds_analytics,nba_news_analytics,\
        nfl_games_analytics,nfl_odds_analytics,nfl_news_analytics,nfl_weather_analytics,\
        cfb_games_analytics,cfb_odds_analytics,cfb_news_analytics,cfb_weather_analytics,\
-       nhl_games_analytics,nhl_odds_analytics,nhl_news_analytics,nhl_weather_analytics
+       nhl_games_analytics,nhl_odds_analytics,nhl_news_analytics,
 
 # S3 configuration
 s3.bucket.name=raw-sp-data-aeb
@@ -277,10 +277,10 @@ bin/kafka-server-start.sh -daemon config/server.properties
 2. Create topics
 ```bash
 # Create game events topic
-bin/kafka-topics.sh --create --topic weather.current.dc --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-
-# Create analytics topic
 bin/kafka-topics.sh --create --topic weather_analytics --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+# create with modified settings
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.cleanable.dirty.ratio=0.01 --config segment.ms=100 --topic nba_odds_analytics 
 ```
 
 3. List topics
