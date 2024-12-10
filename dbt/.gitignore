@@ -1,6 +1,6 @@
 target/
 dbt_modules/
-../logs/
+logs/
 **/.DS_Store
 venv/
 .user.yml

@@ -4,7 +4,7 @@
 ) }}
 
 with source as (
-    select DATA from {{ source('raw_data', 'nba_odds') }}
+    select DATA from {{ source('raw_data', 'nhl_odds') }}
 ),
 staged as (
     select

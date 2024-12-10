@@ -4,10 +4,9 @@ config-version: 2
 
 profile: 'betflow'
 
-model-paths: ["models"]
-analysis-paths: ["analysis"]
-test-paths: ["tests"]
-macro-paths: ["macros"]
+model-paths: ["dbt/models"]
+test-paths: ["dbt/tests"]
+macro-paths: ["dbt/macros"]
 
 target-path: "target"
 clean-targets:
@@ -20,8 +19,12 @@ require-dbt-version: [">=1.0.0", "<2.0.0"]
 models:
   betflow:
     staging:
-      +materialized: view
-      +schema: staging
+      games:
+        +materialized: view
+        +schema: staging
+      odds:
+        +materialized: view
+        +schema: staging
     marts:
       +materialized: table
       +schema: analytics
