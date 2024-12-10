@@ -150,14 +150,14 @@ class WeatherPipeline:
                         self.league_status[league] = league in active_leagues
                         if not self.league_status[league]:
                             self.logger.info(
-                                f"No games in next 3 hours for {league.upper()}. Weather pipeline may stop."
+                                f"No outdoor games in next 3 hours for {league.upper()}. Weather pipeline may stop."
                             )
 
                     # Check if all leagues are inactive
                     if not any(self.league_status.values()):
                         print("\n" + "=" * 60)
                         self.logger.info(
-                            "No games for any sport in next 3 hours. STOPPING PIPELINE"
+                            "No outdoor games for any sport in next 3 hours. STOPPING PIPELINE"
                         )
                         print("\n" + "=" * 60)
                         break

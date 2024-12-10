@@ -13,8 +13,6 @@ from pyspark.sql.functions import (
     lit,
     max as spark_max,
     min as spark_min,
-    expr,
-    to_timestamp,
 )
 from pyspark.sql.types import (
     StringType,
@@ -121,19 +119,20 @@ class OddsProcessor:
                 .option("kafka.bootstrap.servers", "localhost:9092")
                 .option("subscribe", self.input_topic)
                 .option("startingOffsets", "latest")
+                .option("failOnDataLoss", "false")
                 # .option("maxOffsetsPerTrigger", 10000)
                 .load()
             )
 
             parsed_df = (
                 self._parse_and_transform(stream_df)
-                .withColumn("game_time", to_timestamp(col("commence_time")))
-                .filter(
-                    col("game_time").between(
-                        current_timestamp(),
-                        current_timestamp() + expr("INTERVAL 5 HOURS"),
-                    )
-                )
+                # .withColumn("game_time", to_timestamp(col("commence_time")))
+                # .filter(
+                #     col("game_time").between(
+                #         current_timestamp(),
+                #         current_timestamp() + expr("INTERVAL 5 HOURS"),
+                #     )
+                # )
             )
 
             analytics_df = (
@@ -203,6 +202,12 @@ class OddsProcessor:
                 )
             )
 
+            # analytics_df.writeStream.foreachBatch(
+            #     lambda df, epoch_id: print(f"Batch {epoch_id}: {df.count()} records")
+            # ).start()
+            #
+            # analytics_df.printSchema()
+
             kafka_query = (
                 analytics_df.selectExpr("to_json(struct(*)) AS value")
                 .writeStream.format("kafka")
@@ -210,9 +215,17 @@ class OddsProcessor:
                 .option("topic", self.output_topic)
                 .option("checkpointLocation", f"{self.checkpoint_location}")
                 # .option("cleanSource", "delete-on-success")
+                .option("kafka.max.block.ms", "5000")
+                .option("kafka.retries", "3")
+                .option("kafka.retry.backoff.ms", "500")
                 .outputMode("update")
                 # .trigger(processingTime="1 minute")
                 .start()
+            )
+
+            print(f"Query active: {kafka_query.isActive}")
+            print(
+                f"Query exception: {kafka_query.exception() if kafka_query.exception() else 'None'}"
             )
 
             return kafka_query

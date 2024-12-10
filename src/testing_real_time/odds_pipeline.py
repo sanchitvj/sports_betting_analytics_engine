@@ -71,7 +71,7 @@ class OddsPipeline:
         try:
             # Initialize connector
             odds_connector = OddsAPIConnector(
-                api_key=os.getenv("ODDS_API_KEY"),
+                api_key=os.getenv("ODDS_FREE_API_KEY"),
                 kafka_bootstrap_servers="localhost:9092",
             )
 
@@ -106,7 +106,12 @@ class OddsPipeline:
                 try:
                     if odds_data:
                         has_games = await odds_connector.fetch_and_publish_odds(
-                            sport=sport, topic_name=f"{sport_code}.odds.live"
+                            sport=sport,
+                            topic_name=f"{sport_code}.odds.live",
+                            markets="h2h",
+                            regions="us",
+                            odds_format="decimal",
+                            hours_before=3,
                         )
 
                         if not has_games:

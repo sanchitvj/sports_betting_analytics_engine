@@ -204,21 +204,78 @@ if (
     else:
         print(f"processed df count is not greater than zero for {args['date']}.")
 else:
-    error_msg = "Data validation failed:\n"
-    if null_partitions > 0:
-        error_msg += (
-            f"- {null_partitions} records with null partitions for {args['date']}\n"
+    error_msg = (
+        "Data validation failed.\n Removing invalidated rows and keeping rest: \n"
+    )
+
+    validated_df = spark.sql("""
+        WITH validation_check AS (
+            SELECT 
+                *,
+                CASE 
+                    WHEN home_price < -10001 OR home_price > 10001 OR 
+                         away_price < -10001 OR away_price > 10001 THEN 'Invalid Price'
+                    WHEN partition_year IS NULL OR partition_month IS NULL OR 
+                         partition_day IS NULL THEN 'Invalid Partition'
+                    WHEN game_id IS NULL OR sport_key IS NULL OR 
+                         commence_time IS NULL THEN 'Invalid Required Fields'
+                    ELSE 'Valid'
+                END as validation_status
+            FROM processed_df
         )
-    if null_fields > 0:
-        error_msg += (
-            f"- {null_fields} records with null required fields for {args['date']}\n"
+        SELECT 
+            game_id,
+            sport_key,
+            sport_title,
+            commence_time,
+            home_team,
+            away_team,
+            bookmaker_key,
+            bookmaker_title,
+            bookmaker_last_update,
+            market_key,
+            market_last_update,
+            home_price,
+            away_price,
+            partition_year,
+            partition_month,
+            partition_day,
+            ingestion_timestamp
+        FROM validation_check
+        WHERE validation_status = 'Valid'
+    """)
+
+    # Log validation results
+    print("\n=== Validation Summary ===")
+    print(f"Total records: {processed_df.count()}")
+    print(f"Valid records: {validated_df.count()}")
+    print(f"Filtered records: {processed_df.count() - validated_df.count()}")
+
+    if validated_df.count() > 0:
+        (
+            validated_df.writeTo(
+                f"glue_catalog.{args['database_name']}.{args['table_name']}"
+            )
+            .tableProperty("format-version", "2")
+            .option("check-nullability", "false")
+            .option("merge-schema", "true")
+            .tableProperty("write.format.default", "parquet")
+            .partitionedBy("partition_year", "partition_month", "partition_day")
+            .append()
         )
-    if invalid_prices > 0:
-        error_msg += (
-            f"- {invalid_prices} records with invalid prices for {args['date']}\n"
-        )
-    # if invalid_timestamps > 0:
-    #     error_msg += f"- {invalid_timestamps} records with future timestamps\n"
-    raise ValueError(error_msg)
+    else:
+        if null_partitions > 0:
+            error_msg += (
+                f"- {null_partitions} records with null partitions for {args['date']}\n"
+            )
+        if null_fields > 0:
+            error_msg += f"- {null_fields} records with null required fields for {args['date']}\n"
+        if invalid_prices > 0:
+            error_msg += (
+                f"- {invalid_prices} records with invalid prices for {args['date']}\n"
+            )
+        # if invalid_timestamps > 0:
+        #     error_msg += f"- {invalid_timestamps} records with future timestamps\n"
+        raise ValueError(error_msg)
 
 job.commit()
