@@ -84,9 +84,9 @@ def create_or_update_glue_job(args: Dict[str, str], **context):
             "PythonVersion": "3",
         },
         "DefaultArguments": {
-            "--enable-continuous-cloudwatch-log": "true",
+            "--enable-continuous-cloudwatch-log": "false",
             "--enable-glue-datacatalog": "true",
-            "--enable-metrics": "true",
+            "--enable-metrics": "false",
             "--conf": f'spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions --conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog --conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog --conf spark.sql.catalog.glue_catalog.warehouse=s3://{ProcessingConfig.S3_PATHS["processing_bucket"]}/processed',  # --conf spark.jars=s3://{Variable.get("MISC_BUCKET")}/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,s3://{Variable.get("MISC_BUCKET")}/iceberg-aws-bundle-1.6.1.jar',
             "--datalake-formats": "iceberg",
         },

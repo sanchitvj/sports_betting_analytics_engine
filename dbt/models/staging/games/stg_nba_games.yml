@@ -1,0 +1,15 @@
+version: 2
+models:
+  - name: stg_nba_games
+    description: "Staged NBA games data"
+    columns:
+      - name: game_id
+        tests:
+#          - unique
+          - not_null
+      - name: home_team_score
+        tests:
+          - not_null
+      - name: away_team_score
+        tests:
+          - not_null

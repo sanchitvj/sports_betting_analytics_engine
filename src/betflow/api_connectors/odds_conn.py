@@ -69,14 +69,14 @@ class OddsAPIConnector:
 
             # Check remaining requests
             requests_remaining = response.headers.get("x-requests-remaining")
-            if requests_remaining and float(requests_remaining) < 15000.0:
+            if requests_remaining and float(requests_remaining) < 100.0:
                 print(f"Warning: Only {requests_remaining} API requests remaining")
 
             return response.json()
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429:
-                retry_after = int(e.response.headers.get("Retry-After", 3600))
+                retry_after = int(e.response.headers.get("Retry-After", 360))
                 raise Exception(
                     f"Rate limit exceeded. Retry after {retry_after} seconds"
                 )
@@ -177,6 +177,7 @@ class OddsAPIConnector:
         markets: str = "h2h",
         regions: str = "us",
         odds_format: str = "decimal",
+        hours_before: int = 3,
     ) -> None:
         """Fetch odds for a sport and publish to Kafka.
 
@@ -200,7 +201,7 @@ class OddsAPIConnector:
                 params=params,
             )
 
-            if not self.check_upcoming_odds(raw_data):
+            if not self.check_upcoming_odds(raw_data, hours_before):
                 return False
 
             current_time = datetime.now(timezone.utc)
@@ -217,7 +218,9 @@ class OddsAPIConnector:
                 # 1. Game starts within next 3 hours OR
                 # 2. Game has already started but not finished
                 if (
-                    timedelta(hours=-4) <= time_until_game <= timedelta(hours=3)
+                    timedelta(hours=-4)
+                    <= time_until_game
+                    <= timedelta(hours=hours_before)
                     or game_odds.get("status") == "in"
                 ):
                     transformed_data = self.api_raw_odds_data(game_odds)
@@ -231,7 +234,7 @@ class OddsAPIConnector:
             raise Exception(f"Failed to fetch and publish odds: {e}")
 
     @staticmethod
-    def check_upcoming_odds(raw_data: list, hours: int = 3) -> bool:
+    def check_upcoming_odds(raw_data: list, hours: int = 12) -> bool:
         """Check if there are any games with odds starting within specified hours."""
         current_time = datetime.now(timezone.utc)
         for game in raw_data:

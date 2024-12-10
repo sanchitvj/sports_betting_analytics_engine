@@ -1,0 +1,22 @@
+version: 2
+sources:
+  - name: raw_data
+    database: SPORTS_DB
+    schema: RAW_LAYER
+    tables:
+      - name: nba_odds
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.NBA_ODDS_STAGE'
+          file_format: PARQUET_FORMAT
+      - name: nhl_odds
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.NHL_ODDS_STAGE'
+          file_format: PARQUET_FORMAT
+      - name: nfl_odds
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.NFL_ODDS_STAGE'
+          file_format: PARQUET_FORMAT
+      - name: cfb_odds
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.CFB_ODDS_STAGE'
+          file_format: PARQUET_FORMAT

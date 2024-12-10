@@ -1,0 +1,22 @@
+version: 2
+sources:
+  - name: raw_data
+    database: SPORTS_DB
+    schema: RAW_LAYER
+    tables:
+      - name: nba_games
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.NBA_GAMES_STAGE'
+          file_format: PARQUET_FORMAT
+      - name: nhl_games
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.NHL_GAMES_STAGE'
+          file_format: PARQUET_FORMAT
+      - name: nfl_games
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.NFL_GAMES_STAGE'
+          file_format: PARQUET_FORMAT
+      - name: cfb_games
+        external:
+          location: '@SPORTS_DB.RAW_LAYER.CFB_GAMES_STAGE'
+          file_format: PARQUET_FORMAT

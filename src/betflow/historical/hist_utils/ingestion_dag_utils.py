@@ -23,7 +23,8 @@ def check_games_data(sport_key, **context):
     try:
         games_data = context["task_instance"].xcom_pull(
             task_ids=f"{sport_key}_pipeline.fetch_{sport_key}_games",
-            key=f"{sport_key}_games_data",
+            # key=f"{sport_key}_games_data",
+            key="return_value",
         )
         return True if games_data else False
     except Exception as e:

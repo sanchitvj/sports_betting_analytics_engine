@@ -21,7 +21,8 @@ default_args = {
 with DAG(
     "sports_ingestion_dqc",
     default_args=default_args,
-    start_date=datetime(2022, 8, 1),  # keeping this because all spots start after this
+    # start_date=datetime(2022, 8, 1),  # keeping this because all spots start after this
+    start_date=datetime(2024, 12, 7),
     schedule_interval="@daily",
     catchup=True,
 ) as dag:

@@ -96,10 +96,10 @@ connector.class=io.confluent.connect.s3.S3SinkConnector
 tasks.max=1
 
 # Topics by sport
-topics=nba_games_analytics,nba_odds_analytics,nba_news_analytics,nba_weather_analytics,\
+topics=nba_games_analytics,nba_odds_analytics,nba_news_analytics,\
        nfl_games_analytics,nfl_odds_analytics,nfl_news_analytics,nfl_weather_analytics,\
        cfb_games_analytics,cfb_odds_analytics,cfb_news_analytics,cfb_weather_analytics,\
-       nhl_games_analytics,nhl_odds_analytics,nhl_news_analytics,nhl_weather_analytics
+       nhl_games_analytics,nhl_odds_analytics,nhl_news_analytics,
 
 # S3 configuration
 s3.bucket.name=raw-sp-data-aeb
@@ -125,12 +125,18 @@ file.delim=+
 4. Start Kafka Connect
 ```bash
 # First start kafka in kraft mode then start connector
- 
 bin/connect-standalone.sh config/connect-standalone.properties config/connect/s3-sink.properties
 ```
 ```bash
 # Check connector status
 curl -s localhost:8083/connectors/s3-sink-sports/status | jq
+```
+
+5. If there is an issue where Kafka broker is unable to register with the controller quorum in KRaft mode.
+```bash
+rm -rf /home/ubuntu/kafka/kraft-combined-logs/*
+KAFKA_CLUSTER_ID="$(./bin/kafka-storage.sh random-uuid)"
+./bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
 ```
 
 ## Legacy Setup (with Zookeeper)
@@ -256,6 +262,8 @@ netstat -tulpn | grep 2181
 
 # Check if Kafka port is listening
 netstat -tulpn | grep 9092
+
+lsof -i :8084
 ```
 
 ### Start with kafka
@@ -271,16 +279,21 @@ bin/kafka-server-start.sh -daemon config/server.properties
 2. Create topics
 ```bash
 # Create game events topic
-bin/kafka-topics.sh --create --topic weather.current.dc --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-
-# Create analytics topic
 bin/kafka-topics.sh --create --topic weather_analytics --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+# create with modified settings
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 --config cleanup.policy=delete --config min.cleanable.dirty.ratio=0.01 --config segment.ms=100 --topic nba_odds_analytics 
 ```
 
 3. List topics
 ```bash
 # Verify Kafka is running
 bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+```
+
+4. Test if published topics can be consumed
+```bash
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --from-beginning --topic your_topic_name 
 ```
 
 ## Cleaning
@@ -302,4 +315,24 @@ rm -rf /opt/druid/var/
 rm -rf /home/ubuntu/kafka/data/zookeeper
 rm -rf /tmp/kafka-logs/
 rm -rf /tmp/zookeeper/
+```
+
+
+## Errors
+
+### Compaction Error, Odds publishing but not able to consume
+
+```
+ERROR [ReplicaManager broker=1] Error processing append operation on partition nhl_odds_analytics-0 (kafka.server.ReplicaManager)
+org.apache.kafka.common.InvalidRecordException: One or more records have been rejected due to 3 record errors in total, and only 
+showing the first three errors at most: [RecordError(batchIndex=0, message='Compacted topic cannot accept message without key in topic
+partition nhl_odds_analytics-0'), RecordError(batchIndex=1, message='Compacted topic cannot accept message without key in topic partition
+nhl_odds_analytics-0'), RecordError(batchIndex=2, message='Compacted topic cannot accept message without key in topic partition nhl_odds_analytics-0')]
+```
+
+Explanation: The error occurs because your odds analytics topics are configured as compacted topics but the messages being published don't have keys. Compacted topics require all messages to have keys since they use the keys to determine which messages to retain during compaction.  
+
+*Solution*
+```
+bin/kafka-configs.sh --bootstrap-server localhost:9092 --entity-type topics --entity-name <topic_name> --alter --add-config cleanup.policy=delete
 ```

@@ -9,10 +9,10 @@ def monitor_odds_analytics():
     print("\nStarting Odds Analytics Monitor...")
 
     consumer = KafkaConsumer(
-        "nba_odds_analytics",
+        "nfl_odds_analytics",
         bootstrap_servers="localhost:9092",
         value_deserializer=lambda x: json.loads(x.decode("utf-8")),
-        auto_offset_reset="latest",
+        auto_offset_reset="earliest",
         enable_auto_commit=False,
         group_id=None,
     )

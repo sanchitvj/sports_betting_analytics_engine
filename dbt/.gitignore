@@ -1,0 +1,9 @@
+target/
+dbt_modules/
+logs/
+**/.DS_Store
+venv/
+.user.yml
+dbt_packages/
+package-lock.yml
+dbt.env

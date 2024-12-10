@@ -1,4 +1,3 @@
-import os
 import json
 import time
 import feedparser
@@ -309,39 +308,39 @@ class RSSFeedConnector:
         self.producer.close()
 
 
-def main():
-    """Main function to demonstrate usage."""
-    newsapi_key = os.getenv("NEWSAPI_KEY")
-    gnews_key = os.getenv("GNEWS_API_KEY")
-
-    # Initialize connectors
-    newsapi = NewsAPIConnector(
-        api_key=newsapi_key, kafka_bootstrap_servers="localhost:9092"
-    )
-
-    gnews = GNewsConnector(api_key=gnews_key, kafka_bootstrap_servers="localhost:9092")
-
-    rss = RSSFeedConnector(
-        kafka_bootstrap_servers="localhost:9092",
-        feed_urls=[
-            "http://feeds.bbci.co.uk/news/rss.xml",
-            "http://rss.cnn.com/rss/cnn_topstories.rss",
-        ],
-    )
-
-    try:
-        # Fetch news from different sources
-        newsapi.fetch_and_publish_news("sports betting")
-        gnews.fetch_and_publish_news("sports analytics")
-        rss.fetch_and_publish_feeds()
-
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        newsapi.close()
-        gnews.close()
-        rss.close()
-
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     """Main function to demonstrate usage."""
+#     newsapi_key = os.getenv("NEWSAPI_KEY")
+#     gnews_key = os.getenv("GNEWS_API_KEY")
+#
+#     # Initialize connectors
+#     newsapi = NewsAPIConnector(
+#         api_key=newsapi_key, kafka_bootstrap_servers="localhost:9092"
+#     )
+#
+#     gnews = GNewsConnector(api_key=gnews_key, kafka_bootstrap_servers="localhost:9092")
+#
+#     rss = RSSFeedConnector(
+#         kafka_bootstrap_servers="localhost:9092",
+#         feed_urls=[
+#             "http://feeds.bbci.co.uk/news/rss.xml",
+#             "http://rss.cnn.com/rss/cnn_topstories.rss",
+#         ],
+#     )
+#
+#     try:
+#         # Fetch news from different sources
+#         newsapi.fetch_and_publish_news("sports betting")
+#         gnews.fetch_and_publish_news("sports analytics")
+#         rss.fetch_and_publish_feeds()
+#
+#     except Exception as e:
+#         print(f"Error: {e}")
+#     finally:
+#         newsapi.close()
+#         gnews.close()
+#         rss.close()
+#
+#
+# if __name__ == "__main__":
+#     main()
