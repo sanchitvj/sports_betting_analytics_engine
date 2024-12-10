@@ -29,7 +29,7 @@ with DAG(
     default_args=default_args,
     # start_date=datetime(2022, 8, 1),
     start_date=datetime(
-        2024, 12, 2
+        2024, 12, 6
     ),  # don't change only backfill for current season now
     # end_date=datetime(2022, 11, 27),
     # schedule_interval="@daily",

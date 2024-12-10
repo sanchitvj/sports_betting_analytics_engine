@@ -72,6 +72,7 @@ with DAG(
                     "--warehouse_path": f"s3://{ProcessingConfig.S3_PATHS['processing_bucket']}/processed",
                 },
                 region_name="us-east-1",
+                trigger_rule="all_done",
             )
 
             check_data >> setup_glue_job >> process_odds
