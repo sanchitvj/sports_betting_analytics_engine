@@ -15,9 +15,20 @@ BetFlow is a modern data engineering platform designed for real-time sports bett
 
 The platform processes both streaming data for immediate insights and historical data for pattern analysis, providing a complete solution for sports betting analytics.
 
-## Architecture
+# Architecture
 ## 1. Real-time pipeline
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
 graph LR
     classDef ingestion fill:#e6f3ff,stroke:#3498db
     classDef processing fill:#e6ffe6,stroke:#2ecc71
@@ -78,6 +89,17 @@ This pipeline enables comprehensive sports analytics with real-time insights for
 
 ## 2. Batch pipeline
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
 graph LR
     classDef source fill:#e6f3ff,stroke:#3498db
     classDef processing fill:#e6ffe6,stroke:#2ecc71

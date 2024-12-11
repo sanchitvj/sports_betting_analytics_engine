@@ -2,6 +2,17 @@
 
 ## 1. Ingestion DAG
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
 graph LR
     classDef source fill:#e6f3ff,stroke:#3498db
     classDef validation fill:#ffe6e6,stroke:#e74c3c
@@ -21,6 +32,17 @@ graph LR
 
 ## 2. Processing DAG
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
 graph LR
     classDef source fill:#e6f3ff,stroke:#3498db
     classDef validation fill:#ffe6e6,stroke:#e74c3c
@@ -42,6 +64,17 @@ graph LR
 
 ## 3. Task Groups
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
 graph TB
     classDef source fill:#e6f3ff,stroke:#3498db
     classDef validation fill:#ffe6e6,stroke:#e74c3c

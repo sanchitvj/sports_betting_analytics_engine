@@ -1,6 +1,17 @@
 # dbt Analytics Pipeline Structure*
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
 graph LR
     %% Source Layer
     subgraph "Source Layer - Raw Data"
