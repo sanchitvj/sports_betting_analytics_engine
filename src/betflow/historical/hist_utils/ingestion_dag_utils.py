@@ -68,6 +68,8 @@ def fetch_games_by_date(sport_key, **context):
                 key=f"{sport_key}_games_data", value=processed_games
             )
             return processed_games
+
+        print(f"Empty list for {date_str}, may be games not in post state.")
         return []
 
     except Exception as e:

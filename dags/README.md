@@ -1,6 +1,34 @@
 # DAGs
 
-## 1. Ingestion DAG
+## 1. Parent DAG
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontSize': '16px',
+    'fontWeight': 'bold',
+    'primaryTextColor': '#000000',
+    'primaryColor': '#e1f5fe',
+    'primaryBorderColor': '#01579b',
+    'fontFamily': 'arial'
+  }
+}}%%
+graph LR
+    classDef source fill:Red,stroke:#3498db
+    classDef processing fill:#e6ffe6,stroke:#2ecc71
+    
+    T[Trigger]:::source
+    A[Sports Ingestion]:::processing
+    B[Odds Ingestion]:::processing
+    C[Sports Batch Processing]:::processing
+    D[Odds Batch Processing]:::processing
+    
+    T --> A
+    A --> B & C
+    B --> D
+```
+
+## 2. Ingestion DAG
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -30,7 +58,7 @@ graph LR
 %%    end
 ```
 
-## 2. Processing DAG
+## 3. Processing DAG
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -62,7 +90,7 @@ graph LR
 %%    end
 ```
 
-## 3. Task Groups
+## 4. Task Groups
 ```mermaid
 %%{init: {
   'theme': 'base',

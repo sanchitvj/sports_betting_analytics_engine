@@ -2,7 +2,6 @@ from datetime import timedelta, datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
-
 from betflow.historical.config import HistoricalConfig
 from betflow.historical.hist_utils import (
     fetch_games_by_date,
@@ -22,8 +21,9 @@ with DAG(
     "sports_ingestion_dqc",
     default_args=default_args,
     # start_date=datetime(2022, 8, 1),  # keeping this because all spots start after this
-    start_date=datetime(2024, 12, 7),
-    schedule_interval="@daily",
+    start_date=datetime(2024, 12, 9),
+    # schedule_interval="@daily",
+    schedule_interval=None,  # triggered by parent DAG
     catchup=True,
 ) as dag:
     for sport in ["nba", "nfl", "cfb", "nhl"]:
