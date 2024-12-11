@@ -165,3 +165,4 @@ others/
 **.zip
 **.DS_Store
 package-lock.yml
+.astro

@@ -1,7 +1,7 @@
 # BetFlow: Real-time Sports Betting Analytics Platform
 
 -----
-BetFlow is a modern data engineering platform designed for real-time sports betting analytics, combining streaming and batch processing capabilities to provide comprehensive insights for betting decisions.
+BetFlow is a modern data and analytics engineering platform designed for real-time sports betting analytics, combining streaming and batch processing capabilities to provide comprehensive insights for sports betting decisions.
 
 ### Key Features
 - Real-time odds movement tracking and analysis  
@@ -245,4 +245,17 @@ graph LR
 - **Scalable Architecture**: Cloud-native design supporting multiple sports (NFL, NBA, NHL, NCAAF) and data sources
 
 
-> NOTE: (*) means under progress. 
+
+> ### Ongoing and upcoming implementations
+> 1. dbt models, gold layer, and business logic implementation
+> 2. Batch grafana dashboard
+> 3. Unit and integration tests and corresponding workflows
+> 4. Ruff linting and type checking and corresponding workflows
+> 5. CI/CD for package `betflow` and corresponding docs
+> 6. Asynchronous Kafka orchestrator, one producer for all 
+> 7. Weather component in batch pipeline
+> 8. News component in real-time and batch pipeline
+> 9. Series of medium articles (as couple articles won't suffice for this project)
+
+
+> NOTE: (*) means in progress. 

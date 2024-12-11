@@ -1,4 +1,7 @@
 ### Kafka
+
+> Not using this functionality for now.
+
 ```mermaid
 graph TD
     A[SportsBettingProducer] --> B[Initialization Phase]
