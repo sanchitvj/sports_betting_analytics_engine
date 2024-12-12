@@ -1,6 +1,8 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.task_group import TaskGroup
+from airflow.sensors.external_task import ExternalTaskSensor
+from airflow.utils.state import DagRunState
 from datetime import timedelta, datetime
 from betflow.historical.hist_utils import (
     fetch_odds_by_date,
@@ -29,15 +31,29 @@ with DAG(
     default_args=default_args,
     # start_date=datetime(2022, 8, 1),
     start_date=datetime(
-        2024, 12, 6
+        2024, 12, 9
     ),  # don't change only backfill for current season now
     # end_date=datetime(2022, 11, 27),
     # schedule_interval="@daily",
-    schedule_interval="2 0 * * *",
+    # schedule_interval="2 0 * * *",
+    schedule_interval=None,  # triggered by parent DAG
     catchup=True,
     max_active_runs=16,  # Increase concurrent DAG runs
     concurrency=32,  # Increase task concurrency
 ) as dag:
+    wait_for_sports = ExternalTaskSensor(
+        task_id="wait_for_sports",
+        external_dag_id="sports_ingestion_dqc",
+        external_task_id=None,  # Wait for entire DAG
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
+        execution_date_fn=lambda dt: dt,
+        mode="poke",
+        timeout=7200,  # Increase timeout to prevent premature failures
+        poke_interval=60,
+        check_existence=True,  # Add this to verify DAG/task exists
+        soft_fail=True,  # Allow downstream tasks to run even if sensor times out
+    )
     for sport_key, config in HistoricalConfig.SPORT_CONFIGS.items():
         with TaskGroup(f"{sport_key}_pipeline") as sport_group:
             check_data = ShortCircuitOperator(
@@ -60,3 +76,5 @@ with DAG(
             )
 
             check_data >> fetch_odds >> validate_data
+
+    wait_for_sports >> [sport_group for sport_key in HistoricalConfig.SPORT_CONFIGS]

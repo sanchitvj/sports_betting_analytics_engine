@@ -2,6 +2,8 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.state import DagRunState
+from airflow.sensors.external_task import ExternalTaskSensor
 from datetime import timedelta, datetime
 from betflow.historical.config import ProcessingConfig
 from dotenv import load_dotenv, find_dotenv
@@ -27,14 +29,28 @@ with DAG(
     default_args=default_args,
     description="Process all sports odds data into Iceberg tables",
     # schedule_interval="@daily",
-    schedule_interval="5 0 * * *",
+    # schedule_interval="5 0 * * *",
+    schedule_interval=None,  # triggered by parent DAG
     catchup=True,
-    start_date=datetime(2022, 7, 31),
-    # start_date=datetime(2024, 11, 28),
+    # start_date=datetime(2022, 7, 31),
+    start_date=datetime(2024, 12, 9),
     # end_date=datetime(2024, 12, 1),
     max_active_runs=16,  # Increase concurrent DAG runs
     concurrency=32,  # Increase task concurrency
 ) as dag:
+    wait_for_odds = ExternalTaskSensor(
+        task_id="wait_for_odds",
+        external_dag_id="odds_ingestion_dqc",
+        external_task_id=None,  # Wait for entire DAG
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
+        execution_date_fn=lambda dt: dt,
+        mode="poke",
+        timeout=7200,  # Increase timeout to prevent premature failures
+        poke_interval=60,
+        soft_fail=True,
+        check_existence=True,
+    )
     with TaskGroup("common_tasks") as common_tasks:
         upload_script = PythonOperator(
             task_id="upload_odds_script",
@@ -77,4 +93,5 @@ with DAG(
 
             check_data >> setup_glue_job >> process_odds
 
-        common_tasks >> sport_tasks
+        wait_for_odds >> common_tasks
+        common_tasks >> [sport_tasks for sport in ProcessingConfig.SPORT_CONFIGS]

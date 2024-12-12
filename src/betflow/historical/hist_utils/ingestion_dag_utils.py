@@ -68,6 +68,8 @@ def fetch_games_by_date(sport_key, **context):
                 key=f"{sport_key}_games_data", value=processed_games
             )
             return processed_games
+
+        print(f"Empty list for {date_str}, may be games not in post state.")
         return []
 
     except Exception as e:
@@ -107,16 +109,6 @@ def fetch_odds_by_date(sport_key, **context):
     async def _fetch():
         logical_date = context.get("data_interval_start")  # - timedelta(days=1)
         date_str = logical_date.strftime("%Y-%m-%d")
-        # Get completed games for the date from previous games DAG
-        # games_data = context["task_instance"].xcom_pull(
-        #     dag_id="sports_ingestion_dqc",
-        #     task_ids=f"{sport_key}_pipeline.validate_{sport_key}_json",
-        #     key="return_value",
-        # )
-        #
-        # if not games_data:
-        #     print(f"No completed games found for date {date_str}")
-        #     return []
 
         try:
             odds_connector = HistoricalOddsConnector(api_key=os.getenv("ODDS_API_KEY"))

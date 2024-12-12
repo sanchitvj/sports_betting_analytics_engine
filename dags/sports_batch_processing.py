@@ -2,6 +2,8 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.models import Variable
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.state import DagRunState
+from airflow.sensors.external_task import ExternalTaskSensor
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from datetime import timedelta, datetime
 from betflow.historical.config import ProcessingConfig
@@ -26,14 +28,29 @@ with DAG(
     default_args=default_args,
     description="Process all sports games data into Iceberg tables",
     # schedule_interval="@daily",
-    schedule_interval="5 0 * * *",
+    # schedule_interval="5 0 * * *",
+    schedule_interval=None,  # triggered by parent DAG
     catchup=True,
-    start_date=datetime(2022, 7, 31),
-    # start_date=datetime(2024, 11, 28),
+    # start_date=datetime(2022, 7, 31),
+    start_date=datetime(2024, 12, 9),  # due to parent DAG
     # end_date=datetime(2024, 12, 1),
     max_active_runs=16,  # Increase concurrent DAG runs
     concurrency=32,  # Increase task concurrency
 ) as dag:
+    wait_for_sports = ExternalTaskSensor(
+        task_id="wait_for_sports_ingestion",
+        external_dag_id="sports_ingestion_dqc",
+        external_task_id=None,  # Wait for entire DAG
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
+        execution_date_fn=lambda dt: dt,
+        mode="poke",
+        timeout=7200,  # Increase timeout to prevent premature failures
+        poke_interval=60,
+        soft_fail=True,
+        check_existence=True,
+    )
+
     for sport in ["nba", "nhl", "nfl", "cfb"]:
         with TaskGroup(group_id=f"{sport}_tasks") as sport_tasks:
             check_data = ShortCircuitOperator(
@@ -73,4 +90,6 @@ with DAG(
                 trigger_rule="all_done",  # Continue even if upstream tasks fail
             )
 
-            check_data >> upload_script >> setup_glue_job >> process_games
+            (check_data >> upload_script >> setup_glue_job >> process_games)
+
+    wait_for_sports >> sport_tasks
