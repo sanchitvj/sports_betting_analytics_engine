@@ -1,5 +1,4 @@
 # dbt Analytics Pipeline Structure*
-
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -28,7 +27,6 @@ graph LR
 %%        SR6[raw_weather]
 %%        SR7[raw_news]
     end
-
     %% Staging Layer
     subgraph "Staging Layer - Data Cleaning"
         ST1[stg_nba_games]
@@ -39,7 +37,6 @@ graph LR
 %%        ST6[stg_weather]
 %%        ST7[stg_news]
     end
-
     %% Intermediate Layer
     subgraph "Intermediate Layer - Business Logic"
         I1[int_game_stats]
@@ -49,7 +46,6 @@ graph LR
 %%        I5[int_weather_impact]
 %%        I6[int_news_sentiment]
     end
-
     %% Marts Layer - Core
     subgraph "Marts Layer - Core Dimensions"
         D1[dim_teams]
@@ -59,7 +55,6 @@ graph LR
 %%        D5[dim_dates]
 %%        D6[dim_weather_conditions]
     end
-
     %% Marts Layer - Analytics
     subgraph "Marts Layer - Facts"
         F1[fct_games]
@@ -69,7 +64,6 @@ graph LR
 %%        F5[fct_weather_measurements]
 %%        F6[fct_news_events]
     end
-
     %% Connections
 %%    S1 & S2 & S3 & S4 --> SR1 & SR2 & SR3 & SR4 & SR5 & SR6 & SR7
 %%    SR1 & SR2 & SR3 & SR4 --> ST1 & ST2 & ST3 & ST4
@@ -80,12 +74,10 @@ graph LR
     SR5 --> ST5
 %%    SR6 --> ST6
 %%    SR7 --> ST7
-
     ST1 & ST2 & ST3 & ST4 --> I1 & I2
     ST5 --> I3 & I4
 %%    ST6 --> I5
 %%    ST7 --> I6
-
     I1 & I2 --> D1 & D2 & D4
     I3 --> D3
 %%    I5 --> D6
@@ -93,22 +85,18 @@ graph LR
     I3 & I4 --> F2 & F4
 %%    I5 --> F5
 %%    I6 --> F6
-
     %% Styling
     classDef source fill:#e1f5fe,stroke:#01579b
     classDef staging fill:#f3e5f5,stroke:#4a148c
     classDef intermediate fill:#fff3e0,stroke:#e65100
     classDef dims fill:#e8f5e9,stroke:#1b5e20
     classDef facts fill:#fce4ec,stroke:#880e4f
-
     class S1,S2,S3,S4,SR1,SR2,SR3,SR4,SR5,SR6,SR7 source
     class ST1,ST2,ST3,ST4,ST5,ST6,ST7 staging
     class I1,I2,I3,I4,I5,I6 intermediate
     class D1,D2,D3,D4,D5,D6 dims
     class F1,F2,F3,F4,F5,F6 facts
-
 ```
-
 ## Data Flow Layers
 ### 1. Source Layer (External Tables)
 - Raw games data from Iceberg
@@ -130,8 +118,6 @@ graph LR
 - Betting analytics
 - Performance insights
 - Cross-domain analysis
-
-
 ## Analytics Models
 ### 1. Core Analytics
 - Team performance tracking
