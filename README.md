@@ -130,13 +130,13 @@ graph LR
 ### Components
 #### 1. Data Ingestion Layer
 - Raw data collection from multiple sports APIs
-- Storage in S3 raw bucket (raw-sp-data-aeb/historical/)
+- Storage in S3 raw bucket (raw-s3/historical/)
 - Organized by sport type and data category (games, odds)
 #### 2. Processing Layer
 - AWS Glue for ETL processing
 - Transformation from raw JSON to structured formats
 - Implementation of Iceberg tables for data management
-- Storage in processed bucket (cur-sp-data-aeb/processed/)
+- Storage in processed bucket (cur-s3/processed/)
 #### 3. Analytics Layer*
 - Snowflake integration for analytics processing
 - dbt models for data transformation
@@ -254,8 +254,9 @@ graph LR
 > 5. CI/CD for package `betflow` and corresponding docs
 > 6. Asynchronous Kafka orchestrator, one producer for all 
 > 7. Weather component in batch pipeline
-> 8. News component in real-time and batch pipeline
-> 9. Series of medium articles (as couple articles won't suffice for this project)
+> 8. Processing DAGs and analytics for data published by Kafka streams
+> 9. News component in real-time and batch pipeline
+> 10. Series of medium articles (as couple articles won't suffice for this project)
 
 
 > NOTE: (*) means in progress. 

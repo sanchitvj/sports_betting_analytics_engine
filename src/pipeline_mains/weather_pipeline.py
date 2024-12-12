@@ -59,6 +59,7 @@ class WeatherPipeline:
                         "status": game["status"],
                         "league": league,  # Add league information
                     }
+                    print(game.get("venue_indoor"))
                     coords = self.get_coordinates(venue["city"], venue["state_code"])
                     if coords:
                         venue.update(coords)
@@ -155,7 +156,7 @@ class WeatherPipeline:
 
                     # Check if all leagues are inactive
                     if not any(self.league_status.values()):
-                        print("\n" + "=" * 60)
+                        print("\n" + "=" * 60 + "\n")
                         self.logger.info(
                             "No outdoor games for any sport in next 3 hours. STOPPING PIPELINE"
                         )
