@@ -250,17 +250,26 @@ graph LR
 - **Cost-effective Design**: Hybrid storage strategy using Apache Druid for real-time analytics and Snowflake for historical analysis
 - **Scalable Architecture**: Cloud-native design supporting multiple sports (NFL, NBA, NHL, NCAAF) and data sources
 
-### Challenges
-Where do I start!!!  
-Everything about this project was challenging. When I was in planning phase I gave proposal to AI and 
-asked the time and cost of this project. Guess what response I received, 3 months (6 hrs/day) and USD 600/month. According to the
-same AI my current progress of one month is equivalent to 2 months. If we keep the challenges aside learning curve
-is what motivated me. This is my first project with real-time architecture. Never used Kafka, spark streaming, 
-druid, dbt, snowflake, grafana before this. I was recommended by people to use services such as confluent, but
-I chose the DevOps path of setting infrastructure manually. My thought process, for the first time I should try to do everything from ground zero.
-I survived it, there is lot more to tell, but I would like to leave something for my articles too.
+[//]: # (### Challenges)
 
-*Here I am :)*
+[//]: # (Where do I start!!!  )
+
+[//]: # (Everything about this project was challenging. When I was in planning phase I gave proposal to AI and )
+
+[//]: # (asked the time and cost of this project. Guess what response I received, 3 months &#40;6 hrs/day&#41; and USD 600/month. According to the)
+
+[//]: # (same AI my current progress of one month is equivalent to 2 months. If we keep the challenges aside learning curve)
+
+[//]: # (is what motivated me. This is my first project with real-time architecture. Never used Kafka, spark streaming, )
+
+[//]: # (druid, dbt, snowflake, grafana before this. I was recommended by people to use services such as confluent, but)
+
+[//]: # (I chose the DevOps path of setting infrastructure manually. My thought process, for the first time I should try to do everything from ground zero.)
+
+[//]: # (I survived it, there is lot more to tell, but I would like to leave something for my articles too.)
+
+[//]: # ()
+[//]: # (*Here I am :&#41;*)
 
 ---
 

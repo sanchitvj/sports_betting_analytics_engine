@@ -106,7 +106,6 @@ graph LR
     class I1,I2,I3,I4,I5,I6 intermediate
     class D1,D2,D3,D4,D5,D6 dims
     class F1,F2,F3,F4,F5,F6 facts
-
 ```
 
 ## Data Flow Layers
@@ -130,7 +129,6 @@ graph LR
 - Betting analytics
 - Performance insights
 - Cross-domain analysis
-
 
 ## Analytics Models
 ### 1. Core Analytics
