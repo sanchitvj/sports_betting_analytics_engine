@@ -169,8 +169,8 @@ processed_df = spark.sql("""
     WHERE status_state = 'post'
 """)
 
-partition_check = processed_df.filter(
-    "partition_year IS NULL OR partition_month IS NULL OR partition_day IS NULL"
+null_check = processed_df.filter(
+    "partition_year IS NULL OR partition_month IS NULL OR partition_day IS NULL or home_team_score IS NULL or away_team_score IS NULL or start_time IS NULL"
 ).count()
 # print(f"Records with null partitions: {partition_check}")
 
@@ -217,7 +217,7 @@ reconciliation_check = spark.sql("""
 # reconciliation_check.show()
 
 if (
-    partition_check == 0
+    null_check == 0
     and raw_count == processed_count
     and reconciliation_check.count() == 0
 ):
@@ -232,4 +232,108 @@ if (
         .partitionedBy("partition_year", "partition_month", "partition_day")
         .append()
     )
+else:
+    error_msg = (
+        "Data validation failed.\n Removing invalidated rows and keeping rest: \n"
+    )
+    validated_df = spark.sql("""
+        WITH validation_check AS (
+            SELECT 
+                *,
+                CASE 
+                    WHEN home_team_score IS NULL OR home_team_score IS NULL 'Invalid Score'
+                    WHEN home_team_name IS NULL OR home_team_name IS NULL 'Invalid Name'
+                    WHEN partition_year IS NULL OR partition_month IS NULL OR 
+                         partition_day IS NULL THEN 'Invalid Partition'
+                    WHEN game_id IS NULL OR sport_key IS NULL OR
+                         start_time IS NULL THEN 'Invalid Required Fields'
+                    ELSE 'Valid'
+                END as validation_status
+            FROM processed_df
+        )
+        SELECT 
+            game_id,
+            CAST(start_time as timestamp) as start_time,
+            CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
+            CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
+            CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
+            status_state,
+            status_detail,
+            status_description,
+            CAST(period as int) as period,
+            clock,
+            STRUCT(
+                home_team_id as id,
+                home_team_name as name,
+                home_team_abbreviation as abbreviation,
+                CAST(home_team_score as INT) as score,
+                home_team_record as record,
+                home_team_linescores as linescores
+            ) as home_team,
+            STRUCT(
+                away_team_id as id,
+                away_team_name as name,
+                away_team_abbreviation as abbreviation,
+                CAST(away_team_score as INT) as score,
+                away_team_record as record,
+                away_team_linescores as linescores
+            ) as away_team,
+            STRUCT(
+                STRUCT(
+                    passing_leader_name as name,
+                    passing_leader_display_value as display_value,
+                    CAST(passing_leader_value as INT) as value,
+                    passing_leader_team as team
+                ) as passing,
+                STRUCT(
+                    rushing_leader_name as name,
+                    rushing_leader_display_value as display_value,
+                    CAST(rushing_leader_value as INT) as value,
+                    rushing_leader_team as team
+                ) as rushing,
+                STRUCT(
+                    receiving_leader_name as name,
+                    receiving_leader_display_value as display_value,
+                    CAST(receiving_leader_value as INT) as value,
+                    receiving_leader_team as team
+                ) as receiving
+            ) as leaders,
+            STRUCT(
+                venue_name as name,
+                venue_city as city,
+                venue_state as state,
+                venue_indoor as indoor
+            ) as venue,
+            broadcasts,
+            CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
+        FROM raw_games
+        WHERE validation_status = 'Valid'
+        WHERE status_state = 'post'
+    """)
+
+    print("\n=== Validation Summary ===")
+    print(f"Total records: {processed_df.count()}")
+    print(f"Valid records: {validated_df.count()}")
+    print(f"Filtered records: {processed_df.count() - validated_df.count()}")
+
+    if validated_df.count() > 0:
+        (
+            validated_df.writeTo(
+                f"glue_catalog.{args['database_name']}.{args['table_name']}"
+            )
+            .tableProperty("format-version", "2")
+            .option("check-nullability", "false")
+            .option("merge-schema", "true")
+            .tableProperty("write.format.default", "parquet")
+            .partitionedBy("partition_year", "partition_month", "partition_day")
+            .append()
+        )
+    else:
+        if null_check > 0:
+            error_msg += (
+                f"- {null_check} records with null partitions for {args['date']}\n"
+            )
+
+        raise ValueError(error_msg)
+
 job.commit()
