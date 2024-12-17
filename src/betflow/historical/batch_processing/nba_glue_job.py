@@ -107,7 +107,7 @@ df.createOrReplaceTempView("raw_games")
 processed_df = spark.sql("""
     SELECT 
         game_id,
-        CAST(start_time as timestamp) as start_time,
+        TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'") as start_time,
         CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
         CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
         CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
@@ -153,21 +153,30 @@ processed_df = spark.sql("""
 # print("Partition Values:")
 # processed_df.select("partition_year", "partition_month", "partition_day").show()
 # processed_df.printSchema()
-null_check = processed_df.filter(
-    "partition_year IS NULL OR partition_month IS NULL OR partition_day IS NULL or home_team_score IS NULL or away_team_score IS NULL or start_time IS NULL"
-).count()
+# print(processed_df.show(5))
+
+null_check = processed_df.filter("""
+        partition_year IS NULL OR
+        partition_month IS NULL OR
+        partition_day IS NULL OR
+        home_team_score IS NULL OR
+        away_team_score IS NULL OR
+        home_team_name IS NULL OR
+        away_team_name IS NULL OR
+        start_time IS NULL
+    """).count()
 # print(f"Records with null partitions: {null_check}")
 
 
 # Check for duplicate game IDs
-duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
-if duplicate_check.count() > 0:
-    print("Duplicate game IDs found:")
-    duplicate_check.show()
+# duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
+# if duplicate_check.count() > 0:
+#     print("Duplicate game IDs found:")
+#     duplicate_check.show()
 
 # Verify timestamp conversions
-print("Timestamp Distribution:")
-processed_df.groupBy("partition_year", "partition_month").count().show()
+# print("Timestamp Distribution:")
+# processed_df.groupBy("partition_year", "partition_month").count().show()
 
 raw_count = df.count()
 processed_count = processed_df.count()
@@ -197,8 +206,8 @@ reconciliation_check = spark.sql("""
         WHERE r.raw_count != p.processed_count
     """)
 
-print("\nGame-level Reconciliation:")
-reconciliation_check.show()
+# print("\nGame-level Reconciliation:")
+# reconciliation_check.show()
 
 if (
     null_check == 0
@@ -225,65 +234,40 @@ else:
             SELECT 
                 *,
                 CASE 
-                    WHEN home_team_score IS NULL OR home_team_score IS NULL 'Invalid Score'
-                    WHEN home_team_name IS NULL OR home_team_name IS NULL 'Invalid Name'
+                    WHEN home_team.score IS NULL OR away_team.score IS NULL THEN 'Invalid Score'
+                    WHEN home_team.name IS NULL OR away_team.name IS NULL THEN 'Invalid Name'
                     WHEN partition_year IS NULL OR partition_month IS NULL OR 
                          partition_day IS NULL THEN 'Invalid Partition'
-                    WHEN game_id IS NULL OR sport_key IS NULL OR
-                         start_time IS NULL THEN 'Invalid Required Fields'
+                    WHEN game_id IS NULL OR start_time IS NULL THEN 'Invalid Required Fields'
                     ELSE 'Valid'
                 END as validation_status
             FROM processed_df
         )
         SELECT 
             game_id,
-            CAST(start_time as timestamp) as start_time,
-            CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
-            CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
-            CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
+            start_time,
+            partition_year,
+            partition_month,
+            partition_day,
             status_state,
             status_detail,
             status_description,
-            CAST(period as int) as period,
+            period,
             clock,
-            STRUCT(
-                home_team_id as id,
-                home_team_name as name,
-                home_team_abbreviation as abbreviation,
-                home_team_score as score,
-                home_team_field_goals as field_goals,
-                home_team_three_pointers as three_pointers,
-                home_team_free_throws as free_throws,
-                home_team_rebounds as rebounds,
-                home_team_assists as assists
-            ) as home_team,
-            STRUCT(
-                away_team_id as id,
-                away_team_name as name,
-                away_team_abbreviation as abbreviation,
-                away_team_score as score,
-                away_team_field_goals as field_goals,
-                away_team_three_pointers as three_pointers,
-                away_team_free_throws as free_throws,
-                away_team_rebounds as rebounds,
-                away_team_assists as assists
-            ) as away_team,
-            STRUCT(
-                venue_name as name,
-                venue_city as city,
-                venue_state as state
-            ) as venue,
+            home_team,
+            away_team,
+            venue,
             broadcasts,
-            CAST(TIMESTAMP_SECONDS(CAST(timestamp as LONG)) as TIMESTAMP) as ingestion_timestamp
-        FROM raw_games
-        WHERE validation_check = 'Valid'
-        WHERE status_state = 'post'
+            ingestion_timestamp
+        FROM validation_check
+        WHERE validation_status = 'Valid'
+        AND status_state = 'post'
     """)
 
-    print("\n=== Validation Summary ===")
-    print(f"Total records: {processed_df.count()}")
-    print(f"Valid records: {validated_df.count()}")
-    print(f"Filtered records: {processed_df.count() - validated_df.count()}")
+    # print("\n=== Validation Summary ===")
+    # print(f"Total records: {processed_df.count()}")
+    # print(f"Valid records: {validated_df.count()}")
+    # print(f"Filtered records: {processed_df.count() - validated_df.count()}")
 
     if validated_df.count() > 0:
         (
