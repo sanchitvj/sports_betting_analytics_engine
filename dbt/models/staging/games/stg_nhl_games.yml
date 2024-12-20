@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: stg_nhl_games
+    description: Staging model for NHL games data
+    columns:
+
+      - name: game_id
+        description: Unique identifier for each game
+        tests:
+          - not_null
+          - unique
+
+      - name: start_time
+        description: Game start time
+        tests:
+          - not_null
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: "{{ dbt_utils.dateadd(datepart='year', interval=-2, from_date=dbt_utils.current_timestamp()) }}"
+#              max_value: "{{ dbt_utils.dateadd(datepart='year', interval=1, from_date=dbt_utils.current_timestamp()) }}"
+
+      - name: status_state
+        description: Current game status
+        tests:
+          - not_null
+          - accepted_values:
+              values: [ 'pre', 'in', 'post' ]
+
+      - name: home_team_score
+        description: Home team score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: away_team_score
+        description: Away team score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: period
+        description: Current game period
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 7
+
+      - name: home_team_saves
+        description: Home team saves
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: away_team_saves
+        description: Away team saves
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: home_team_save_pct
+        description: Home team save percentage
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1
+
+      - name: away_team_save_pct
+        description: Away team save percentage
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1

@@ -9,6 +9,7 @@ default_args = {
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
+    "trigger_rule": "all_success",
 }
 
 with DAG(
@@ -62,9 +63,6 @@ with DAG(
         execution_date="{{ ds }}",
     )
 
-    # trigger_sports_ingestion >> [trigger_odds_ingestion, trigger_sports_batch]
-    # trigger_odds_ingestion >> trigger_odds_batch
-    # [trigger_sports_batch, trigger_odds_batch] >> trigger_snowflake_staging
     # First layer - Ingestion
     trigger_sports_ingestion >> trigger_odds_ingestion
 

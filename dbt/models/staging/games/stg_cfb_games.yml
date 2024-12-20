@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: stg_cfb_games
+    description: Staging model for CFB games data
+    columns:
+      - name: game_id
+        description: Unique identifier for each game
+        tests:
+          - unique
+          - not_null
+
+      - name: start_time
+        description: Game start time
+        tests:
+          - not_null
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: "2022-01-01"
+#              max_value: "{{ current_timestamp() }}"
+
+      - name: status_state
+        description: Current game status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['pre', 'in', 'post']
+
+      - name: period
+        description: Current game period
+        tests:
+          - not_null
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 7
+
+      - name: home_team_score
+        description: Home team score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: away_team_score
+        description: Away team score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: passing_yards
+        description: Passing leader yards
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 600  # Reasonable max for passing yards
+
+      - name: rushing_yards
+        description: Rushing leader yards
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 400  # Reasonable max for rushing yards
+
+      - name: receiving_yards
+        description: Receiving leader yards
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 350  # Reasonable max for receiving yards
