@@ -25,45 +25,47 @@ staged as (
         VALUE:period::integer as period,
         VALUE:clock::string as clock,
         -- Home Team
-        VALUE:home_team.id::string as home_team_id,
-        VALUE:home_team.name::string as home_team_name,
-        VALUE:home_team.abbreviation::string as home_team_abbreviation,
-        VALUE:home_team.score::integer as home_team_score,
-        VALUE:home_team.record::string as home_team_record,
-        VALUE:home_team.linescores[0]::integer as home_team_q1_score,
-        VALUE:home_team.linescores[1]::integer as home_team_q2_score,
-        VALUE:home_team.linescores[2]::integer as home_team_q3_score,
-        VALUE:home_team.linescores[3]::integer as home_team_q4_score,
+        VALUE:home_team.id::string as home_id,
+        VALUE:home_team.name::string as home_name,
+        VALUE:home_team.abbreviation::string as home_abbreviation,
+        VALUE:home_team.score::integer as home_score,
+        VALUE:home_team.record::string as home_record,
+        VALUE:home_team.linescores::array as home_linescores,
         -- Away Team
-        VALUE:away_team.id::string as away_team_id,
-        VALUE:away_team.name::string as away_team_name,
-        VALUE:away_team.abbreviation::string as away_team_abbreviation,
-        VALUE:away_team.score::integer as away_team_score,
-        VALUE:away_team.record::string as away_team_record,
-        VALUE:away_team.linescores[0]::integer as away_team_q1_score,
-        VALUE:away_team.linescores[1]::integer as away_team_q2_score,
-        VALUE:away_team.linescores[2]::integer as away_team_q3_score,
-        VALUE:away_team.linescores[3]::integer as away_team_q4_score,
+        VALUE:away_team.id::string as away_id,
+        VALUE:away_team.name::string as away_name,
+        VALUE:away_team.abbreviation::string as away_abbreviation,
+        VALUE:away_team.score::integer as away_score,
+        VALUE:away_team.record::string as away_record,
+        VALUE:away_team.linescores::array as away_linescores,
         -- Leaders
-        VALUE:leaders.passing.name::string as passing_leader_name,
-        VALUE:leaders.passing.display_value::string as passing_leader_stats,
-        VALUE:leaders.passing.value::integer as passing_yards,
-        VALUE:leaders.passing.team::string as passing_leader_team,
-        VALUE:leaders.rushing.name::string as rushing_leader_name,
-        VALUE:leaders.rushing.display_value::string as rushing_leader_stats,
-        VALUE:leaders.rushing.value::integer as rushing_yards,
-        VALUE:leaders.rushing.team::string as rushing_leader_team,
-        VALUE:leaders.receiving.name::string as receiving_leader_name,
-        VALUE:leaders.receiving.display_value::string as receiving_leader_stats,
-        VALUE:leaders.receiving.value::integer as receiving_yards,
-        VALUE:leaders.receiving.team::string as receiving_leader_team,
+        object_construct(
+            'PASSING', object_construct(
+                'name', VALUE:leaders.passing.name::string,
+                'display_value', VALUE:leaders.passing.display_value::string,
+                'value', VALUE:leaders.passing.value::integer,
+                'team', VALUE:leaders.passing.team::string
+            ),
+            'RUSHING', object_construct(
+                'name', VALUE:leaders.rushing.name::string,
+                'display_value', VALUE:leaders.rushing.display_value::string,
+                'value', VALUE:leaders.rushing.value::integer,
+                'team', VALUE:leaders.rushing.team::string
+            ),
+            'RECEIVING', object_construct(
+                'name', VALUE:leaders.receiving.name::string,
+                'display_value', VALUE:leaders.receiving.display_value::string,
+                'value', VALUE:leaders.receiving.value::integer,
+                'team', VALUE:leaders.receiving.team::string
+            )
+        )::variant as game_leaders,
         -- Venue
         VALUE:venue.name::string as venue_name,
         VALUE:venue.city::string as venue_city,
         VALUE:venue.state::string as venue_state,
         VALUE:venue.indoor::boolean as is_indoor,
         -- Broadcasts and Timestamp
-        VALUE:broadcasts::variant as broadcast,
+        VALUE:broadcasts::array as broadcast,
         VALUE:ingestion_timestamp::timestamp as ingestion_timestamp
     from source
     where VALUE:start_time is not NULL

@@ -33,37 +33,37 @@ models:
 #              min_value: 0
 #              max_value: 7
 
-      - name: home_team_score
+      - name: home_score
         description: Home team score
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
 
-      - name: away_team_score
+      - name: away_score
         description: Away team score
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
 
-      - name: passing_yards
-        description: Passing leader yards
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 600  # Reasonable max for passing yards
-
-      - name: rushing_yards
-        description: Rushing leader yards
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 400  # Reasonable max for rushing yards
-
-      - name: receiving_yards
-        description: Receiving leader yards
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 350  # Reasonable max for receiving yards
+#      - name: passing_yards
+#        description: Passing leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 600  # Reasonable max for passing yards
+#
+#      - name: rushing_yards
+#        description: Rushing leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 400  # Reasonable max for rushing yards
+#
+#      - name: receiving_yards
+#        description: Receiving leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 350  # Reasonable max for receiving yards

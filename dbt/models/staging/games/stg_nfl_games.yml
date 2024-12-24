@@ -25,7 +25,7 @@ models:
 #          - accepted_values:
 #              values: [1, 2, 3, 4, 5]
 
-      - name: home_team_score
+      - name: home_score
         description: Home team score
         tests:
 #          - not_null
@@ -33,7 +33,7 @@ models:
               min_value: 0
 #              max_value: 100
 
-      - name: away_team_score
+      - name: away_score
         description: Away team score
         tests:
 #          - not_null
@@ -47,23 +47,23 @@ models:
           - accepted_values:
               values: ['pre', 'in', 'post']
 
-      - name: passing_yards
-        description: Passing leader yards
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 600
-
-      - name: rushing_yards
-        description: Rushing leader yards
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 400
-
-      - name: receiving_yards
-        description: Receiving leader yards
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 350
+#      - name: passing_yards
+#        description: Passing leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 600
+#
+#      - name: rushing_yards
+#        description: Rushing leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 400
+#
+#      - name: receiving_yards
+#        description: Receiving leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 350
