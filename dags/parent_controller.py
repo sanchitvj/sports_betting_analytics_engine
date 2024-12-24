@@ -61,6 +61,9 @@ with DAG(
         wait_for_completion=True,
         poke_interval=60,
         execution_date="{{ ds }}",
+        reset_dag_run=True,  # Add this to reset existing DAG run
+        allowed_states=["success"],  # Add this to consider successful runs
+        trigger_rule="all_success",
     )
 
     # First layer - Ingestion
