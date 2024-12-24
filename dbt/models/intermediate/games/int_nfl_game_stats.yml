@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: int_nfl_game_stats
+    description: Game-level statistics for NFL games
+    tests:
+      - unique:
+          column_name: game_id
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: score_difference
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 70
+
+      - name: home_first_half_score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+
+      - name: home_second_half_score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+
+      - name: winner
+        tests:
+          - accepted_values:
+              values: ['HOME', 'AWAY']

@@ -62,12 +62,8 @@ spark.sql(f"""
             goals: STRING,
             assists: STRING,
             points: STRING,
-            penalties: STRING,
-            penalty_minutes: STRING,
-            power_plays: STRING,
-            power_play_goals: STRING,
-            power_play_pct: STRING,
-            record: STRING
+            record: STRING,
+            linescores: ARRAY<INT>
         >,
         away_team STRUCT<
             id: STRING,
@@ -79,12 +75,44 @@ spark.sql(f"""
             goals: STRING,
             assists: STRING,
             points: STRING,
-            penalties: STRING,
-            penalty_minutes: STRING,
-            power_plays: STRING,
-            power_play_goals: STRING,
-            power_play_pct: STRING,
-            record: STRING
+            record: STRING,
+            linescores: ARRAY<INT>
+        >,
+        leaders STRUCT<
+            home_leaders: STRUCT<
+                goals: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                assists: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                points: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >
+            >,
+            away_leaders: STRUCT<
+                goals: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                assists: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                points: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >
+            >
         >,
         venue STRUCT<
             name: STRING,
@@ -130,12 +158,8 @@ processed_df = spark.sql("""
             home_team_goals as goals,
             home_team_assists as assists,
             home_team_points as points,
-            home_team_penalties as penalties,
-            home_team_penalty_minutes as penalty_minutes,
-            home_team_power_plays as power_plays,
-            home_team_power_play_goals as power_play_goals,
-            home_team_power_play_pct as power_play_pct,
-            home_team_record as record
+            home_team_record as record,
+            home_team_linescores as linescores
         ) as home_team,
         STRUCT(
             away_team_id as id,
@@ -147,13 +171,45 @@ processed_df = spark.sql("""
             away_team_goals as goals,
             away_team_assists as assists,
             away_team_points as points,
-            away_team_penalties as penalties,
-            away_team_penalty_minutes as penalty_minutes,
-            away_team_power_plays as power_plays,
-            away_team_power_play_goals as power_play_goals,
-            away_team_power_play_pct as power_play_pct,
-            away_team_record as record
+            away_team_record as record,
+            away_team_linescores as linescores
         ) as away_team,
+        STRUCT(
+            STRUCT(
+                STRUCT(
+                    home_goals_leader_name as name,
+                    CAST(home_goals_leader_value as INT) as value,
+                    home_goals_leader_team as team
+                ) as goals,
+                STRUCT(
+                    home_assists_leader_name as name,
+                    CAST(home_assists_leader_value as INT) as value,
+                    home_assists_leader_team as team
+                ) as assists,
+                STRUCT(
+                    home_points_leader_name as name,
+                    CAST(home_points_leader_value as INT) as value,
+                    home_points_leader_team as team
+                ) as points
+            ) as home_leaders,
+            STRUCT(
+                STRUCT(
+                    away_goals_leader_name as name,
+                    CAST(away_goals_leader_value as INT) as value,
+                    away_goals_leader_team as team
+                ) as goals,
+                STRUCT(
+                    away_assists_leader_name as name,
+                    CAST(away_assists_leader_value as INT) as value,
+                    away_assists_leader_team as team
+                ) as assists,
+                STRUCT(
+                    away_points_leader_name as name,
+                    CAST(away_points_leader_value as INT) as value,
+                    away_points_leader_team as team
+                ) as points
+            ) as away_leaders
+        ) as leaders,
         STRUCT(
             venue_name as name,
             venue_city as city,
@@ -172,8 +228,6 @@ null_check = processed_df.filter("""
         partition_day IS NULL OR
         home_team_score IS NULL OR
         away_team_score IS NULL OR
-        home_team_name IS NULL OR
-        away_team_name IS NULL OR
         start_time IS NULL
     """).count()
 # print(f"Records with null partitions: {partition_check}")
@@ -247,7 +301,6 @@ else:
                 *,
                 CASE 
                     WHEN home_team.score IS NULL OR away_team.score IS NULL THEN 'Invalid Score'
-                    WHEN home_team.name IS NULL OR away_team.name IS NULL THEN 'Invalid Name'
                     WHEN partition_year IS NULL OR partition_month IS NULL OR 
                          partition_day IS NULL THEN 'Invalid Partition'
                     WHEN game_id IS NULL OR start_time IS NULL THEN 'Invalid Required Fields'

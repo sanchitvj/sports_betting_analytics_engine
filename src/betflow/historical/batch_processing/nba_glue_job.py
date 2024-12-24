@@ -69,7 +69,9 @@ spark.sql(f"""
             three_pointers: STRING,
             free_throws: STRING,
             rebounds: STRING,
-            assists: STRING
+            assists: STRING,
+            record: STRING,
+            linescores: ARRAY<INT>
         >,
         away_team STRUCT<
             id: STRING,
@@ -80,7 +82,57 @@ spark.sql(f"""
             three_pointers: STRING,
             free_throws: STRING,
             rebounds: STRING,
-            assists: STRING
+            assists: STRING,
+            record: STRING,
+            linescores: ARRAY<INT>
+        >,
+        leaders STRUCT<
+            home_leaders: STRUCT<
+                points: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                rebounds: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                assists: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                rating: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    display_value: STRING,
+                    team: STRING
+                >
+            >,
+            away_leaders: STRUCT<
+                points: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                rebounds: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                assists: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    team: STRING
+                >,
+                rating: STRUCT<
+                    name: STRING,
+                    value: INT,
+                    display_value: STRING,
+                    team: STRING
+                >
+            >
         >,
         venue STRUCT<
             name: STRING,
@@ -125,7 +177,9 @@ processed_df = spark.sql("""
             home_team_three_pointers as three_pointers,
             home_team_free_throws as free_throws,
             home_team_rebounds as rebounds,
-            home_team_assists as assists
+            home_team_assists as assists,
+            home_team_record as record,
+            home_team_linescores as linescores
         ) as home_team,
         STRUCT(
             away_team_id as id,
@@ -136,8 +190,58 @@ processed_df = spark.sql("""
             away_team_three_pointers as three_pointers,
             away_team_free_throws as free_throws,
             away_team_rebounds as rebounds,
-            away_team_assists as assists
+            away_team_assists as assists,
+            away_team_record as record,
+            away_team_linescores as linescores
         ) as away_team,
+        STRUCT(
+            STRUCT(
+                STRUCT(
+                    home_points_leader_name as name,
+                    CAST(home_points_leader_value as INT) as value,
+                    home_points_leader_team as team
+                ) as points,
+                STRUCT(
+                    home_rebounds_leader_name as name,
+                    CAST(home_rebounds_leader_value as INT) as value,
+                    home_rebounds_leader_team as team
+                ) as rebounds,
+                STRUCT(
+                    home_assists_leader_name as name,
+                    CAST(home_assists_leader_value as INT) as value,
+                    home_assists_leader_team as team
+                ) as assists,
+                STRUCT(
+                    home_rating_leader_name as name,
+                    CAST(home_rating_leader_value as INT) as value,
+                    home_rating_leader_display_value as display_value,
+                    home_rating_leader_team as team
+                ) as rating
+            ) as home_leaders,
+            STRUCT(
+                STRUCT(
+                    away_points_leader_name as name,
+                    CAST(away_points_leader_value as INT) as value,
+                    away_points_leader_team as team
+                ) as points,
+                STRUCT(
+                    away_rebounds_leader_name as name,
+                    CAST(away_rebounds_leader_value as INT) as value,
+                    away_rebounds_leader_team as team
+                ) as rebounds,
+                STRUCT(
+                    away_assists_leader_name as name,
+                    CAST(away_assists_leader_value as INT) as value,
+                    away_assists_leader_team as team
+                ) as assists,
+                STRUCT(
+                    away_rating_leader_name as name,
+                    CAST(away_rating_leader_value as INT) as value,
+                    away_rating_leader_display_value as display_value,
+                    away_rating_leader_team as team
+                ) as rating
+            ) as away_leaders
+        ) as leaders,
         STRUCT(
             venue_name as name,
             venue_city as city,

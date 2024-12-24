@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: int_shooting_stats
+    description: Shooting efficiency metrics
+    tests:
+      - unique:
+          column_name: "game_id || '-' || team_type"
+    columns:
+      - name: fg_percentage
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1
+      - name: three_pt_percentage
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1
+      - name: ft_percentage
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1

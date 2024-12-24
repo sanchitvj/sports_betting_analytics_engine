@@ -84,6 +84,7 @@ def fetch_games_by_date(sport_key, **context):
             if (
                 game_data["status_state"] in ["post", "STATUS_FINAL"]
                 and ny_midnight <= game_start < next_ny_midnight
+                and game_data["status_detail"] not in ["Canceled"]
             ):
                 processed_games.append(game_data)
 

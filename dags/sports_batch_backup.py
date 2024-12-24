@@ -1,11 +1,8 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 
-# from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.utils.task_group import TaskGroup
-from airflow.utils.state import DagRunState
-from airflow.sensors.external_task import ExternalTaskSensor
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from datetime import timedelta, datetime
 from betflow.historical.config import ProcessingConfig
@@ -18,47 +15,28 @@ from betflow.historical.hist_utils import (
 
 default_args = {
     "owner": ProcessingConfig.OWNER,
-    "depends_on_past": False,  # past dependency blocking from running so switched to False
+    "depends_on_past": True,  # past dependency blocking from running so switched to False
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
-    "tags": ["processing", "historical", "sports"],
+    "tags": ["backup", "processing", "historical", "sports"],
 }
 
 
 with DAG(
-    "sports_batch_processing",
+    "backup_sports_batch_processing",
     default_args=default_args,
-    description="Process all sports games data into Iceberg tables",
-    # schedule_interval="@daily",
-    # schedule_interval="5 0 * * *",
-    schedule_interval=None,  # triggered by parent DAG
+    start_date=datetime(2022, 7, 31),
+    end_date=datetime(2024, 12, 19),
+    schedule_interval="@daily",
     catchup=True,
-    # start_date=datetime(2022, 7, 31),
-    start_date=datetime(2024, 12, 9),  # due to parent DAG
-    # end_date=datetime(2024, 12, 1),
-    max_active_runs=16,  # Increase concurrent DAG runs
-    concurrency=32,  # Increase task concurrency
+    max_active_runs=16,
+    concurrency=16,
 ) as dag:
-    wait_for_sports = ExternalTaskSensor(
-        task_id="wait_for_sports_ingestion",
-        external_dag_id="sports_ingestion_dqc",
-        external_task_id=None,  # Wait for entire DAG
-        allowed_states=[DagRunState.SUCCESS],
-        failed_states=[DagRunState.FAILED],
-        execution_date_fn=lambda dt: dt,
-        mode="poke",
-        timeout=7200,  # Increase timeout to prevent premature failures
-        poke_interval=60,
-        soft_fail=True,
-        check_existence=True,
-    )
+    sports_to_process = ["nba", "nhl"]
 
-    sport_groups = []
-    for sport, config in ProcessingConfig.SPORT_CONFIGS.items():
+    for sport in sports_to_process:
         with TaskGroup(group_id=f"{sport}_tasks") as sport_tasks:
-            # start_group = EmptyOperator(task_id=f"start_{sport}_processing")
-
             check_data = ShortCircuitOperator(
                 task_id=f"check_{sport}_data",
                 python_callable=check_source_data,
@@ -94,16 +72,7 @@ with DAG(
                 },
                 region_name="us-east-1",
                 trigger_rule="all_done",  # Continue even if upstream tasks fail
+                concurrent_run_limit=10,
             )
 
-            # wait_for_sports >> start_group
-            (
-                # start_group
-                check_data >> upload_script >> setup_glue_job >> process_games
-            )
-            # wait_for_sports >> sport_tasks
-            # sport_groups.append(sport_tasks)
-
-        # wait_for_sports >> sport_groups
-
-        wait_for_sports >> [sport_tasks for sport in ProcessingConfig.SPORT_CONFIGS]
+            (check_data >> upload_script >> setup_glue_job >> process_games)

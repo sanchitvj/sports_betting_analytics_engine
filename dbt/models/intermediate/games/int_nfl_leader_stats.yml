@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: int_nfl_leader_stats
+    description: Leader statistics by game
+    tests:
+      - unique:
+          column_name: "game_id || '-' || player_name || '-' || stat_type"
+    columns:
+      - name: stat_type
+        tests:
+          - accepted_values:
+              values: ['PASSING', 'RUSHING', 'RECEIVING']
+
+      - name: passing_yards
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 600
+
+      - name: rushing_yards
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 300
+
+      - name: receiving_yards
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 300
