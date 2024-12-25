@@ -9,6 +9,7 @@ default_args = {
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
+    "trigger_rule": "all_success",
 }
 
 with DAG(
@@ -17,6 +18,7 @@ with DAG(
     start_date=datetime(2024, 12, 9),
     schedule_interval="@daily",
     catchup=True,
+    max_active_runs=1,
 ) as parent_dag:
     # Trigger sports ingestion DAG
     trigger_sports_ingestion = TriggerDagRunOperator(
@@ -53,25 +55,23 @@ with DAG(
         execution_date="{{ ds }}",
     )
 
-    # # New weather triggers, for future
-    # trigger_weather_ingestion = TriggerDagRunOperator(
-    #     task_id="trigger_weather_ingestion",
-    #     trigger_dag_id="weather_ingestion_dqc",
-    #     wait_for_completion=True,
-    #     poke_interval=60,
-    #     trigger_rule="all_done"  # Run regardless of other tasks' status
-    # )
-    #
-    # trigger_weather_batch = TriggerDagRunOperator(
-    #     task_id="trigger_weather_batch",
-    #     trigger_dag_id="weather_batch_processing",
-    #     wait_for_completion=True,
-    #     poke_interval=60,
-    #     trigger_rule="all_done"
-    # )
+    trigger_snowflake_staging = TriggerDagRunOperator(
+        task_id="trigger_games_staging",
+        trigger_dag_id="snowflake_raw_to_staging",
+        wait_for_completion=True,
+        poke_interval=60,
+        execution_date="{{ ds }}",
+        reset_dag_run=True,  # Add this to reset existing DAG run
+        allowed_states=["success"],  # Add this to consider successful runs
+        trigger_rule="all_success",
+    )
 
-    trigger_sports_ingestion >> [trigger_odds_ingestion, trigger_sports_batch]
+    # First layer - Ingestion
+    trigger_sports_ingestion >> trigger_odds_ingestion
+
+    # Second layer - Processing
+    trigger_sports_ingestion >> trigger_sports_batch
     trigger_odds_ingestion >> trigger_odds_batch
 
-    # # Independent weather pipeline
-    # trigger_weather_ingestion >> trigger_weather_batch
+    # Third layer - Staging
+    [trigger_sports_batch, trigger_odds_batch] >> trigger_snowflake_staging

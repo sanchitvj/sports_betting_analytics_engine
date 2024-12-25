@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: stg_nfl_games
+    description: Staged NFL games data
+    columns:
+      - name: game_id
+        description: Unique identifier for each game
+        tests:
+#          - unique
+          - not_null
+
+      - name: start_time
+        description: Game start time
+        tests:
+          - not_null
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: "{{ dateadd('year', -3, current_timestamp()) }}"
+#              max_value: "{{ dateadd('year', 1, current_timestamp()) }}"
+
+      - name: period
+        description: Game period/quarter
+        tests:
+          - not_null
+#          - accepted_values:
+#              values: [1, 2, 3, 4, 5]
+
+      - name: home_score
+        description: Home team score
+        tests:
+#          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+#              max_value: 100
+
+      - name: away_score
+        description: Away team score
+        tests:
+#          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+#              max_value: 100
+
+      - name: status_state
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['pre', 'in', 'post']
+
+#      - name: passing_yards
+#        description: Passing leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 600
+#
+#      - name: rushing_yards
+#        description: Rushing leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 400
+#
+#      - name: receiving_yards
+#        description: Receiving leader yards
+#        tests:
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 350

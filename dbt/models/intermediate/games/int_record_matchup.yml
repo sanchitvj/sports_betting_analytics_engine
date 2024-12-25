@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: int_nba_record_matchup
+    description: Record matchup analysis for NBA games
+    tests: &record_tests
+      - unique:
+          column_name: game_id
+    columns: &record_columns
+      - name: home_wins
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 82
+
+      - name: home_losses
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 82
+
+      - name: record_favorite
+        tests:
+          - accepted_values:
+              values: ['HOME_FAVORED', 'AWAY_FAVORED']
+
+      - name: winner
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+  - name: int_nfl_record_matchup
+    description: Record matchup analysis for NFL games
+    tests: *record_tests
+    columns: *record_columns
+
+  - name: int_nhl_record_matchup
+    description: Record matchup analysis for NHL games
+    tests: *record_tests
+    columns: *record_columns
+
+  - name: int_cfb_record_matchup
+    description: Record matchup analysis for CFB games
+    tests: *record_tests
+    columns: *record_columns

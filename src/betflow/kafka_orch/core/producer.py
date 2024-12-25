@@ -28,7 +28,7 @@ from betflow.api_connectors import (
 
 
 class SportsBettingProducer:
-    """Unified producer with fallback mechanisms for sports betting data streams."""
+    """Unified producer with fallback mechanisms for sports analytics data streams."""
 
     def __init__(self, config: ProducerConfig):
         self.config = config
@@ -328,7 +328,7 @@ class SportsBettingProducer:
                     await self.fetch_weather_data(venue)
 
                 for sport in sports:
-                    await self.fetch_news_data(f"{sport} betting")
+                    await self.fetch_news_data(f"{sport} analytics")
 
                 # Log metrics if enabled
                 if self.config.enable_metrics:
