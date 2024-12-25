@@ -1,43 +1,59 @@
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'player_name'],
-    schema='int_layer'
+    unique_key=['game_id', 'leader_type'],
+    schema='int_layer',
+    incremental_strategy='merge',
+    cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}
 
-with player_stats as (
+with leader_stats as (
     select
         game_id,
-        passing_leader_name as player_name,
-        'PASSING' as stat_type,
-        passing_leader_team as team_id,
-        passing_yards as yards,
-        passing_leader_stats as display_stats
+        'PASSING' as leader_type,
+        game_leaders:PASSING.name::string as player_name,
+        game_leaders:PASSING.value::integer as stat_value,
+        game_leaders:PASSING.display_value::string as display_value,
+        game_leaders:PASSING.team::string as team_id,
+        partition_year,
+        partition_month,
+        partition_day
     from {{ ref('stg_nfl_games') }}
-    where passing_leader_name is not null
+    {% if is_incremental() %}
+    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+    {% endif %}
 
     union all
 
     select
         game_id,
-        rushing_leader_name as player_name,
-        'RUSHING' as stat_type,
-        rushing_leader_team as team_id,
-        rushing_yards as yards,
-        rushing_leader_stats as display_stats
+        'RUSHING' as leader_type,
+        game_leaders:RUSHING.name::string as player_name,
+        game_leaders:RUSHING.value::integer as stat_value,
+        game_leaders:RUSHING.display_value::string as display_value,
+        game_leaders:RUSHING.team::string as team_id,
+        partition_year,
+        partition_month,
+        partition_day
     from {{ ref('stg_nfl_games') }}
-    where rushing_leader_name is not null
+    {% if is_incremental() %}
+    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+    {% endif %}
 
     union all
 
     select
         game_id,
-        receiving_leader_name as player_name,
-        'RECEIVING' as stat_type,
-        receiving_leader_team as team_id,
-        receiving_yards as yards,
-        receiving_leader_stats as display_stats
+        'RECEIVING' as leader_type,
+        game_leaders:RECEIVING.name::string as player_name,
+        game_leaders:RECEIVING.value::integer as stat_value,
+        game_leaders:RECEIVING.display_value::string as display_value,
+        game_leaders:RECEIVING.team::string as team_id,
+        partition_year,
+        partition_month,
+        partition_day
     from {{ ref('stg_nfl_games') }}
-    where receiving_leader_name is not null
+    {% if is_incremental() %}
+    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+    {% endif %}
 )
-
-select * from player_stats
+select * from leader_stats

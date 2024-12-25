@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: int_nfl_leader_stats
+  - name: int_nhl_leader_stats
     description: Player statistics by game
     tests:
       - unique:
@@ -10,18 +10,22 @@ models:
       - name: leader_type
         tests:
           - accepted_values:
-              values: ['PASSING', 'RUSHING', 'RECEIVING']
+              values: ['GOALS', 'ASSISTS', 'POINTS']
 
       - name: stat_value
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 600  # Maximum reasonable yards for any stat type
+              max_value: 10
+
+      - name: player_name
+        tests:
+          - not_null
 
       - name: team_id
         tests:
           - not_null
           - relationships:
-              to: ref('stg_nfl_games')
+              to: ref('stg_nhl_games')
               field: home_id
