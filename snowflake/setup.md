@@ -37,13 +37,3 @@
 
 Use this to check if connections is successful.
 `LIST @SPORTS_DB.RAW_LAYER.GAMES_STAGE;`
-
-
-## Steps to reset
-
-1. Recreate the external stages using this [script](external_stages.sql).
-2. Recreate the external tables using this [script](external_tables.sql).
-3. Check database and query data to cross-check if there are any issues.
-
-> Possible error  
-> *Message: External table NHL_ODDS marked invalid. Missing or invalid file format 'PARQUET_FORMAT'*

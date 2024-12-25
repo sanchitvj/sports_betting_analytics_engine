@@ -330,7 +330,7 @@ class RSSFeedConnector:
 #
 #     try:
 #         # Fetch news from different sources
-#         newsapi.fetch_and_publish_news("sports analytics")
+#         newsapi.fetch_and_publish_news("sports betting")
 #         gnews.fetch_and_publish_news("sports analytics")
 #         rss.fetch_and_publish_feeds()
 #

@@ -24,7 +24,7 @@ def api_raw_cfb_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
 
         def get_leader_value(competition, category):
             leaders = competition.get("leaders", [])
-            leader = next((l for l in leaders if l.get("name") == category), {})  # noqa: E741
+            leader = next((l for l in leaders if l.get("name") == category), {})
             leader_stats = (
                 leader.get("leaders", [{}])[0] if leader.get("leaders") else {}
             )
@@ -290,19 +290,6 @@ def api_raw_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
             stat = next((s for s in stats if s.get("name") == name), {})
             return stat.get("displayValue")
 
-        def get_leader_value(team, category):
-            leaders = team.get("leaders", [])
-            leader = next((l for l in leaders if l.get("name") == category), {})
-            leader_stats = (
-                leader.get("leaders", [{}])[0] if leader.get("leaders") else {}
-            )
-            return {
-                "name": leader_stats.get("athlete", {}).get("displayName"),
-                "value": leader_stats.get("value"),
-                # "display_value": leader_stats.get("displayValue"),
-                "team": leader_stats.get("team", {}).get("id"),
-            }
-
         nhl_game_data = {
             "game_id": raw_data.get("id"),
             "start_time": raw_data.get("date"),
@@ -325,6 +312,11 @@ def api_raw_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
             "home_team_goals": get_stat_value(home_stats, "goals"),
             "home_team_assists": get_stat_value(home_stats, "assists"),
             "home_team_points": get_stat_value(home_stats, "points"),
+            "home_team_penalties": get_stat_value(home_stats, "penalties"),
+            "home_team_penalty_minutes": get_stat_value(home_stats, "penaltyMinutes"),
+            "home_team_power_plays": get_stat_value(home_stats, "powerPlays"),
+            "home_team_power_play_goals": get_stat_value(home_stats, "powerPlayGoals"),
+            "home_team_power_play_pct": get_stat_value(home_stats, "powerPlayPct"),
             # Away team
             "away_team_name": away_team.get("team", {}).get("name"),
             "away_team_id": away_team.get("team", {}).get("id"),
@@ -336,6 +328,11 @@ def api_raw_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
             "away_team_goals": get_stat_value(away_stats, "goals"),
             "away_team_assists": get_stat_value(away_stats, "assists"),
             "away_team_points": get_stat_value(away_stats, "points"),
+            "away_team_penalties": get_stat_value(away_stats, "penalties"),
+            "away_team_penalty_minutes": get_stat_value(away_stats, "penaltyMinutes"),
+            "away_team_power_plays": get_stat_value(away_stats, "powerPlays"),
+            "away_team_power_play_goals": get_stat_value(away_stats, "powerPlayGoals"),
+            "away_team_power_play_pct": get_stat_value(away_stats, "powerPlayPct"),
             # Team records
             "home_team_record": next(
                 (
@@ -352,61 +349,6 @@ def api_raw_nhl_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
                     if r.get("name") == "overall"
                 ),
                 "0-0",
-            ),
-            "home_team_linescores": [
-                int(ls.get("value", 0)) for ls in home_team.get("linescores", [])
-            ],
-            "away_team_linescores": [
-                int(ls.get("value", 0)) for ls in away_team.get("linescores", [])
-            ],
-            # Goals leaders
-            "home_goals_leader_name": get_leader_value(home_team, "goals").get("name"),
-            "home_goals_leader_value": get_leader_value(home_team, "goals").get(
-                "value"
-            ),
-            "home_goals_leader_team": get_leader_value(home_team, "goals").get("team"),
-            "away_goals_leader_name": get_leader_value(away_team, "goals").get("name"),
-            "away_goals_leader_value": get_leader_value(away_team, "goals").get(
-                "value"
-            ),
-            "away_goals_leader_team": get_leader_value(away_team, "goals").get("team"),
-            # Assists leaders
-            "home_assists_leader_name": get_leader_value(home_team, "assists").get(
-                "name"
-            ),
-            "home_assists_leader_value": get_leader_value(home_team, "assists").get(
-                "value"
-            ),
-            "home_assists_leader_team": get_leader_value(home_team, "assists").get(
-                "team"
-            ),
-            "away_assists_leader_name": get_leader_value(away_team, "assists").get(
-                "name"
-            ),
-            "away_assists_leader_value": get_leader_value(away_team, "assists").get(
-                "value"
-            ),
-            "away_assists_leader_team": get_leader_value(away_team, "assists").get(
-                "team"
-            ),
-            # Points leaders
-            "home_points_leader_name": get_leader_value(home_team, "points").get(
-                "name"
-            ),
-            "home_points_leader_value": get_leader_value(home_team, "points").get(
-                "value"
-            ),
-            "home_points_leader_team": get_leader_value(home_team, "points").get(
-                "team"
-            ),
-            "away_points_leader_name": get_leader_value(away_team, "points").get(
-                "name"
-            ),
-            "away_points_leader_value": get_leader_value(away_team, "points").get(
-                "value"
-            ),
-            "away_points_leader_team": get_leader_value(away_team, "points").get(
-                "team"
             ),
             # Venue information
             "venue_name": competition.get("venue", {}).get("fullName"),
@@ -456,19 +398,6 @@ def api_raw_nba_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
             stat = next((s for s in stats if s.get("name") == name), {})
             return stat.get("displayValue")
 
-        def get_leader_value(team, category):
-            leaders = team.get("leaders", [])
-            leader = next((l for l in leaders if l.get("name") == category), {})
-            leader_stats = (
-                leader.get("leaders", [{}])[0] if leader.get("leaders") else {}
-            )
-            return {
-                "name": leader_stats.get("athlete", {}).get("displayName"),
-                "value": leader_stats.get("value"),
-                "display_value": leader_stats.get("displayValue"),
-                "team": leader_stats.get("team", {}).get("id"),
-            }
-
         nba_game_data = {
             "game_id": raw_data.get("id"),
             "start_time": raw_data.get("date"),
@@ -502,111 +431,6 @@ def api_raw_nba_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
             "away_team_free_throws": get_stat_value(away_stats, "freeThrowPct"),
             "away_team_rebounds": get_stat_value(away_stats, "rebounds"),
             "away_team_assists": get_stat_value(away_stats, "assists"),
-            # Team records
-            "home_team_record": next(
-                (
-                    r.get("summary")
-                    for r in home_team.get("records", [])
-                    if r.get("name") == "overall"
-                ),
-                "0-0",
-            ),
-            "away_team_record": next(
-                (
-                    r.get("summary")
-                    for r in away_team.get("records", [])
-                    if r.get("name") == "overall"
-                ),
-                "0-0",
-            ),
-            "home_team_linescores": [
-                int(ls.get("value", 0)) for ls in home_team.get("linescores", [])
-            ],
-            "away_team_linescores": [
-                int(ls.get("value", 0)) for ls in away_team.get("linescores", [])
-            ],
-            # points leader
-            "home_points_leader_name": get_leader_value(home_team, "points").get(
-                "name"
-            ),
-            "home_points_leader_value": get_leader_value(home_team, "points").get(
-                "value"
-            ),
-            "home_points_leader_team": get_leader_value(home_team, "points").get(
-                "team"
-            ),
-            "away_points_leader_name": get_leader_value(away_team, "points").get(
-                "name"
-            ),
-            "away_points_leader_value": get_leader_value(away_team, "points").get(
-                "value"
-            ),
-            "away_points_leader_team": get_leader_value(away_team, "points").get(
-                "team"
-            ),
-            # rebounds leader
-            "home_rebounds_leader_name": get_leader_value(home_team, "rebounds").get(
-                "name"
-            ),
-            "home_rebounds_leader_value": get_leader_value(home_team, "rebounds").get(
-                "value"
-            ),
-            "home_rebounds_leader_team": get_leader_value(home_team, "rebounds").get(
-                "team"
-            ),
-            "away_rebounds_leader_name": get_leader_value(away_team, "rebounds").get(
-                "name"
-            ),
-            "away_rebounds_leader_value": get_leader_value(away_team, "rebounds").get(
-                "value"
-            ),
-            "away_rebounds_leader_team": get_leader_value(away_team, "rebounds").get(
-                "team"
-            ),
-            # assists leader
-            "home_assists_leader_name": get_leader_value(home_team, "assists").get(
-                "name"
-            ),
-            "home_assists_leader_value": get_leader_value(home_team, "assists").get(
-                "value"
-            ),
-            "away_assists_leader_name": get_leader_value(away_team, "assists").get(
-                "name"
-            ),
-            "away_assists_leader_value": get_leader_value(away_team, "assists").get(
-                "value"
-            ),
-            "home_assists_leader_team": get_leader_value(home_team, "assists").get(
-                "team"
-            ),
-            "away_assists_leader_team": get_leader_value(away_team, "assists").get(
-                "team"
-            ),
-            # rating leader
-            "home_rating_leader_name": get_leader_value(home_team, "rating").get(
-                "name"
-            ),
-            "home_rating_leader_value": get_leader_value(home_team, "rating").get(
-                "value"
-            ),
-            "home_rating_leader_display_value": get_leader_value(
-                home_team, "rating"
-            ).get("display_value"),
-            "home_rating_leader_team": get_leader_value(home_team, "rating").get(
-                "team"
-            ),
-            "away_rating_leader_name": get_leader_value(away_team, "rating").get(
-                "name"
-            ),
-            "away_rating_leader_value": get_leader_value(away_team, "rating").get(
-                "value"
-            ),
-            "away_rating_leader_team": get_leader_value(away_team, "rating").get(
-                "team"
-            ),
-            "away_rating_leader_display_value": get_leader_value(
-                away_team, "rating"
-            ).get("display_value"),
             # venue
             "venue_name": competition.get("venue", {}).get("fullName"),
             "venue_city": competition.get("venue", {}).get("address", {}).get("city"),

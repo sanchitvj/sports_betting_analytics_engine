@@ -164,7 +164,7 @@ class TestSportsBettingProducer:
             "content": "Test content",
             "url": "http://example.com",
             "author": "John Doe",
-            "categories": ["sports", "analytics"],
+            "categories": ["sports", "betting"],
             "entities": {"teams": ["team1", "team2"]},
             "sentiment_score": 0.8,
             "relevance_score": 0.9,

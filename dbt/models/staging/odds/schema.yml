@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: stg_nba_odds
-    description: Staged NBA analytics odds data
+    description: Staged NBA betting odds data
     columns:
       - name: game_id
         description: Unique identifier for each game
@@ -12,8 +12,8 @@ models:
         description: Sport identifier
         tests:
           - not_null
-#          - accepted_values:
-#              values: ['basketball_nba']
+          - accepted_values:
+              values: ['basketball_nba']
       - name: home_price
         description: Betting price for home team
         tests:
@@ -22,21 +22,17 @@ models:
         description: Betting price for away team
         tests:
           - not_null
-      - name: commence_time
-        tests:
-          - not_null
-#          - dbt_expectations.expect_column_values_to_be_between:
-#              min_value: "{{ dbt_utils.dateadd(datepart='year', interval=-1, from_date=dbt_utils.current_timestamp()) }}"
-#              max_value: "{{ dbt_utils.dateadd(datepart='year', interval=1, from_date=dbt_utils.current_timestamp()) }}"
       - name: bookmaker_key
+        description: Unique identifier for bookmaker
         tests:
-#          - accepted_values:
-#              values: [ 'draftkings', 'fanduel', 'betmgm', 'caesars', 'bovada' ]
           - not_null
-
+      - name: commence_time
+        description: Game start time
+        tests:
+          - not_null
 
   - name: stg_nfl_odds
-    description: Staged NFL analytics odds data
+    description: Staged NFL betting odds data
     columns: &sports_odds_columns
       - name: game_id
         tests:
@@ -44,8 +40,8 @@ models:
       - name: sport_key
         tests:
           - not_null
-#          - accepted_values:
-#              values: ['americanfootball_nfl']
+          - accepted_values:
+              values: ['americanfootball_nfl']
       - name: home_price
         tests:
           - not_null
@@ -60,9 +56,9 @@ models:
           - not_null
 
   - name: stg_nhl_odds
-    description: Staged NHL analytics odds data
+    description: Staged NHL betting odds data
     columns: *sports_odds_columns
 
   - name: stg_cfb_odds
-    description: Staged College Football analytics odds data
+    description: Staged College Football betting odds data
     columns: *sports_odds_columns

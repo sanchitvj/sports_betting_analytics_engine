@@ -1,6 +1,6 @@
 version: 2
 sources:
-  - name: raw_layer
+  - name: raw_data
     database: SPORTS_DB
     schema: RAW_LAYER
     tables:
