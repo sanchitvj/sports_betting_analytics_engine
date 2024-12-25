@@ -5,11 +5,73 @@ models:
     columns:
       - name: game_id
         tests:
-#          - unique
+          - unique
           - not_null
-      - name: home_team_score
+
+      - name: start_time
+        description: Game start time
         tests:
           - not_null
-      - name: away_team_score
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: "{{ dateadd('year', -2, current_timestamp()) }}"
+#              max_value: "{{ dateadd('year', 1, current_timestamp()) }}"
+
+      - name: period
+        description: Current game period
         tests:
           - not_null
+
+      - name: home_score
+        description: Home team score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: away_score
+        description: Away team score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+      - name: status_state
+        tests:
+          - not_null
+          - accepted_values:
+              values: [ 'pre', 'in', 'post' ]
+
+      - name: home_fg_pct
+        description: Home team field goal percentage
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: home_3p_pct
+        description: Home team three-point percentage
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: home_ft_pct
+        description: Home team free throw percentage
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: home_rebounds
+        description: Home team rebounds
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+#              max_value: 100
+
+      - name: home_assists
+        description: Home team assists
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+#              max_value: 60

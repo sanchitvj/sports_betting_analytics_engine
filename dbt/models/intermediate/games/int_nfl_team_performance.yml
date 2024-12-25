@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: int_nfl_team_performance
+    description: Team-level performance metrics
+    tests:
+      - unique:
+          column_name: "game_id || '-' || team_type"
+    columns:
+      - name: points_scored
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 70
+
+      - name: first_half_points
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 45
+
+      - name: second_half_points
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 45
+
+      - name: is_winner
+        tests:
+          - accepted_values:
+              values: [0, 1]

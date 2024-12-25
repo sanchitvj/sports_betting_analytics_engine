@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: int_nba_leader_stats
+    description: Leader statistics by game for NBA
+    tests:
+      - unique:
+          column_name: "game_id || '-' || leader_type || '-' || team_type"
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nba_games')
+              field: game_id
+
+      - name: team_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+              config:
+                case_sensitive: false
+
+      - name: leader_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['POINTS', 'REBOUNDS', 'ASSISTS', 'RATING']
+              config:
+                case_sensitive: false
+
+      - name: player_name
+        tests:
+          - not_null
+
+      - name: stat_value
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100  # Maximum reasonable value for any stat
+
+      - name: team_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nba_games')
+              field: home_id  # Since team_id could match either home or away
+
+      - name: display_value
+        tests:
+          - not_null

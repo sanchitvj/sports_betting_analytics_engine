@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: int_nhl_game_stats
+    description: Game-level statistics for NHL games
+    tests:
+      - unique:
+          column_name: game_id
+    columns:
+      - name: goal_difference
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 15
+
+      - name: total_goals
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 20
+
+      - name: total_assists
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 30
+
+      - name: total_saves
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: winner
+        tests:
+          - accepted_values:
+              values: [ 'HOME', 'AWAY' ]

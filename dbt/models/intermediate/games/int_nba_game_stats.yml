@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: int_nba_game_stats
+    description: Game-level statistics for NBA games
+    tests:
+      - unique:
+          column_name: game_id
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nba_games')
+              field: game_id
+
+      - name: score_difference
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 70
+
+      - name: total_rebounds
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 50  # Based on sample data showing minimum ~80 combined rebounds
+              max_value: 150
+
+      - name: total_assists
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 30  # Based on sample showing ~40-60 combined assists
+              max_value: 100
+
+      - name: home_q1_score
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+
+      - name: winner
+        tests:
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+      - name: venue_name
+        tests:
+          - not_null
+
+      - name: venue_state
+        tests:
+          - not_null
+
+      - name: total_periods
+        tests:
+          - not_null
+          - periods_match_linescores
