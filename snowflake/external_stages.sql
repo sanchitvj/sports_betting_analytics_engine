@@ -1,3 +1,4 @@
+-- Games stage
 CREATE OR REPLACE STAGE SPORTS_DB.RAW_LAYER.NBA_GAMES_STAGE
   STORAGE_INTEGRATION = s3_sports_integration
   URL = 's3://cur-sp-data-aeb/processed/aeb_glue_db.db/nba_games'

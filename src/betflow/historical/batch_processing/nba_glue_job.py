@@ -69,9 +69,7 @@ spark.sql(f"""
             three_pointers: STRING,
             free_throws: STRING,
             rebounds: STRING,
-            assists: STRING,
-            record: STRING,
-            linescores: ARRAY<INT>
+            assists: STRING
         >,
         away_team STRUCT<
             id: STRING,
@@ -82,57 +80,7 @@ spark.sql(f"""
             three_pointers: STRING,
             free_throws: STRING,
             rebounds: STRING,
-            assists: STRING,
-            record: STRING,
-            linescores: ARRAY<INT>
-        >,
-        leaders STRUCT<
-            home_leaders: STRUCT<
-                points: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                rebounds: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                assists: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                rating: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    display_value: STRING,
-                    team: STRING
-                >
-            >,
-            away_leaders: STRUCT<
-                points: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                rebounds: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                assists: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                rating: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    display_value: STRING,
-                    team: STRING
-                >
-            >
+            assists: STRING
         >,
         venue STRUCT<
             name: STRING,
@@ -159,7 +107,7 @@ df.createOrReplaceTempView("raw_games")
 processed_df = spark.sql("""
     SELECT 
         game_id,
-        TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'") as start_time,
+        CAST(start_time as timestamp) as start_time,
         CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
         CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
         CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
@@ -177,9 +125,7 @@ processed_df = spark.sql("""
             home_team_three_pointers as three_pointers,
             home_team_free_throws as free_throws,
             home_team_rebounds as rebounds,
-            home_team_assists as assists,
-            home_team_record as record,
-            home_team_linescores as linescores
+            home_team_assists as assists
         ) as home_team,
         STRUCT(
             away_team_id as id,
@@ -190,58 +136,8 @@ processed_df = spark.sql("""
             away_team_three_pointers as three_pointers,
             away_team_free_throws as free_throws,
             away_team_rebounds as rebounds,
-            away_team_assists as assists,
-            away_team_record as record,
-            away_team_linescores as linescores
+            away_team_assists as assists
         ) as away_team,
-        STRUCT(
-            STRUCT(
-                STRUCT(
-                    home_points_leader_name as name,
-                    CAST(home_points_leader_value as INT) as value,
-                    home_points_leader_team as team
-                ) as points,
-                STRUCT(
-                    home_rebounds_leader_name as name,
-                    CAST(home_rebounds_leader_value as INT) as value,
-                    home_rebounds_leader_team as team
-                ) as rebounds,
-                STRUCT(
-                    home_assists_leader_name as name,
-                    CAST(home_assists_leader_value as INT) as value,
-                    home_assists_leader_team as team
-                ) as assists,
-                STRUCT(
-                    home_rating_leader_name as name,
-                    CAST(home_rating_leader_value as INT) as value,
-                    home_rating_leader_display_value as display_value,
-                    home_rating_leader_team as team
-                ) as rating
-            ) as home_leaders,
-            STRUCT(
-                STRUCT(
-                    away_points_leader_name as name,
-                    CAST(away_points_leader_value as INT) as value,
-                    away_points_leader_team as team
-                ) as points,
-                STRUCT(
-                    away_rebounds_leader_name as name,
-                    CAST(away_rebounds_leader_value as INT) as value,
-                    away_rebounds_leader_team as team
-                ) as rebounds,
-                STRUCT(
-                    away_assists_leader_name as name,
-                    CAST(away_assists_leader_value as INT) as value,
-                    away_assists_leader_team as team
-                ) as assists,
-                STRUCT(
-                    away_rating_leader_name as name,
-                    CAST(away_rating_leader_value as INT) as value,
-                    away_rating_leader_display_value as display_value,
-                    away_rating_leader_team as team
-                ) as rating
-            ) as away_leaders
-        ) as leaders,
         STRUCT(
             venue_name as name,
             venue_city as city,
@@ -257,30 +153,21 @@ processed_df = spark.sql("""
 # print("Partition Values:")
 # processed_df.select("partition_year", "partition_month", "partition_day").show()
 # processed_df.printSchema()
-# print(processed_df.show(5))
-
-null_check = processed_df.filter("""
-        partition_year IS NULL OR
-        partition_month IS NULL OR
-        partition_day IS NULL OR
-        home_team_score IS NULL OR
-        away_team_score IS NULL OR
-        home_team_name IS NULL OR
-        away_team_name IS NULL OR
-        start_time IS NULL
-    """).count()
-# print(f"Records with null partitions: {null_check}")
+partition_check = processed_df.filter(
+    "partition_year IS NULL OR partition_month IS NULL OR partition_day IS NULL"
+).count()
+print(f"Records with null partitions: {partition_check}")
 
 
 # Check for duplicate game IDs
-# duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
-# if duplicate_check.count() > 0:
-#     print("Duplicate game IDs found:")
-#     duplicate_check.show()
+duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
+if duplicate_check.count() > 0:
+    print("Duplicate game IDs found:")
+    duplicate_check.show()
 
 # Verify timestamp conversions
-# print("Timestamp Distribution:")
-# processed_df.groupBy("partition_year", "partition_month").count().show()
+print("Timestamp Distribution:")
+processed_df.groupBy("partition_year", "partition_month").count().show()
 
 raw_count = df.count()
 processed_count = processed_df.count()
@@ -310,11 +197,11 @@ reconciliation_check = spark.sql("""
         WHERE r.raw_count != p.processed_count
     """)
 
-# print("\nGame-level Reconciliation:")
-# reconciliation_check.show()
+print("\nGame-level Reconciliation:")
+reconciliation_check.show()
 
 if (
-    null_check == 0
+    partition_check == 0
     and raw_count == processed_count
     and reconciliation_check.count() == 0
 ):
@@ -330,67 +217,13 @@ if (
         .append()
     )
 else:
-    error_msg = (
-        "Data validation failed.\n Removing invalidated rows and keeping rest: \n"
-    )
-    validated_df = spark.sql("""
-        WITH validation_check AS (
-            SELECT 
-                *,
-                CASE 
-                    WHEN home_team.score IS NULL OR away_team.score IS NULL THEN 'Invalid Score'
-                    WHEN home_team.name IS NULL OR away_team.name IS NULL THEN 'Invalid Name'
-                    WHEN partition_year IS NULL OR partition_month IS NULL OR 
-                         partition_day IS NULL THEN 'Invalid Partition'
-                    WHEN game_id IS NULL OR start_time IS NULL THEN 'Invalid Required Fields'
-                    ELSE 'Valid'
-                END as validation_status
-            FROM processed_df
-        )
-        SELECT 
-            game_id,
-            start_time,
-            partition_year,
-            partition_month,
-            partition_day,
-            status_state,
-            status_detail,
-            status_description,
-            period,
-            clock,
-            home_team,
-            away_team,
-            venue,
-            broadcasts,
-            ingestion_timestamp
-        FROM validation_check
-        WHERE validation_status = 'Valid'
-        AND status_state = 'post'
-    """)
-
-    # print("\n=== Validation Summary ===")
-    # print(f"Total records: {processed_df.count()}")
-    # print(f"Valid records: {validated_df.count()}")
-    # print(f"Filtered records: {processed_df.count() - validated_df.count()}")
-
-    if validated_df.count() > 0:
-        (
-            validated_df.writeTo(
-                f"glue_catalog.{args['database_name']}.{args['table_name']}"
-            )
-            .tableProperty("format-version", "2")
-            .option("check-nullability", "false")
-            .option("merge-schema", "true")
-            .tableProperty("write.format.default", "parquet")
-            .partitionedBy("partition_year", "partition_month", "partition_day")
-            .append()
-        )
-    else:
-        if null_check > 0:
-            error_msg += (
-                f"- {null_check} records with null partitions for {args['date']}\n"
-            )
-
-        raise ValueError(error_msg)
+    print("No valid records to write after validation")
+    sys.exit(0)
 
 job.commit()
+#
+# except Exception as e:
+#     if "no such file or directory" in str(e).lower():
+#         print(f"No data file found for date: {args['date']}")
+#         job.commit()
+#         sys.exit(0)

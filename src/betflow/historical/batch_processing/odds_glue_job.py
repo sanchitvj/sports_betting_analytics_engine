@@ -91,33 +91,33 @@ processed_df = spark.sql("""
         CAST(DAY(TO_TIMESTAMP(data.commence_time, "yyyy-MM-dd'T'HH:mm:ss'Z'")) as INT) as partition_day,
         CAST(current_timestamp() as timestamp) as ingestion_timestamp
     FROM raw_odds
-    ),
-    exploded_markets AS (
-    SELECT 
-        *,
-        explode(bookmaker.markets) as market
-    FROM exploded_bookmakers
-    )
-    SELECT 
-        game_id,
-        sport_key,
-        sport_title,
-        commence_time,
-        home_team,
-        away_team,
-        bookmaker.key as bookmaker_key,
-        bookmaker.title as bookmaker_title,
-        CAST(bookmaker.last_update as timestamp) as bookmaker_last_update,
-        market.key as market_key,
-        CAST(market.last_update as timestamp) as market_last_update,
-        CAST(market.outcomes[0].price as DOUBLE) as home_price,
-        CAST(market.outcomes[1].price as DOUBLE) as away_price,
-        partition_year,
-        partition_month,
-        partition_day,
-        ingestion_timestamp
-    FROM exploded_markets
-    WHERE market.key = 'h2h'
+),
+exploded_markets AS (
+SELECT 
+    *,
+    explode(bookmaker.markets) as market
+FROM exploded_bookmakers
+)
+SELECT 
+    game_id,
+    sport_key,
+    sport_title,
+    commence_time,
+    home_team,
+    away_team,
+    bookmaker.key as bookmaker_key,
+    bookmaker.title as bookmaker_title,
+    CAST(bookmaker.last_update as timestamp) as bookmaker_last_update,
+    market.key as market_key,
+    CAST(market.last_update as timestamp) as market_last_update,
+    CAST(market.outcomes[0].price as DOUBLE) as home_price,
+    CAST(market.outcomes[1].price as DOUBLE) as away_price,
+    partition_year,
+    partition_month,
+    partition_day,
+    ingestion_timestamp
+FROM exploded_markets
+WHERE market.key = 'h2h'
 """)
 
 # print(f"Processed rows: {processed_df.count()}")

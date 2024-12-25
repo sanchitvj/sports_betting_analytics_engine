@@ -68,7 +68,7 @@ class NBAHistoricalConnector(BaseHistoricalConnector):
             host="v2.nba.api-sports.io",
         )
 
-    async def fetch_season_games(self, session, season: str) -> dict:
+    async def fetch_season_games(self, session, season: str) -> List[Dict]:
         """Fetch all games for a season"""
         return await self._fetch_data(
             session, "games", {"league": "standard", "season": season}
@@ -201,7 +201,7 @@ class NHLHistoricalConnector(BaseHistoricalConnector):
             host="v1.hockey.api-sports.io",
         )
 
-    async def fetch_season_games(self, session, season: str) -> dict:
+    async def fetch_season_games(self, session, season: str) -> List[Dict]:
         """Fetch all games for a season"""
         return await self._fetch_data(
             session, "games", {"league": "57", "season": season}
@@ -317,7 +317,7 @@ class FootballHistoricalConnector(BaseHistoricalConnector):
         )
         self.league_id = league_id  # "1" for NFL, "2" for NCAA
 
-    async def fetch_season_games(self, session, season: str) -> dict:
+    async def fetch_season_games(self, session, season: str) -> List[Dict]:
         """Fetch all games for a season"""
         return await self._fetch_data(
             session, "games", {"league": self.league_id, "season": season}

@@ -62,8 +62,12 @@ spark.sql(f"""
             goals: STRING,
             assists: STRING,
             points: STRING,
-            record: STRING,
-            linescores: ARRAY<INT>
+            penalties: STRING,
+            penalty_minutes: STRING,
+            power_plays: STRING,
+            power_play_goals: STRING,
+            power_play_pct: STRING,
+            record: STRING
         >,
         away_team STRUCT<
             id: STRING,
@@ -75,44 +79,12 @@ spark.sql(f"""
             goals: STRING,
             assists: STRING,
             points: STRING,
-            record: STRING,
-            linescores: ARRAY<INT>
-        >,
-        leaders STRUCT<
-            home_leaders: STRUCT<
-                goals: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                assists: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                points: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >
-            >,
-            away_leaders: STRUCT<
-                goals: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                assists: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >,
-                points: STRUCT<
-                    name: STRING,
-                    value: INT,
-                    team: STRING
-                >
-            >
+            penalties: STRING,
+            penalty_minutes: STRING,
+            power_plays: STRING,
+            power_play_goals: STRING,
+            power_play_pct: STRING,
+            record: STRING
         >,
         venue STRUCT<
             name: STRING,
@@ -139,7 +111,7 @@ df.createOrReplaceTempView("raw_games")
 processed_df = spark.sql("""
     SELECT 
         game_id,
-        TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'") as start_time,
+        CAST(start_time as timestamp) as start_time,
         CAST(YEAR(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_year,
         CAST(MONTH(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_month,
         CAST(DAY(TO_TIMESTAMP(start_time, "yyyy-MM-dd'T'HH:mm'Z'")) as INT) as partition_day,
@@ -158,8 +130,12 @@ processed_df = spark.sql("""
             home_team_goals as goals,
             home_team_assists as assists,
             home_team_points as points,
-            home_team_record as record,
-            home_team_linescores as linescores
+            home_team_penalties as penalties,
+            home_team_penalty_minutes as penalty_minutes,
+            home_team_power_plays as power_plays,
+            home_team_power_play_goals as power_play_goals,
+            home_team_power_play_pct as power_play_pct,
+            home_team_record as record
         ) as home_team,
         STRUCT(
             away_team_id as id,
@@ -171,45 +147,13 @@ processed_df = spark.sql("""
             away_team_goals as goals,
             away_team_assists as assists,
             away_team_points as points,
-            away_team_record as record,
-            away_team_linescores as linescores
+            away_team_penalties as penalties,
+            away_team_penalty_minutes as penalty_minutes,
+            away_team_power_plays as power_plays,
+            away_team_power_play_goals as power_play_goals,
+            away_team_power_play_pct as power_play_pct,
+            away_team_record as record
         ) as away_team,
-        STRUCT(
-            STRUCT(
-                STRUCT(
-                    home_goals_leader_name as name,
-                    CAST(home_goals_leader_value as INT) as value,
-                    home_goals_leader_team as team
-                ) as goals,
-                STRUCT(
-                    home_assists_leader_name as name,
-                    CAST(home_assists_leader_value as INT) as value,
-                    home_assists_leader_team as team
-                ) as assists,
-                STRUCT(
-                    home_points_leader_name as name,
-                    CAST(home_points_leader_value as INT) as value,
-                    home_points_leader_team as team
-                ) as points
-            ) as home_leaders,
-            STRUCT(
-                STRUCT(
-                    away_goals_leader_name as name,
-                    CAST(away_goals_leader_value as INT) as value,
-                    away_goals_leader_team as team
-                ) as goals,
-                STRUCT(
-                    away_assists_leader_name as name,
-                    CAST(away_assists_leader_value as INT) as value,
-                    away_assists_leader_team as team
-                ) as assists,
-                STRUCT(
-                    away_points_leader_name as name,
-                    CAST(away_points_leader_value as INT) as value,
-                    away_points_leader_team as team
-                ) as points
-            ) as away_leaders
-        ) as leaders,
         STRUCT(
             venue_name as name,
             venue_city as city,
@@ -222,22 +166,17 @@ processed_df = spark.sql("""
     WHERE status_state = 'post'
 """)
 
-null_check = processed_df.filter("""
-        partition_year IS NULL OR
-        partition_month IS NULL OR
-        partition_day IS NULL OR
-        home_team_score IS NULL OR
-        away_team_score IS NULL OR
-        start_time IS NULL
-    """).count()
+partition_check = processed_df.filter(
+    "partition_year IS NULL OR partition_month IS NULL OR partition_day IS NULL"
+).count()
 # print(f"Records with null partitions: {partition_check}")
 
 
 # Check for duplicate game IDs
-# duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
-# if duplicate_check.count() > 0:
-#     print("Duplicate game IDs found:")
-#     duplicate_check.show()
+duplicate_check = processed_df.groupBy("game_id").count().filter("count > 1")
+if duplicate_check.count() > 0:
+    print("Duplicate game IDs found:")
+    duplicate_check.show()
 
 # Verify timestamp conversions
 # print("Timestamp Distribution:")
@@ -275,7 +214,7 @@ reconciliation_check = spark.sql("""
 # reconciliation_check.show()
 
 if (
-    null_check == 0
+    partition_check == 0
     and raw_count == processed_count
     and reconciliation_check.count() == 0
 ):
@@ -290,68 +229,4 @@ if (
         .partitionedBy("partition_year", "partition_month", "partition_day")
         .append()
     )
-
-else:
-    error_msg = (
-        "Data validation failed.\n Removing invalidated rows and keeping rest: \n"
-    )
-    validated_df = spark.sql("""
-        WITH validation_check AS (
-            SELECT 
-                *,
-                CASE 
-                    WHEN home_team.score IS NULL OR away_team.score IS NULL THEN 'Invalid Score'
-                    WHEN partition_year IS NULL OR partition_month IS NULL OR 
-                         partition_day IS NULL THEN 'Invalid Partition'
-                    WHEN game_id IS NULL OR start_time IS NULL THEN 'Invalid Required Fields'
-                    ELSE 'Valid'
-                END as validation_status
-            FROM processed_df
-        
-        SELECT 
-            game_id,
-            start_time,
-            partition_year,
-            partition_month,
-            partition_day,
-            status_state,
-            status_detail,
-            status_description,
-            period,
-            clock,
-            home_team,
-            away_team,
-            venue,
-            broadcasts,
-            ingestion_timestamp
-        FROM validation_check
-        WHERE validation_status = 'Valid'
-        AND status_state = 'post'
-    """)
-
-    # print("\n=== Validation Summary ===")
-    # print(f"Total records: {processed_df.count()}")
-    # print(f"Valid records: {validated_df.count()}")
-    # print(f"Filtered records: {processed_df.count() - validated_df.count()}")
-
-    if validated_df.count() > 0:
-        (
-            validated_df.writeTo(
-                f"glue_catalog.{args['database_name']}.{args['table_name']}"
-            )
-            .tableProperty("format-version", "2")
-            .option("check-nullability", "false")
-            .option("merge-schema", "true")
-            .tableProperty("write.format.default", "parquet")
-            .partitionedBy("partition_year", "partition_month", "partition_day")
-            .append()
-        )
-    else:
-        if null_check > 0:
-            error_msg += (
-                f"- {null_check} records with null partitions for {args['date']}\n"
-            )
-
-        raise ValueError(error_msg)
-
 job.commit()

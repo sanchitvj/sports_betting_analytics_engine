@@ -1,10 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 import boto3
 import aiohttp
 import asyncio
 from airflow.exceptions import AirflowException
-from zoneinfo import ZoneInfo
 
 from betflow.historical.hist_api_connectors import (
     ESPNBatchConnector,
@@ -38,10 +37,6 @@ def fetch_games_by_date(sport_key, **context):
     logical_date = context.get("data_interval_start")  # - timedelta(days=1)
     date_str = logical_date.strftime("%Y%m%d")
 
-    ny_tz = ZoneInfo("America/New_York")
-    ny_midnight = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=ny_tz)
-    next_ny_midnight = ny_midnight + timedelta(days=1)
-
     try:
         espn_connector = ESPNBatchConnector()
         endpoint = HistoricalConfig.SPORT_CONFIGS[sport_key]["endpoint"]
@@ -65,27 +60,7 @@ def fetch_games_by_date(sport_key, **context):
             elif sport_key == "cfb":
                 game_data = api_raw_cfb_data(game)
 
-            # valida_date_ls = [
-            #     datetime.fromisoformat(game_data["start_time"])
-            #     .date()
-            #     .strftime("%Y%m%d"),
-            #     (
-            #         datetime.fromisoformat(game_data["start_time"]).date()
-            #         + timedelta(days=1)
-            #     ).strftime("%Y%m%d"),
-            # ]  # because of UTC tz dates are the day and plus one
-            # print(valida_date_ls)
-            game_start = (
-                datetime.fromisoformat(game_data["start_time"])
-                .replace(tzinfo=ZoneInfo("UTC"))
-                .astimezone(ny_tz)
-            )
-
-            if (
-                game_data["status_state"] in ["post", "STATUS_FINAL"]
-                and ny_midnight <= game_start < next_ny_midnight
-                and game_data["status_detail"] not in ["Canceled, Postponed"]
-            ):
+            if game_data["status_state"] in ["post", "STATUS_FINAL"]:
                 processed_games.append(game_data)
 
         if processed_games:
@@ -94,9 +69,7 @@ def fetch_games_by_date(sport_key, **context):
             )
             return processed_games
 
-        print(
-            f"Empty list for {date_str}, may be games not in post state or dates not in {ny_midnight}, {next_ny_midnight}."
-        )
+        print(f"Empty list for {date_str}, may be games not in post state.")
         return []
 
     except Exception as e:

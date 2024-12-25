@@ -1,7 +1,5 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
-
-# from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.state import DagRunState
@@ -18,11 +16,10 @@ from betflow.historical.hist_utils import (
 
 default_args = {
     "owner": ProcessingConfig.OWNER,
-    "depends_on_past": False,  # past dependency blocking from running so switched to False
+    "depends_on_past": True,
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
-    "tags": ["processing", "historical", "sports"],
 }
 
 
@@ -54,11 +51,8 @@ with DAG(
         check_existence=True,
     )
 
-    sport_groups = []
-    for sport, config in ProcessingConfig.SPORT_CONFIGS.items():
+    for sport in ["nba", "nhl", "nfl", "cfb"]:
         with TaskGroup(group_id=f"{sport}_tasks") as sport_tasks:
-            # start_group = EmptyOperator(task_id=f"start_{sport}_processing")
-
             check_data = ShortCircuitOperator(
                 task_id=f"check_{sport}_data",
                 python_callable=check_source_data,
@@ -96,14 +90,6 @@ with DAG(
                 trigger_rule="all_done",  # Continue even if upstream tasks fail
             )
 
-            # wait_for_sports >> start_group
-            (
-                # start_group
-                check_data >> upload_script >> setup_glue_job >> process_games
-            )
-            # wait_for_sports >> sport_tasks
-            # sport_groups.append(sport_tasks)
+            (check_data >> upload_script >> setup_glue_job >> process_games)
 
-        # wait_for_sports >> sport_groups
-
-        wait_for_sports >> [sport_tasks for sport in ProcessingConfig.SPORT_CONFIGS]
+    wait_for_sports >> sport_tasks
