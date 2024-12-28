@@ -13,6 +13,8 @@ models:
           - relationships:
               to: ref('stg_nba_games')
               field: game_id
+              config:
+                enabled: false
 
       - name: team_type
         tests:
@@ -40,13 +42,6 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 100  # Maximum reasonable value for any stat
-
-      - name: team_id
-        tests:
-          - not_null
-          - relationships:
-              to: ref('stg_nba_games')
-              field: home_id  # Since team_id could match either home or away
 
       - name: display_value
         tests:

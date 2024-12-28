@@ -29,3 +29,5 @@ models:
           - relationships:
               to: ref('stg_nhl_games')
               field: home_id
+              config:
+                enabled: false

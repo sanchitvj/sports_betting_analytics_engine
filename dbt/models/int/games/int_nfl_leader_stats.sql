@@ -16,7 +16,8 @@ with leader_stats as (
         game_leaders:PASSING.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nfl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -33,7 +34,8 @@ with leader_stats as (
         game_leaders:RUSHING.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nfl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -50,7 +52,8 @@ with leader_stats as (
         game_leaders:RECEIVING.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nfl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})

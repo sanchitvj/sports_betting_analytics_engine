@@ -1,7 +1,7 @@
 version: 2
 
 sources:
-  - name: staging_silver_layer
+  - name: silver_layer
     database: sports_db
     schema: silver_layer
     tables:
@@ -19,5 +19,5 @@ sources:
         loaded_at_field: ingestion_timestamp
 
       - name: stg_cfb_games
-        description: Staged college football games data
+        description: Staged CFb games data
         loaded_at_field: ingestion_timestamp

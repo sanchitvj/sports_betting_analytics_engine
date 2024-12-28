@@ -24,7 +24,8 @@ with shooting_stats as (
         home_score::float/
             (nullif(home_fg_pct::float/100 *
             (2 + home_3p_pct::float/100), 0)) as shot_attempts_estimate,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})

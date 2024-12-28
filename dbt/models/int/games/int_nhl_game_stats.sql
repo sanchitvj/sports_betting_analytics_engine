@@ -26,12 +26,8 @@ with game_stats as (
         case when array_size(away_linescores) >= 2 then away_linescores[2] else null end as away_p3_score,
         -- Overtime Handling
         array_size(home_linescores) - 3 as number_of_overtimes,
-        case when array_size(home_linescores) > 3
-            then array_slice(home_linescores, 3, array_size(home_linescores)-1)
-        end as home_ot_scores,
-        case when array_size(away_linescores) > 3
-            then array_slice(away_linescores, 3, array_size(away_linescores)-1)
-        end as away_ot_scores,
+        {{ get_overtime_scores('home_linescores', 4) }} as home_ot_scores,
+        {{ get_overtime_scores('away_linescores', 4) }} as away_ot_scores,
         -- Game Totals
         home_goals + away_goals as total_goals,
         home_assists + away_assists as total_assists,
@@ -43,7 +39,8 @@ with game_stats as (
         is_indoor,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})

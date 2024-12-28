@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: int_nba_bookmakers
+    tests: &bookmaker_tests
+      - unique:
+          column_name: "game_id || '-' || market_key"
+    columns: &bookmaker_columns
+      - name: avg_home_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -1000
+              max_value: 1000
+
+      - name: avg_away_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -1000
+              max_value: 1000
+
+      - name: home_price_spread
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 200
+
+      - name: away_price_spread
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 200
+
+      - name: number_of_bookmakers
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 20
+
+      - name: participating_bookmakers
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_be_between:
+              min_value: 1
+              max_value: 20
+
+  - name: int_nfl_bookmakers
+    tests: *bookmaker_tests
+    columns: *bookmaker_columns
+
+  - name: int_nhl_bookmakers
+    tests: *bookmaker_tests
+    columns: *bookmaker_columns
+
+  - name: int_cfb_bookmakers
+    tests: *bookmaker_tests
+    columns: *bookmaker_columns

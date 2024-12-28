@@ -23,7 +23,8 @@ with team_performance as (
         home_assists::float/nullif(home_score, 0) as assists_per_point,
         home_rebounds::float/nullif(home_score + away_score, 0) as rebound_share,
         case when home_score > away_score then 1 else 0 end as is_winner,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -46,7 +47,8 @@ with team_performance as (
         away_assists::float/nullif(away_score, 0) as assists_per_point,
         away_rebounds::float/nullif(home_score + away_score, 0) as rebound_share,
         case when away_score > home_score then 1 else 0 end as is_winner,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})

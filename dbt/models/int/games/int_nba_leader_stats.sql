@@ -15,7 +15,8 @@ with leader_stats as (
         home_leaders:points.value::integer as stat_value,
         home_leaders:points.value::string as display_value,
         home_leaders:points.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -31,7 +32,8 @@ with leader_stats as (
         home_leaders:rebounds.value::integer as stat_value,
         home_leaders:rebounds.value::string as display_value,
         home_leaders:rebounds.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -47,7 +49,8 @@ with leader_stats as (
         home_leaders:assists.value::integer as stat_value,
         home_leaders:assists.value::string as display_value,
         home_leaders:assists.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -63,7 +66,8 @@ with leader_stats as (
         home_leaders:rating.value::integer as stat_value,
         home_leaders:rating.display_value:string as display_value,
         home_leaders:rating.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -79,7 +83,8 @@ with leader_stats as (
         away_leaders:points.value::integer as stat_value,
         away_leaders:points.value::string as display_value,
         away_leaders:points.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -95,7 +100,8 @@ with leader_stats as (
         away_leaders:rebounds.value::integer as stat_value,
         away_leaders:rebounds.value::string as display_value,
         away_leaders:rebounds.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -111,7 +117,8 @@ with leader_stats as (
         away_leaders:assists.value::integer as stat_value,
         away_leaders:assists.value::string as display_value,
         away_leaders:assists.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -127,7 +134,8 @@ with leader_stats as (
         away_leaders:rating.value::integer as stat_value,
         away_leaders:rating.display_value:string as display_value,
         away_leaders:rating.team::string as team_id,
-        partition_year, partition_month, partition_day
+        partition_year, partition_month, partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nba_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})

@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: int_nba_market_efficiency
+    tests: &efficiency_tests
+      - unique:
+          column_name: "game_id || '-' || bookmaker_key || '-' || bookmaker_last_update"
+    columns: &efficiency_columns
+      - name: home_implied_prob
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1.0
+
+      - name: away_implied_prob
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1.0
+
+      - name: market_vig
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1.0
+              max_value: 1.2  # Typical vig range is 2-20%
+
+      - name: market_favorite
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+      - name: probability_delta
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1.0
+
+      - name: bookmaker_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nba_odds')
+              field: bookmaker_key
+
+  - name: int_nfl_market_efficiency
+    tests: *efficiency_tests
+    columns: *efficiency_columns
+
+  - name: int_nhl_market_efficiency
+    tests: *efficiency_tests
+    columns: *efficiency_columns
+
+  - name: int_cfb_market_efficiency
+    tests: *efficiency_tests
+    columns: *efficiency_columns

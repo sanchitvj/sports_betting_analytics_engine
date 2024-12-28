@@ -16,7 +16,8 @@ with leader_stats as (
         home_leaders:goals.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -33,7 +34,8 @@ with leader_stats as (
         home_leaders:assists.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -50,7 +52,8 @@ with leader_stats as (
         home_leaders:points.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -67,7 +70,8 @@ with leader_stats as (
         away_leaders:goals.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -84,7 +88,8 @@ with leader_stats as (
         away_leaders:assists.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -101,7 +106,8 @@ with leader_stats as (
         away_leaders:points.team::string as team_id,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
