@@ -1,1 +1,1 @@
-{{ stage_odds('nfl') }}
+{{ create_odds('nfl') }}
