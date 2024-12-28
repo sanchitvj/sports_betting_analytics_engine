@@ -3,10 +3,10 @@ version: 2
 models:
   - name: int_cfb_game_stats
     description: Game-level statistics for CFB games
-    tests: &record_tests
+    tests: &game_stats_tests
       - unique:
           column_name: game_id
-    columns: &record_columns
+    columns:
       - name: game_id
         tests:
           - not_null
@@ -15,14 +15,14 @@ models:
               field: game_id
 
       - name: score_difference
-        tests:
+        tests: &score_diff
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 60
 
       - name: total_periods
-        tests:
+        tests: &tp
           - not_null
           - periods_match_linescores
           - dbt_expectations.expect_column_values_to_be_between:
@@ -30,17 +30,35 @@ models:
               max_value: 12
 
       - name: winner
-        tests:
+        tests: &win
           - not_null
           - accepted_values:
               values: ['HOME', 'AWAY']
 
       - name: is_indoor
-        tests:
+        tests: &indoor
           - accepted_values:
-            values: [ true, false ]
+              values: [ true, false ]
 
   - name: int_nfl_game_stats
     description: Game-level statistics for CFB games
-    tests: *record_tests
-    columns: *record_columns
+    tests: *game_stats_tests
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nfl_games')
+              field: game_id
+
+      - name : score_difference
+        tests: *score_diff
+
+      - name: total_periods
+        tests: *tp
+
+      - name: winner
+        tests: *win
+
+      - name: is_indoor
+        tests: *indoor

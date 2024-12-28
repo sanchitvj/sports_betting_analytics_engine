@@ -29,7 +29,8 @@ with record_analysis as (
             else 'AWAY_FAVORED'
         end as record_favorite,
         -- Actual Result
-        case when home_score > away_score then 'HOME' else 'AWAY' end as winner
+        case when home_score > away_score then 'HOME' else 'AWAY' end as winner,
+        ingestion_timestamp
     from {{ ref('stg_' ~ sport ~ '_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
@@ -38,8 +39,3 @@ with record_analysis as (
 select * from record_analysis
 
 {% endmacro %}
-
-{{ create_record_matchup('cfb') }}
-{{ create_record_matchup('nba') }}
-{{ create_record_matchup('nfl') }}
-{{ create_record_matchup('nhl') }}

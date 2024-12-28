@@ -20,11 +20,22 @@ models:
   betflow:
     staging:
       games:
-        +materialized: view
+        +materialized: incremental
         +schema: staging
       odds:
-        +materialized: view
+        +materialized: incremental
         +schema: staging
+    int:
+      games:
+        +materialized: incremental
+        +schema: int_layer
+      odds:
+        +materialized: incremental
+        +schema: int_layer
     marts:
-      +materialized: table
+      +materialized: incremental
       +schema: analytics
+
+tests:
+  +schema: silver_layer
+  +database: SPORTS_DB

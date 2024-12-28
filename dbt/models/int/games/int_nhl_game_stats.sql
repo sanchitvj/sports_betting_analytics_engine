@@ -18,14 +18,14 @@ with game_stats as (
         -- Period Analysis
         period as total_periods,
         -- Period Scoring (Safe Access)
-        case when array_size(home_linescores) >= 1 then home_linescores[0] else null end as home_p1_score,
-        case when array_size(home_linescores) >= 2 then home_linescores[1] else null end as home_p2_score,
-        case when array_size(home_linescores) >= 3 then home_linescores[2] else null end as home_p3_score,
-        case when array_size(away_linescores) >= 1 then away_linescores[0] else null end as away_p1_score,
-        case when array_size(away_linescores) >= 2 then away_linescores[1] else null end as away_p2_score,
-        case when array_size(away_linescores) >= 3 then away_linescores[2] else null end as away_p3_score,
+        case when array_size(home_linescores) >= 0 then home_linescores[0] else null end as home_p1_score,
+        case when array_size(home_linescores) >= 1 then home_linescores[1] else null end as home_p2_score,
+        case when array_size(home_linescores) >= 2 then home_linescores[2] else null end as home_p3_score,
+        case when array_size(away_linescores) >= 0 then away_linescores[0] else null end as away_p1_score,
+        case when array_size(away_linescores) >= 1 then away_linescores[1] else null end as away_p2_score,
+        case when array_size(away_linescores) >= 2 then away_linescores[2] else null end as away_p3_score,
         -- Overtime Handling
-        array_size(home_linescores) - 4 as number_of_overtimes,
+        array_size(home_linescores) - 3 as number_of_overtimes,
         case when array_size(home_linescores) > 3
             then array_slice(home_linescores, 3, array_size(home_linescores)-1)
         end as home_ot_scores,

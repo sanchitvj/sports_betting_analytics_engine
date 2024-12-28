@@ -1,11 +1,9 @@
-{% macro create_game_stats(sport) %}
 {{ config(
     materialized='incremental',
     unique_key='game_id',
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
-    alias='int_' ~ sport ~ 'game_stats'
 ) }}
 
 with game_stats as (
@@ -30,12 +28,8 @@ with game_stats as (
         case when array_size(away_linescores) >=3 then away_linescores[3] else null end as away_q4_score,
         -- Overtime Handling
         array_size(home_linescores) - 4 as number_of_overtimes,
-        case when array_size(home_linescores) > 4
-            then array_slice(home_linescores, 4, array_size(home_linescores)-1)
-        end as home_ot_scores,
-        case when array_size(away_linescores) > 4
-            then array_slice(away_linescores, 4, array_size(away_linescores)-1)
-        end as away_ot_scores,
+        {{ get_overtime_scores('home_linescores', 4) }} as home_ot_scores,
+        {{ get_overtime_scores('away_linescores', 4) }} as away_ot_scores,
         -- Venue Info
         venue_name,
         venue_city,
@@ -44,14 +38,9 @@ with game_stats as (
         partition_year,
         partition_month,
         partition_day,
-    from {{ ref('stg_' ~ sport ~ '_games') }}
+    from {{ ref('stg_cfb_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
     {% endif %}
 )
 select * from game_stats
-
-{% endmacro %}
-
-{{ create_game_stats('cfb') }}
-{{ create_game_stats('nfl') }}

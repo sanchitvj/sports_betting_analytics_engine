@@ -1,11 +1,9 @@
-{% macro create_leader_stats(sport) %}
 {{ config(
     materialized='incremental',
     unique_key=['game_id', 'leader_type'],
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
-    alias='int_' ~ sport ~ '_leader_stats'
 ) }}
 
 with leader_stats as (
@@ -19,7 +17,7 @@ with leader_stats as (
         partition_year,
         partition_month,
         partition_day
-    from {{ ref('stg_' ~ sport ~ '_games') }}
+    from {{ ref('stg_nfl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
     {% endif %}
@@ -36,7 +34,7 @@ with leader_stats as (
         partition_year,
         partition_month,
         partition_day
-    from {{ ref('stg_' ~ sport ~ '_games') }}
+    from {{ ref('stg_nfl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
     {% endif %}
@@ -53,14 +51,9 @@ with leader_stats as (
         partition_year,
         partition_month,
         partition_day
-    from {{ ref('stg_' ~ sport ~ '_games') }}
+    from {{ ref('stg_nfl_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
     {% endif %}
 )
 select * from leader_stats
-
-{% endmacro %}
-
-{{ create_leader_stats('cfb') }}
-{{ create_leader_stats('nfl') }}
