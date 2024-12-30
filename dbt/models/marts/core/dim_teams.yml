@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: dim_teams
+    description: Team dimension table for all sports
+    tests:
+      - unique:
+          column_name: team_id
+      - not_null:
+          column_name: team_id
+    columns:
+      - name: team_name
+        tests:
+          - not_null
+          - unique_combination:
+              combination_of: [team_name, sport_type]
+
+      - name: team_abbreviation
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_be_between:
+              min_value: 2
+              max_value: 3
+
+      - name: sport_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['NBA', 'NFL', 'NHL', 'CFB']
+
+      - name: city
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: '^[A-Za-z\s\.-]+$'
+
+      - name: state
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 2
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: '^[A-Z]{2}$'
+
+      - name: valid_from
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: '2022-01-01'
+              max_value: '{{ var("max_date") }}'
+
+      - name: team_key
+        tests:
+          - not_null
+          - unique
