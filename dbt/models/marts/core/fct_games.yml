@@ -1,0 +1,96 @@
+version: 2
+
+models:
+  - name: fct_games
+    description: Fact table containing core game metrics across all sports
+    tests:
+      - unique:
+          column_name: game_id
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: date_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_dates')
+              field: date_id
+
+      - name: venue_name
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_venues')
+              field: venue_name
+
+      - name: home_team_name
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_teams')
+              field: team_name
+
+      - name: away_team_name
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_teams')
+              field: team_name
+
+      - name: home_score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 200
+
+      - name: away_score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 200
+
+      - name: score_difference
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: winner
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+      - name: total_periods
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 12
+
+      - name: number_of_overtimes
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 8
+
+      - name: sport_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['NBA', 'NFL', 'NHL', 'CFB']
+
+      # Custom tests for data consistency
+      - name: score_validation
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "score_difference = abs(home_score - away_score)"
+
+      - name: overtime_validation
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "(number_of_overtimes > 0 and total_periods > 4) or (number_of_overtimes = 0 and total_periods <= 4)"

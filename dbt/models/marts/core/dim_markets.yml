@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: dim_markets
+    description: Market efficiency metrics across all sports
+    tests:
+      - unique:
+          column_name: "game_id || '-' || bookmaker_key"
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('fct_games')
+              field: game_id
+
+      - name: bookmaker_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_bookmakers')
+              field: bookmaker_key
+
+      - name: market_vig
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1.0
+              max_value: 1.5
+
+      - name: market_favorite
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+      - name: market_spread_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Close', 'Moderate', 'Wide']
+
+      - name: vig_category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Low Vig', 'Medium Vig', 'High Vig']
+
+      - name: sport_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['NBA', 'NFL', 'NHL', 'CFB']
+
+      - name: valid_from
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: '2022-01-01'
+              max_value: '{{ var("max_date") }}'

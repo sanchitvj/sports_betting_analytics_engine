@@ -11,9 +11,11 @@ with game_stats as (
         game_id,
         start_time,
         -- Game Metrics
+        home_name,
         home_score,
+        away_name,
         away_score,
-        abs(home_score - away_score) as goal_difference,
+        abs(home_score - away_score) as score_difference,
         case when home_score > away_score then 'HOME' else 'AWAY' end as winner,
         -- Period Analysis
         period as total_periods,

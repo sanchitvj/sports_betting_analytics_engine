@@ -1,0 +1,96 @@
+-- models/marts/analytics/mart_nhl_team_trends.sql
+{{ config(
+    materialized='incremental',
+    unique_key=['team_name', 'game_id'],
+    schema='analytics',
+    incremental_strategy='merge',
+    cluster_by=['partition_year', 'partition_month', 'partition_day']
+) }}
+
+with team_stats as (
+    select
+        game_id,
+        team_name,
+        team_type,
+        -- Scoring Stats
+        goals_scored,
+        assists,
+        assists_per_goal,
+        -- Goalie Stats
+        saves,
+        save_pct,
+        actual_save_pct,
+        points,
+
+        -- Game Outcomes
+        is_winner,
+        played_overtime,
+
+        -- Running Metrics (Last 5 Games)
+        avg(goals_scored) over (
+            partition by team_name
+            order by game_id
+            rows between 4 preceding and current row
+        ) as last_5_games_goals_avg,
+
+        avg(saves) over (
+            partition by team_name
+            order by game_id
+            rows between 4 preceding and current row
+        ) as last_5_games_saves_avg,
+
+        -- Home/Away Performance
+        case when team_type = 'HOME' then goals_scored end as home_goals,
+        case when team_type = 'AWAY' then goals_scored end as away_goals,
+        case when team_type = 'HOME' then is_winner end as home_win,
+        case when team_type = 'AWAY' then is_winner end as away_win,
+
+        -- Overtime Analysis
+        case
+            when played_overtime = 1 and is_winner = 1 then 1
+            else 0
+        end as overtime_wins,
+
+        partition_year,
+        partition_month,
+        partition_day,
+        ingestion_timestamp
+    from {{ ref('int_nhl_team_performance') }}
+),
+
+aggregated_stats as (
+    select
+        team_name,
+        game_id,
+        goals_scored,
+        assists,
+        assists_per_goal,
+        saves,
+        save_pct,
+        actual_save_pct,
+        points,
+        is_winner,
+        played_overtime,
+        last_5_games_goals_avg,
+        last_5_games_saves_avg,
+
+        -- Team Performance Metrics
+        sum(is_winner) over (partition by team_name order by game_id) as total_wins,
+        sum(played_overtime) over (partition by team_name order by game_id) as total_overtime_games,
+        sum(overtime_wins) over (partition by team_name order by game_id) as total_overtime_wins,
+
+        -- Scoring Trends
+        avg(goals_scored) over (partition by team_name) as avg_goals_per_game,
+        avg(saves) over (partition by team_name) as avg_saves_per_game,
+
+        partition_year,
+        partition_month,
+        partition_day,
+        ingestion_timestamp
+    from team_stats
+)
+
+select * from aggregated_stats
+{% if is_incremental() %}
+where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+{% endif %}
