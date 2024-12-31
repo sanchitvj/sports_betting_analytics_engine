@@ -1,8 +1,8 @@
 version: 2
 
 models:
-  - name: mart_nba_leader_stats
-    description: Analytics for NBA player leadership statistics
+  - name: mart_nhl_leader_stats
+    description: Analytics for NHL player leadership statistics
     tests:
       - unique:
           column_name: "game_id || '-' || player_name || '-' || leader_type"
@@ -19,34 +19,28 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['POINTS', 'REBOUNDS', 'ASSISTS', 'RATING']
+              values: ['GOALS', 'ASSISTS', 'POINTS']
 
       - name: stat_value
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
+              max_value: 10
 
       - name: avg_stat_value
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 50
+              max_value: 5
 
       - name: season_high
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
-
-      - name: last_5_games_avg
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 50
+              max_value: 10
 
       - name: games_as_leader
         tests:
@@ -55,19 +49,18 @@ models:
               min_value: 1
               max_value: 82
 
-      # Custom tests for stat-specific validation
-      - name: stat_validation
+      # Custom tests for hockey-specific metrics
+      - name: performance_validation
         tests:
           - dbt_utils.expression_is_true:
               expression: "
-                (leader_type = 'POINTS' and stat_value <= 100) or
-                (leader_type = 'REBOUNDS' and stat_value <= 40) or
-                (leader_type = 'ASSISTS' and stat_value <= 30) or
-                (leader_type = 'RATING' and stat_value <= 50)"
+                (leader_type = 'GOALS' and stat_value <= 5) or
+                (leader_type = 'ASSISTS' and stat_value <= 5) or
+                (leader_type = 'POINTS' and stat_value <= 8)"
 
-      - name: performance_metrics
+      - name: achievement_validation
         tests:
           - dbt_utils.expression_is_true:
-              expression: "avg_stat_value <= season_high"
+              expression: "performance_milestone in ('Hat Trick', 'Brace', 'Four Point Night', 'Regular Performance')"
           - dbt_utils.expression_is_true:
-              expression: "exceptional_performance in (0, 1)"
+              expression: "total_hat_tricks <= games_as_leader"

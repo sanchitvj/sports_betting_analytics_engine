@@ -1,4 +1,3 @@
--- models/marts/analytics/mart_nba_leader_stats.sql
 {{ config(
     materialized='incremental',
     unique_key=['game_id', 'player_name', 'leader_type'],
@@ -34,39 +33,39 @@ with leader_metrics as (
             rows between 4 preceding and current row
         ) as last_5_games_avg,
 
-        -- Consistency Metrics
+        -- Achievement Tracking
+        case
+            when leader_type = 'GOALS' and stat_value >= 3 then 'Hat Trick'
+            when leader_type = 'GOALS' and stat_value = 2 then 'Brace'
+            when leader_type = 'POINTS' and stat_value >= 4 then 'Four Point Night'
+            else 'Regular Performance'
+        end as performance_milestone,
+
+        -- Games as Leader Counter
         count(*) over (
             partition by player_name, leader_type
             order by game_id
             rows between unbounded preceding and current row
         ) as games_as_leader,
 
-        -- Performance Thresholds
-        case
-            when leader_type = 'POINTS' and stat_value >= 30 then 1
-            when leader_type = 'REBOUNDS' and stat_value >= 15 then 1
-            when leader_type = 'ASSISTS' and stat_value >= 10 then 1
-            else 0
-        end as exceptional_performance,
-
         partition_year,
         partition_month,
         partition_day,
         ingestion_timestamp
-    from {{ ref('int_nba_leader_stats') }}
+    from {{ ref('int_nhl_leader_stats') }}
 ),
 
 aggregated_stats as (
     select
         *,
-        -- Achievement Tracking
-        sum(exceptional_performance) over (
-            partition by player_name, leader_type
+        -- Achievement Counts
+        sum(case when performance_milestone = 'Hat Trick' then 1 else 0 end) over (
+            partition by player_name
             order by game_id
             rows between unbounded preceding and current row
-        ) as total_exceptional_games,
+        ) as total_hat_tricks,
 
-        -- Percentile Ranking
+        -- Performance Ranking
         percent_rank() over (
             partition by leader_type
             order by stat_value
