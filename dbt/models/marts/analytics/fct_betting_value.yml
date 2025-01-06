@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: mart_betting_value
+    description: Betting value analysis across all sports
+    tests:
+      - unique:
+          column_name: "game_id || '-' || bookmaker_key || '-' || sport_type"
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: sport_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['NBA', 'NFL', 'NHL', 'CFB']
+
+      - name: opening_home_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -1000
+              max_value: 1000
+
+      - name: closing_home_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -1000
+              max_value: 1000
+
+      - name: market_vig
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1.0
+              max_value: 1.5
+
+      - name: value_direction
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Strong Home Value', 'Moderate Home Value', 'Strong Away Value', 'Moderate Away Value', 'No Clear Value']
+
+      - name: is_sharp_move
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+
+      # Custom tests for betting value validation
+      - name: price_movement_validation
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "closing_home_price != opening_home_price or closing_away_price != opening_away_price"
+
+      - name: sharp_move_validation
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "(is_sharp_move = true and market_vig <= 1.05) or is_sharp_move = false"

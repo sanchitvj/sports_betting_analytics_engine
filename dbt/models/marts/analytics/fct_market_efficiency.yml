@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: mart_market_efficiency
+    description: Market efficiency analysis across all sports
+    tests:
+      - unique:
+          column_name: "game_id || '-' || bookmaker_key || '-' || sport_type"
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: sport_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['NBA', 'NFL', 'NHL', 'CFB']
+
+      - name: avg_vig
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1.0
+              max_value: 1.5
+
+      - name: market_efficiency_rating
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Highly Efficient', 'Efficient', 'Moderately Efficient', 'Inefficient']
+
+      - name: consensus_favorite
+        tests:
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+      - name: price_updates
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 100
+
+      # Custom tests for market efficiency validation
+      - name: efficiency_validation
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "avg_vig >= min_vig and avg_vig <= max_vig"
+          - dbt_utils.expression_is_true:
+              expression: "favorite_changes <= price_updates"
+
+      - name: probability_validation
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "avg_probability_spread between 0 and 1"
+          - dbt_utils.expression_is_true:
+              expression: "max_probability_spread between 0 and 1"
