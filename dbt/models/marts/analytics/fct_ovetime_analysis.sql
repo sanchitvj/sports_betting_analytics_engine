@@ -1,8 +1,7 @@
--- models/marts/analytics/mart_overtime_analysis.sql
 {{ config(
     materialized='incremental',
     unique_key=['game_id', 'sport_type'],
-    schema='analytics',
+    schema='mart_analytics',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}

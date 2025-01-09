@@ -1,7 +1,7 @@
 {{ config(
     materialized='incremental',
     unique_key=['game_id', 'sport_type'],
-    schema='analytics',
+    schema='mart_analytics',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}
@@ -34,7 +34,7 @@ with matchup_metrics as (
             else 'Strong Advantage'
         end as matchup_type,
         ingestion_timestamp
-    from {{ ref('int_nba_record_match') }}
+    from {{ ref('int_nba_record_matchup') }}
 
     union all
 
@@ -63,7 +63,7 @@ with matchup_metrics as (
             else 'Strong Advantage'
         end as matchup_type,
         ingestion_timestamp
-    from {{ ref('int_nfl_record_match') }}
+    from {{ ref('int_nfl_record_matchup') }}
 
     union all
 
@@ -92,7 +92,7 @@ with matchup_metrics as (
             else 'Strong Advantage'
         end as matchup_type,
         ingestion_timestamp
-    from {{ ref('int_nhl_record_match') }}
+    from {{ ref('int_nhl_record_matchup') }}
 
     union all
 
@@ -121,7 +121,7 @@ with matchup_metrics as (
             else 'Strong Advantage'
         end as matchup_type,
         ingestion_timestamp
-    from {{ ref('int_cfb_record_match') }}
+    from {{ ref('int_cfb_record_matchup') }}
 )
 
 select * from matchup_metrics

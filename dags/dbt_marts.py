@@ -16,7 +16,7 @@ project_config = ProjectConfig(
 
 default_args = {
     "owner": ProcessingConfig.OWNER,
-    "depends_on_past": False,
+    "depends_on_past": True,
     "email_on_failure": False,
     "retries": 0,
     "retry_delay": timedelta(minutes=5),
@@ -28,11 +28,10 @@ with DAG(
     default_args=default_args,
     description="dbt models for mart layer",
     schedule_interval="@daily",
-    start_date=datetime(2025, 1, 6),  # due to parent DAG
+    start_date=datetime(2025, 1, 7),  # due to parent DAG
     catchup=True,
 ) as dag:
     start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="end")
 
     # Core Models with Dependencies
     core_models = DbtTaskGroup(
@@ -42,7 +41,8 @@ with DAG(
         # Build core models and their dependencies
         render_config=RenderConfig(
             select=[
-                "+mart_game_scoring_patterns +mart_nba_team_trends +mart_nhl_team_trends +mart_nba_leader_stats +mart_football_leader_stats +mart_nhl_leader_stats +mart_odds_movement +mart_market_efficiency +mart_bookmaker_analysis +mart_betting_value +mart_overtime_analysis +mart_record_matchups"
+                "+dim_teams +dim_venues +dim_dates +dim_bookmakers"
+                "+fct_games +fct_odds"
             ]
         ),
     )
@@ -55,10 +55,16 @@ with DAG(
         # Build analytics models and their dependencies
         render_config=RenderConfig(
             select=[
-                "+mart_game_scoring_patterns +mart_nba_team_trends +mart_nhl_team_trends +mart_nba_leader_stats +mart_football_leader_stats +mart_nhl_leader_stats +mart_odds_movement +mart_market_efficiency +mart_bookmaker_analysis +mart_betting_value +mart_overtime_analysis +mart_record_matchups"
+                "+fct_betting_value +fct_bookmaker_perf"
+                "+fct_football_leader_stats +fct_game_scoring_pattern"
+                "+fct_market_efficiency +fct_nba_leader_stats"
+                "+fct_nba_team_trends +fct_nhl_team_trends"
+                "+fct_nhl_leader_stats +fct_odds_movement"
+                "+fct_overtime_analysis +fct_record_matchup"
             ]
         ),
     )
 
-    # Define dependencies
-    core_models >> analytics_models
+    end = EmptyOperator(task_id="end", trigger_rule="all_done")
+
+    start >> core_models >> analytics_models >> end

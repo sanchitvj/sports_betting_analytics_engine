@@ -2,7 +2,7 @@
 {{ config(
     materialized='incremental',
     unique_key=['game_id', 'bookmaker_key', 'sport_type'],
-    schema='analytics',
+    schema='mart_analytics',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}

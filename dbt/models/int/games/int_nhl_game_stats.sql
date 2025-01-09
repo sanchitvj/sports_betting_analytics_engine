@@ -44,8 +44,9 @@ with game_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 )
 select * from game_stats
+{% if is_incremental() %}
+where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+{% endif %}

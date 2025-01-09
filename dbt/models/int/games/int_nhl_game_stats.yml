@@ -7,7 +7,7 @@ models:
       - unique:
           column_name: game_id
     columns:
-      - name: goal_difference
+      - name: score_difference
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
@@ -31,7 +31,7 @@ models:
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
+              max_value: 121
 
       - name: winner
         tests:

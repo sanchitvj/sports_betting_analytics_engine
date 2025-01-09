@@ -1,7 +1,7 @@
 {{ config(
-    materialized='table',  -- Using table since team data changes infrequently
+    materialized='table',
     unique_key='team_key',
-    schema='core'
+    schema='mart_core'
 ) }}
 
 with nba_teams as (

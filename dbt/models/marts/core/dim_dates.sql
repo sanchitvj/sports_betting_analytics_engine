@@ -1,7 +1,7 @@
 {{ config(
     materialized='table',
     unique_key='date_id',
-    schema='core'
+    schema='mart_core'
 ) }}
 
 -- earliest and latest dates from source games

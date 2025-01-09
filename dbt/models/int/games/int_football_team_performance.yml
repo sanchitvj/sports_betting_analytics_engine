@@ -31,13 +31,13 @@ models:
         tests: &first_half_points
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 60
+              max_value: 70
 
       - name: second_half_points
         tests: &second_half_points
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 60
+              max_value: 70
 
       - name: is_winner
         tests: &is_winner

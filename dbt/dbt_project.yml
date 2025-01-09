@@ -33,8 +33,12 @@ models:
         +materialized: incremental
         +schema: int_layer
     marts:
-      +materialized: incremental
-      +schema: analytics
+      analytics:
+        +materialized: incremental
+        +schema: mart_analytics
+      core:
+        +materialized: incremental
+        +schema: mart_core
 
 tests:
   +schema: silver_layer

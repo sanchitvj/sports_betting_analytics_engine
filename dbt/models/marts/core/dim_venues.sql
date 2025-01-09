@@ -1,7 +1,7 @@
 {{ config(
-    materialized='table',  -- Use table since venue data changes infrequently
+    materialized='table',
     unique_key='venue_key',
-    schema='core'
+    schema='mart_core'
 ) }}
 
 with venue_info as (
@@ -9,7 +9,7 @@ with venue_info as (
         venue_name,
         venue_city,
         venue_state,
-        True as is_indoor,  -- Default to indoor for NBA venues
+        True as is_indoor,
         'NBA' as sport_type,
         md5(concat(
             coalesce(venue_name, ''),

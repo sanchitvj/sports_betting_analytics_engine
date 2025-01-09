@@ -1,7 +1,7 @@
 {{ config(
     materialized='incremental',
     unique_key=['team_name', 'game_id'],
-    schema='analytics',
+    schema='mart_analytics',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}

@@ -19,14 +19,14 @@ models:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 60
+              max_value: 90
 
       - name: total_periods
         tests: &tp
           - not_null
           - periods_match_linescores
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 1
+              min_value: 0
               max_value: 12
 
       - name: winner

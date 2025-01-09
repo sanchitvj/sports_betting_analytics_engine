@@ -1,34 +1,34 @@
 {% macro odds_movement(sport) %}
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'bookmaker_key'],
+    unique_key=['game_id', 'bookmaker_key', 'bookmaker_last_update'],
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
-    alias='int_' ~ sport ~ 'odds_movement'
+    alias='int_' ~ sport ~ '_odds_movement'
 ) }}
 
 with odds_timeline as (
     select
         game_id,
         bookmaker_key,
-        bookmaker_title,
+        bookmaker_last_update,
         -- First odds (opening)
         first_value(home_price) over (
-            partition by game_id, bookmaker_key
+            partition by game_id, bookmaker_key, bookmaker_last_update
             order by bookmaker_last_update
         ) as opening_home_price,
         first_value(away_price) over (
-            partition by game_id, bookmaker_key
+            partition by game_id, bookmaker_key, bookmaker_last_update
             order by bookmaker_last_update
         ) as opening_away_price,
         -- Latest odds (closing)
         last_value(home_price) over (
-            partition by game_id, bookmaker_key
+            partition by game_id, bookmaker_key, bookmaker_last_update
             order by bookmaker_last_update
         ) as closing_home_price,
         last_value(away_price) over (
-            partition by game_id, bookmaker_key
+            partition by game_id, bookmaker_key, bookmaker_last_update
             order by bookmaker_last_update
         ) as closing_away_price,
         -- Movement calculation

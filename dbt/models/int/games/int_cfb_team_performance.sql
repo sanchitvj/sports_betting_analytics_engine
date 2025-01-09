@@ -57,7 +57,8 @@ with team_performance as (
         case when array_size(away_linescores) > 4 then 1 else 0 end as played_overtime,
         partition_year,
         partition_month,
-        partition_day
+        partition_day,
+        ingestion_timestamp
     from {{ ref('stg_cfb_games') }}
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})

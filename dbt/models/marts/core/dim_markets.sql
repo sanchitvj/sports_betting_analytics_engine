@@ -1,7 +1,7 @@
 {{ config(
     materialized='table',
     unique_key=['game_id', 'bookmaker_key'],
-    schema='core'
+    schema='mart_core'
 ) }}
 
 with market_metrics as (

@@ -1,7 +1,7 @@
 {{ config(
-    materialized='table',  -- Use table since bookmaker data changes infrequently
+    materialized='table',
     unique_key='bookmaker_key',
-    schema='core'
+    schema='mart_core'
 ) }}
 
 with bookmakers_list as (

@@ -6,8 +6,6 @@ models:
     tests:
       - unique:
           column_name: "game_id || '-' || bookmaker_key"
-      - not_null:
-          column_name: game_id
     columns:
       - name: game_id
         tests:

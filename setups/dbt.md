@@ -29,6 +29,7 @@ betflow:
 
       user: snowflake_user
       password: snowflake_password
+      authenticator: username_password_mfa
 
       role: snowflake_role
       database: database_name

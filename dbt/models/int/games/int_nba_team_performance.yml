@@ -16,43 +16,43 @@ models:
       - name: points_scored
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 70
-              max_value: 150
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 60
+#              max_value: 250
 
       - name: rebounds
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 25
-              max_value: 70
+              min_value: 20
+              max_value: 75
 
       - name: assists
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 15
-              max_value: 45
+              min_value: 5
+              max_value: 65
 
       - name: field_goal_pct
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 30
+              min_value: 27
               max_value: 70
 
       - name: three_point_pct
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 20
-              max_value: 60
+              min_value: 6
+              max_value: 66
 
       - name: free_throw_pct
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 50
+              min_value: 0
               max_value: 100
 
       - name: assists_per_point

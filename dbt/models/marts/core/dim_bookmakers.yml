@@ -6,8 +6,6 @@ models:
     tests:
       - unique:
           column_name: bookmaker_key
-      - not_null:
-          column_name: bookmaker_key
     columns:
       - name: bookmaker_key
         tests:
