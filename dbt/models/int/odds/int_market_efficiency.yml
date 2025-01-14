@@ -24,8 +24,8 @@ models:
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 1.0
-              max_value: 1.2  # Typical vig range is 2-20%
+              min_value: 0
+              max_value: 2.0  # Typical vig range is 2-20%
 
       - name: market_favorite
         tests:

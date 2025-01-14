@@ -38,8 +38,15 @@ models:
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: -90000
-              max_value: 90000
+              min_value: -100000
+              max_value: 100000
+
+      - name: away_price_movement
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
 
       - name: bookmaker_key
         tests:

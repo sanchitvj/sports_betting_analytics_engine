@@ -56,8 +56,7 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 1
               max_value: 18
-              config:
-                where: "nfl_season_type = 'Regular Season'"
+              row_condition: "nfl_season_type = 'Regular Season'"
 
       - name: cfb_week
         description: Week number for CFB season
@@ -65,8 +64,7 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 1
               max_value: 15
-              config:
-                where: "cfb_season_type = 'Regular Season'"
+              row_condition: "cfb_season_type = 'Regular Season'"
 
       - name: nfl_season_type
         tests:
@@ -93,17 +91,20 @@ models:
               values: ['Regular Season', 'Stanley Cup Playoffs', 'Off Season']
 
       # Custom tests for season logic
-      - name: season_date_ranges
+      - name: season_ranges
         tests:
           - dbt_utils.expression_is_true:
-              expression: "
-                (month between 9 and 12 and nfl_season_type = 'Regular Season') or
-                (month between 8 and 12 and cfb_season_type = 'Regular Season') or
-                ((month between 10 and 12 or month between 1 and 4) and nba_season_type = 'Regular Season') or
-                ((month between 10 and 12 or month between 1 and 4) and nhl_season_type = 'Regular Season')"
+              expression: >
+                case 
+                  when month between 9 and 12 and nfl_season_type = 'Regular Season' then true
+                  when month between 8 and 12 and cfb_season_type = 'Regular Season' then true
+                  when (month between 10 and 12 or month between 1 and 4) and nba_season_type = 'Regular Season' then true
+                  when (month between 10 and 12 or month between 1 and 4) and nhl_season_type = 'Regular Season' then true
+                  else false
+                end
 
       # Test for continuous dates
       - name: date_continuity
         tests:
           - dbt_utils.expression_is_true:
-              expression: "datediff('day', lag(date_id) over (order by date_id), date_id) = 1"
+              expression: "dateadd(day, 1, lag(date_id) over (order by date_id)) = date_id"

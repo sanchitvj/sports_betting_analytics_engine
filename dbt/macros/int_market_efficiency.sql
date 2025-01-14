@@ -5,7 +5,7 @@
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
-    alias='int_' ~ sport ~ 'market_efficiency'
+    alias='int_' ~ sport ~ '_market_efficiency'
 ) }}
 
 with efficiency_metrics as (
@@ -14,15 +14,39 @@ with efficiency_metrics as (
         bookmaker_key,
         bookmaker_last_update,
         -- Implied probabilities
-        1/nullif(home_price, 0) as home_implied_prob,
-        1/nullif(away_price, 0) as away_implied_prob,
+        case
+            when home_price > 0 then abs(100/(home_price + 100))
+            else abs(abs(home_price)/(abs(home_price) + 100))
+        end as home_implied_prob,
+        case
+            when away_price > 0 then abs(100/(away_price + 100))
+            else abs(abs(away_price)/(abs(away_price) + 100))
+        end as away_implied_prob,
         -- Market efficiency metrics
-        (1/nullif(home_price, 0) + 1/nullif(away_price, 0)) as market_vig,
+        case
+            -- For negative odds (favorites)
+            when home_price < 0 then abs(home_price)/(abs(home_price) + 100)
+            -- For positive odds (underdogs)
+            else 100/(home_price + 100)
+        end +
+        case
+            when away_price < 0 then abs(away_price)/(abs(away_price) + 100)
+            else 100/(away_price + 100)
+        end as market_vig,
         case
             when home_price > away_price then 'AWAY'
             else 'HOME'
         end as market_favorite,
-        abs(1/nullif(home_price, 0) - 1/nullif(away_price, 0)) as probability_delta,
+        abs(
+            case
+                when home_price > 0 then abs(100/(home_price + 100))
+                else abs(abs(home_price)/(abs(home_price) + 100))
+            end -
+            case
+                when away_price > 0 then abs(100/(away_price + 100))
+                else abs(abs(away_price)/(abs(away_price) + 100))
+            end
+        ) as probability_delta,
         partition_year,
         partition_month,
         partition_day,

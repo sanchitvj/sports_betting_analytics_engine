@@ -19,13 +19,18 @@ with source_date_range as (
         select start_time from {{ ref('int_cfb_game_stats') }}
     )
 ),
--- Generate date sequence
-date_range as (
-    select dateadd(day, seq4(), (select min_date from source_date_range)) as date_id
-    from table(generator(rowcount => datediff('day',
-        (select min_date from source_date_range),
-        (select max_date from source_date_range)) + 365)) -- Add buffer for future dates
+-- Generate date sequence using recursive CTE instead of generator
+date_spine as (
+    select min_date as date_id
+    from source_date_range
+
+    union all
+
+    select dateadd(day, 1, date_id) as date_id
+    from date_spine
+    where date_id < (select dateadd(day, 365, max_date) from source_date_range)
 ),
+
 -- Get NFL weeks from actual games
 nfl_weeks as (
     select distinct
@@ -112,7 +117,7 @@ base_dates as (
             when month(d.date_id) between 4 and 6 then 'Stanley Cup Playoffs'
             else 'Off Season'
         end as nhl_season_type
-    from date_range d
+    from date_spine d
     left join nfl_weeks nw
         on date_trunc('week', d.date_id)::date = nw.week_start
     left join cfb_weeks cw

@@ -39,7 +39,7 @@ with bookmakers_list as (
 select
     bookmaker_key,
     bookmaker_name,
-    array_agg(distinct sport_type) as supported_sports,
+    array_construct_compact(array_agg(distinct sport_type)) as supported_sports,
     current_timestamp() as valid_from
 from bookmakers_list
 group by 1, 2

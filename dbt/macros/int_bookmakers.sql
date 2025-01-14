@@ -1,17 +1,18 @@
 {% macro compare_bookmakers(sport) %}
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'market_key'],
+    unique_key=['game_id', 'market_key', 'last_update'],
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
-    alias='int_' ~ sport ~ 'bookmakers'
+    alias='int_' ~ sport ~ '_bookmakers'
 ) }}
 
 with market_analysis as (
     select
         game_id,
         market_key,
+        bookmaker_last_update as last_update,
         -- Market consensus
         avg(home_price) as avg_home_price,
         avg(away_price) as avg_away_price,
@@ -27,9 +28,9 @@ with market_analysis as (
         partition_year,
         partition_month,
         partition_day,
-        ingestion_timestamp
+        max(ingestion_timestamp)
     from {{ ref('stg_' ~ sport ~ '_odds') }}
-    group by 1, 2, 3, 4, 5
+    group by 1, 2, 3, partition_year, partition_month, partition_day
     {% if is_incremental() %}
     where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
     {% endif %}

@@ -28,43 +28,29 @@ with DAG(
     default_args=default_args,
     description="dbt models for mart layer",
     schedule_interval="@daily",
-    start_date=datetime(2025, 1, 7),  # due to parent DAG
+    start_date=datetime(2025, 1, 12),  # due to parent DAG
     catchup=True,
 ) as dag:
     start = EmptyOperator(task_id="start")
 
-    # Core Models with Dependencies
-    core_models = DbtTaskGroup(
-        group_id="core_models",
+    models = DbtTaskGroup(
+        group_id="mart_models",
         project_config=project_config,
         profile_config=profile_config,
-        # Build core models and their dependencies
         render_config=RenderConfig(
             select=[
-                "+dim_teams +dim_venues +dim_dates +dim_bookmakers"
-                "+fct_games +fct_odds"
-            ]
-        ),
-    )
-
-    # Analytics Models with Dependencies
-    analytics_models = DbtTaskGroup(
-        group_id="analytics_models",
-        project_config=project_config,
-        profile_config=profile_config,
-        # Build analytics models and their dependencies
-        render_config=RenderConfig(
-            select=[
-                "+fct_betting_value +fct_bookmaker_perf"
-                "+fct_football_leader_stats +fct_game_scoring_pattern"
-                "+fct_market_efficiency +fct_nba_leader_stats"
-                "+fct_nba_team_trends +fct_nhl_team_trends"
-                "+fct_nhl_leader_stats +fct_odds_movement"
-                "+fct_overtime_analysis +fct_record_matchup"
+                "+dim_teams +dim_venues +dim_dates +dim_bookmakers "
+                "+fct_games +fct_odds "
+                "+fct_betting_value +fct_bookmaker_perf "
+                "+fct_football_leader_stats +fct_game_scoring_pattern "
+                "+fct_market_efficiency +fct_nba_leader_stats "
+                "+fct_nba_team_trends +fct_nhl_team_trends "
+                "+fct_nhl_leader_stats +fct_odds_movement "
+                "+fct_overtime_analysis +fct_record_matchup "
             ]
         ),
     )
 
     end = EmptyOperator(task_id="end", trigger_rule="all_done")
 
-    start >> core_models >> analytics_models >> end
+    start >> models >> end

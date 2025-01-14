@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'bookmaker_key'],
+    unique_key=['game_id', 'bookmaker_key', 'bookmaker_last_update'],
     schema='mart_core',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
@@ -10,6 +10,7 @@ with odds_data as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         date_trunc('day', ingestion_timestamp)::date as date_id,
         opening_home_price,
         opening_away_price,
@@ -29,6 +30,7 @@ with odds_data as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         date_trunc('day', ingestion_timestamp)::date as date_id,
         opening_home_price,
         opening_away_price,
@@ -48,6 +50,7 @@ with odds_data as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         date_trunc('day', ingestion_timestamp)::date as date_id,
         opening_home_price,
         opening_away_price,
@@ -67,6 +70,7 @@ with odds_data as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         date_trunc('day', ingestion_timestamp)::date as date_id,
         opening_home_price,
         opening_away_price,

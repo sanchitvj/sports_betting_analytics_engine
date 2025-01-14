@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'leader_type'],
+    unique_key=['game_id', 'leader_type', 'team_type'],
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
@@ -19,9 +19,7 @@ with leader_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -37,9 +35,7 @@ with leader_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -55,9 +51,7 @@ with leader_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -73,9 +67,7 @@ with leader_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -91,9 +83,7 @@ with leader_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -109,8 +99,9 @@ with leader_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_nhl_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 )
 select * from leader_stats
+{% if is_incremental() %}
+where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+{% endif %}

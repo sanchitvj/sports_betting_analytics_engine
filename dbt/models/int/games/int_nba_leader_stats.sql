@@ -18,9 +18,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -35,9 +33,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -52,9 +48,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -69,9 +63,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -86,9 +78,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -103,9 +93,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -120,9 +108,7 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -137,8 +123,9 @@ with leader_stats as (
         partition_year, partition_month, partition_day,
         ingestion_timestamp
     from {{ ref('stg_nba_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 )
 select * from leader_stats
+{% if is_incremental() %}
+where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+{% endif %}

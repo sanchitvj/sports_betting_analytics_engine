@@ -13,18 +13,18 @@ with record_analysis as (
         -- Team Records
         home_name,
         home_record,
-        regexp_substr(home_record, '[0-9]+')::int as home_wins,
-        regexp_substr(home_record, '-([0-9]+)-')::int as home_losses,
+        try_cast(regexp_substr(home_record, '^[0-9]+') as int) as home_wins,
+        try_cast(regexp_substr(home_record, '-([0-9]+)-', 1, 1, 'e') as int) as home_losses,
         away_name,
         away_record,
-        regexp_substr(away_record, '[0-9]+')::int as away_wins,
-        regexp_substr(away_record, '-([0-9]+)-')::int as away_losses,
+        try_cast(regexp_substr(away_record, '^[0-9]+') as int) as away_wins,
+        try_cast(regexp_substr(away_record, '-([0-9]+)-', 1, 1, 'e') as int) as away_losses,
         -- Matchup Analysis
         case
-            when regexp_substr(home_record, '[0-9]+')::float /
-                 nullif(regexp_substr(home_record, '-([0-9]+)-')::float, 0) >
-                 regexp_substr(away_record, '[0-9]+')::float /
-                 nullif(regexp_substr(away_record, '-([0-9]+)-')::float, 0)
+            when try_cast(regexp_substr(home_record, '^[0-9]+') as float) /
+                 nullif(try_cast(regexp_substr(home_record, '-([0-9]+)-', 1, 1, 'e') as float), 0) >
+                 try_cast(regexp_substr(away_record, '^[0-9]+') as float) /
+                 nullif(try_cast(regexp_substr(away_record, '-([0-9]+)-', 1, 1, 'e') as float), 0)
             then 'HOME_FAVORED'
             else 'AWAY_FAVORED'
         end as record_favorite,
@@ -32,10 +32,13 @@ with record_analysis as (
         case when home_score > away_score then 'HOME' else 'AWAY' end as winner,
         ingestion_timestamp
     from {{ ref('stg_' ~ sport ~ '_games') }}
+    where home_record != '-'
+    and away_record != '-'
     {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+    and ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
     {% endif %}
 )
+
 select * from record_analysis
 
 {% endmacro %}

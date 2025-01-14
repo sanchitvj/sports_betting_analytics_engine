@@ -15,20 +15,20 @@ with odds_timeline as (
         bookmaker_last_update,
         -- First odds (opening)
         first_value(home_price) over (
-            partition by game_id, bookmaker_key, bookmaker_last_update
+            partition by game_id, bookmaker_key
             order by bookmaker_last_update
         ) as opening_home_price,
         first_value(away_price) over (
-            partition by game_id, bookmaker_key, bookmaker_last_update
+            partition by game_id, bookmaker_key
             order by bookmaker_last_update
         ) as opening_away_price,
         -- Latest odds (closing)
         last_value(home_price) over (
-            partition by game_id, bookmaker_key, bookmaker_last_update
+            partition by game_id, bookmaker_key
             order by bookmaker_last_update
         ) as closing_home_price,
         last_value(away_price) over (
-            partition by game_id, bookmaker_key, bookmaker_last_update
+            partition by game_id, bookmaker_key
             order by bookmaker_last_update
         ) as closing_away_price,
         -- Movement calculation

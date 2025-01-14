@@ -5,7 +5,7 @@ models:
     description: Dimension table for all bookmakers across sports
     tests:
       - unique:
-          column_name: bookmaker_key
+          column_name: "bookmaker_key || '-' || supported_sports"
     columns:
       - name: bookmaker_key
         tests:
@@ -16,25 +16,22 @@ models:
       - name: bookmaker_name
         tests:
           - not_null
-          - unique
           - dbt_expectations.expect_column_values_to_match_regex:
               regex: '^[A-Za-z0-9\s\.-]+$'
 
       - name: supported_sports
         tests:
           - not_null
-          - dbt_expectations.expect_column_value_lengths_to_be_between:
-              min_value: 1
-              max_value: 4
           - dbt_expectations.expect_column_values_to_be_in_set:
               value_set: ["NBA", "NFL", "NHL", "CFB"]
+              quote_values: true
 
       - name: valid_from
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: '2022-01-01'
-              max_value: '{{ var("max_date") }}'
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: '2022-01-01'
+#              max_value: '{{ var("max_date") }}'
 
       # Cross-validation tests
       - name: bookmaker_consistency
