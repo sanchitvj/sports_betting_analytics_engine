@@ -29,7 +29,9 @@ with game_stats as (
         case when array_size(away_linescores) >=2 then away_linescores[2] else null end as away_q3_score,
         case when array_size(away_linescores) >=3 then away_linescores[3] else null end as away_q4_score,
         -- Overtime Handling
-        array_size(home_linescores) - 4 as number_of_overtimes,
+        case when array_size(home_linescores) - 4 > 0 then array_size(home_linescores) - 4
+            else 0
+        end as number_of_overtimes,
         {{ get_overtime_scores('home_linescores', 4) }} as home_ot_scores,
         {{ get_overtime_scores('away_linescores', 4) }} as away_ot_scores,
         -- Venue Info
@@ -42,8 +44,9 @@ with game_stats as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_cfb_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 )
 select * from game_stats
+{% if is_incremental() %}
+where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+{% endif %}

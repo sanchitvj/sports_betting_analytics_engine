@@ -31,9 +31,7 @@ with team_performance as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_cfb_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 
     union all
 
@@ -60,8 +58,10 @@ with team_performance as (
         partition_day,
         ingestion_timestamp
     from {{ ref('stg_cfb_games') }}
-    {% if is_incremental() %}
-    where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
-    {% endif %}
+    where status_detail not in ('Postponed', 'Canceled')
 )
+
 select * from team_performance
+{% if is_incremental() %}
+where ingestion_timestamp > (select max(ingestion_timestamp) from {{ this }})
+{% endif %}
