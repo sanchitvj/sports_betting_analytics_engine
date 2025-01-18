@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'sport_type'],
+    unique_key=['game_id', 'sport_type', 'bookmaker_last_update'],
     schema='mart_analytics',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
@@ -10,6 +10,7 @@ with bookmaker_metrics as (
     select
         game_id,
         'NBA' as sport_type,
+        last_update as bookmaker_last_update,
         -- Market Competition
         number_of_bookmakers,
         array_size(participating_bookmakers) as active_bookmakers,
@@ -41,6 +42,7 @@ with bookmaker_metrics as (
     select
         game_id,
         'NFL' as sport_type,
+        last_update as bookmaker_last_update,
         number_of_bookmakers,
         array_size(participating_bookmakers) as active_bookmakers,
         avg_home_price,
@@ -68,6 +70,7 @@ with bookmaker_metrics as (
     select
         game_id,
         'NHL' as sport_type,
+        last_update as bookmaker_last_update,
         number_of_bookmakers,
         array_size(participating_bookmakers) as active_bookmakers,
         avg_home_price,
@@ -95,6 +98,7 @@ with bookmaker_metrics as (
     select
         game_id,
         'CFB' as sport_type,
+        last_update as bookmaker_last_update,
         number_of_bookmakers,
         array_size(participating_bookmakers) as active_bookmakers,
         avg_home_price,

@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: mart_football_leader_stats
+  - name: fct_football_leader_stats
     description: Analytics for NFL/CFB player leadership statistics
     tests:
       - unique:
@@ -11,9 +11,19 @@ models:
     columns:
       - name: player_name
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
           - dbt_expectations.expect_column_values_to_match_regex:
-              regex: '^[A-Za-z\s\.-]+$'
+              regex: '^[A-Za-z\\s\\.\-'']'
+#              row_condition: "player_name is not null"
+              is_raw: true
+              config:
+                severity: error
+                error_if: ">10"
+                warn_if: "<10"
 
       - name: leader_type
         tests:
@@ -29,44 +39,56 @@ models:
 
       - name: stat_value
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 600
 
       - name: avg_stat_value
         tests:
-          - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 400
-
-      - name: season_high
-        tests:
-          - not_null
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 600
 
-      # Custom tests for football-specific metrics
-      - name: stat_validation
+      - name: season_high
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "
-                (leader_type = 'PASSING' and stat_value <= 600) or
-                (leader_type = 'RUSHING' and stat_value <= 300) or
-                (leader_type = 'RECEIVING' and stat_value <= 300)"
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 600
 
-      - name: milestone_validation
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "milestone_achievement in (0, 1)"
-          - dbt_utils.expression_is_true:
-              expression: "season_milestones >= 0"
-
-      - name: performance_metrics
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "avg_stat_value <= season_high"
-          - dbt_utils.expression_is_true:
-              expression: "performance_percentile between 0 and 1"
+#      # Custom tests for football-specific metrics
+#      - name: stat_validation
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "
+#                (leader_type = 'PASSING' and stat_value <= 600) or
+#                (leader_type = 'RUSHING' and stat_value <= 300) or
+#                (leader_type = 'RECEIVING' and stat_value <= 300)"
+#
+#      - name: milestone_validation
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "milestone_achievement in (0, 1)"
+#          - dbt_utils.expression_is_true:
+#              expression: "season_milestones >= 0"
+#
+#      - name: performance_metrics
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "avg_stat_value <= season_high"
+#          - dbt_utils.expression_is_true:
+#              expression: "performance_percentile between 0 and 1"

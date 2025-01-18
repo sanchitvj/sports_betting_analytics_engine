@@ -3,7 +3,6 @@
     unique_key=['game_id', 'sport_type'],
     schema='mart_analytics',
     incremental_strategy='merge',
-    cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}
 
 with matchup_metrics as (

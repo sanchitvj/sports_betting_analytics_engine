@@ -6,70 +6,78 @@
 
 with nba_teams as (
     select distinct
-        team_id,
-        team_name,
-        team_abbreviation,
+        t.team_id,
+        t.team_name,
+        t.team_abbreviation,
         'NBA' as sport_type,
-        venue_city as city,
-        venue_state as state,
+        g.venue_city as city,
+        g.venue_state as state,
         md5(concat(
-            coalesce(team_name, ''),
-            coalesce(team_abbreviation, ''),
-            coalesce(city, ''),
-            coalesce(state, '')
+            coalesce(t.team_name, ''),
+            coalesce(t.team_abbreviation, ''),
+            coalesce(g.venue_city, ''),
+            coalesce(g.venue_state, '')
         )) as team_key
-    from {{ ref('int_nba_team_performance') }}
+    from {{ ref('int_nba_team_performance') }} t
+    left join {{ ref('int_nba_game_stats') }} g
+        on t.game_id = g.game_id
 ),
 
 nfl_teams as (
     select distinct
-        team_id,
-        team_name,
-        team_abbreviation,
+        t.team_id,
+        t.team_name,
+        t.team_abbreviation,
         'NFL' as sport_type,
-        venue_city as city,
-        venue_state as state,
+        g.venue_city as city,
+        g.venue_state as state,
         md5(concat(
-            coalesce(team_name, ''),
-            coalesce(team_abbreviation, ''),
-            coalesce(city, ''),
-            coalesce(state, '')
+            coalesce(t.team_name, ''),
+            coalesce(t.team_abbreviation, ''),
+            coalesce(g.venue_city, ''),
+            coalesce(g.venue_state, '')
         )) as team_key
-    from {{ ref('int_nfl_team_performance') }}
+    from {{ ref('int_nfl_team_performance') }} t
+    left join {{ ref('int_nfl_game_stats') }} g
+        on t.game_id = g.game_id
 ),
 
 nhl_teams as (
     select distinct
-        team_id,
-        team_name,
-        team_abbreviation,
+        t.team_id,
+        t.team_name,
+        t.team_abbreviation,
         'NHL' as sport_type,
-        venue_city as city,
-        venue_state as state,
+        g.venue_city as city,
+        g.venue_state as state,
         md5(concat(
-            coalesce(team_name, ''),
-            coalesce(team_abbreviation, ''),
-            coalesce(city, ''),
-            coalesce(state, '')
+            coalesce(t.team_name, ''),
+            coalesce(t.team_abbreviation, ''),
+            coalesce(g.venue_city, ''),
+            coalesce(g.venue_state, '')
         )) as team_key
-    from {{ ref('int_nhl_team_performance') }}
+    from {{ ref('int_nhl_team_performance') }} t
+    left join {{ ref('int_nhl_game_stats') }} g
+        on t.game_id = g.game_id
 ),
 
 cfb_teams as (
     select distinct
-        team_id,
-        team_name,
-        team_abbreviation,
+        t.team_id,
+        t.team_name,
+        t.team_abbreviation,
         'CFB' as sport_type,
-        venue_city as city,
-        venue_state as state,
+        g.venue_city as city,
+        g.venue_state as state,
         md5(concat(
-            coalesce(team_name, ''),
-            coalesce(team_abbreviation, ''),
-            coalesce(city, ''),
-            coalesce(state, '')
+            coalesce(t.team_name, ''),
+            coalesce(t.team_abbreviation, ''),
+            coalesce(g.venue_city, ''),
+            coalesce(g.venue_state, '')
         )) as team_key
-    from {{ ref('int_cfb_team_performance') }}
+    from {{ ref('int_cfb_team_performance') }} t
+    left join {{ ref('int_cfb_game_stats') }} g
+        on t.game_id = g.game_id
 ),
 
 final as (
@@ -92,3 +100,4 @@ select
     state,
     current_timestamp() as valid_from,
 from final
+where team_id is not null

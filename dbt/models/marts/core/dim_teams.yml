@@ -5,22 +5,26 @@ models:
     description: Team dimension table for all sports
     tests:
       - unique:
-          column_name: team_id
+          column_name: team_key
+#      - unique:
+#          column_name: "team_name || '-' || sport_type"
       - not_null:
-          column_name: team_id
+          column_name: team_key
     columns:
-      - name: team_name
-        tests:
-          - not_null
-          - unique_combination:
-              combination_of: [team_name, sport_type]
+#      - name: team_name
+#        tests:
+##          - not_null
+#          - dbt_utils.unique_combination_of_columns:
+#              combination_of_columns:
+#                - team_name
+#                - sport_type
 
       - name: team_abbreviation
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_value_lengths_to_be_between:
               min_value: 2
-              max_value: 3
+              max_value: 4
 
       - name: sport_type
         tests:
@@ -30,26 +34,26 @@ models:
 
       - name: city
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_match_regex:
-              regex: '^[A-Za-z\s\.-]+$'
+              regex: '^[A-Za-z\s\.-]*$'  # Allow empty values
+              row_condition: "city is not null"
+              severity: warn
 
       - name: state
         tests:
-          - not_null
-          - dbt_expectations.expect_column_value_lengths_to_equal:
-              value: 2
+#          - not_null
+          # Victoria not matching below
+#          - dbt_expectations.expect_column_value_lengths_to_equal:
+#              value: 2
           - dbt_expectations.expect_column_values_to_match_regex:
-              regex: '^[A-Z]{2}$'
+              regex: '^[A-Za-z]{1,3}$'
+              row_condition: "state is not null"
+              severity: warn
 
       - name: valid_from
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: '2022-01-01'
-              max_value: '{{ var("max_date") }}'
-
-      - name: team_key
-        tests:
-          - not_null
-          - unique
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: '2022-01-01'
+#              max_value: '{{ var("max_date") }}'

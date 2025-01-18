@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key=['game_id', 'bookmaker_key', 'sport_type'],
+    unique_key=['game_id', 'bookmaker_key', 'bookmaker_last_update'],
     schema='mart_analytics',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day']
@@ -10,6 +10,7 @@ with odds_analysis as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         'NBA' as sport_type,
         opening_home_price,
         opening_away_price,
@@ -46,6 +47,7 @@ with odds_analysis as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         'NFL' as sport_type,
         opening_home_price,
         opening_away_price,
@@ -79,6 +81,7 @@ with odds_analysis as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         'NHL' as sport_type,
         opening_home_price,
         opening_away_price,
@@ -112,6 +115,7 @@ with odds_analysis as (
     select
         game_id,
         bookmaker_key,
+        bookmaker_last_update,
         'CFB' as sport_type,
         opening_home_price,
         opening_away_price,

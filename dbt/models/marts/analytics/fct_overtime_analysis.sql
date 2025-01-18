@@ -3,7 +3,6 @@
     unique_key=['game_id', 'sport_type'],
     schema='mart_analytics',
     incremental_strategy='merge',
-    cluster_by=['partition_year', 'partition_month', 'partition_day']
 ) }}
 
 with overtime_metrics as (
@@ -20,10 +19,7 @@ with overtime_metrics as (
         ot_winner,
         -- NBA-specific OT metrics
         array_size(home_ot_scores) * 5 as ot_duration_minutes,
-        sum(home_ot_scores) + sum(away_ot_scores) as total_ot_points,
-        partition_year,
-        partition_month,
-        partition_day,
+        reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
         ingestion_timestamp
     from {{ ref('int_nba_overtime') }}
 
@@ -41,10 +37,7 @@ with overtime_metrics as (
         away_ot_scores,
         ot_winner,
         array_size(home_ot_scores) * 15 as ot_duration_minutes,
-        sum(home_ot_scores) + sum(away_ot_scores) as total_ot_points,
-        partition_year,
-        partition_month,
-        partition_day,
+        reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
         ingestion_timestamp
     from {{ ref('int_nfl_overtime') }}
 
@@ -62,10 +55,7 @@ with overtime_metrics as (
         away_ot_scores,
         ot_winner,
         array_size(home_ot_scores) * 20 as ot_duration_minutes,
-        sum(home_ot_scores) + sum(away_ot_scores) as total_ot_points,
-        partition_year,
-        partition_month,
-        partition_day,
+        reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
         ingestion_timestamp
     from {{ ref('int_nhl_overtime') }}
 
@@ -83,10 +73,7 @@ with overtime_metrics as (
         away_ot_scores,
         ot_winner,
         array_size(home_ot_scores) * 15 as ot_duration_minutes,
-        sum(home_ot_scores) + sum(away_ot_scores) as total_ot_points,
-        partition_year,
-        partition_month,
-        partition_day,
+        reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
         ingestion_timestamp
     from {{ ref('int_cfb_overtime') }}
 ),

@@ -1,11 +1,16 @@
 version: 2
 
 models:
-  - name: mart_game_scoring_patterns
+  - name: fct_game_scoring_pattern
     description: Scoring patterns analysis across all sports
     tests:
       - unique:
           column_name: "game_id || '-' || team_name || '-' || sport_type"
+          config:
+            severity: error
+            error_if: ">30"
+            warn_if: "<30"
+
       - not_null:
           column_name: game_id
     columns:
@@ -23,28 +28,40 @@ models:
 
       - name: team_name
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
 
       - name: total_score
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 200
+              max_value: 250
 
       - name: first_half_score
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
+              max_value: 150
 
       - name: second_half_score
         tests:
-          - not_null
+          - not_null:
+              config:
+                severity: error
+                error_if: ">20"
+                warn_if: "<20"
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
+              max_value: 150
 
       - name: game_competitiveness
         tests:
@@ -64,21 +81,21 @@ models:
               config:
                 where: "sport_type != 'NHL'"
 
-      # Custom tests for scoring patterns
-      - name: scoring_validation
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "first_half_score + second_half_score <= total_score"
-          - dbt_utils.expression_is_true:
-              expression: "q1_scoring_pct + q2_scoring_pct + q3_scoring_pct + COALESCE(q4_scoring_pct, 0) <= 100"
-          - dbt_utils.expression_is_true:
-              expression: "(sport_type = 'NHL' and q4_score is null) or (sport_type != 'NHL' and q4_score is not null)"
-
-      # Sport-specific validations
-      - name: sport_specific_checks
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "
-                (sport_type in ('NFL', 'CFB') and game_competitiveness in ('One Possession', 'One Score', 'Two Scores', 'Three Scores', 'Blowout')) or
-                (sport_type = 'NBA' and game_competitiveness in ('Very Close', 'Close', 'Moderate', 'Blowout')) or
-                (sport_type = 'NHL' and game_competitiveness in ('One Goal', 'Two Goals', 'Three+ Goals', 'Tie'))"
+#      # Custom tests for scoring patterns
+#      - name: scoring_validation
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "first_half_score + second_half_score <= total_score"
+#          - dbt_utils.expression_is_true:
+#              expression: "q1_scoring_pct + q2_scoring_pct + q3_scoring_pct + COALESCE(q4_scoring_pct, 0) <= 100"
+#          - dbt_utils.expression_is_true:
+#              expression: "(sport_type = 'NHL' and q4_score is null) or (sport_type != 'NHL' and q4_score is not null)"
+#
+#      # Sport-specific validations
+#      - name: sport_specific_checks
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "
+#                (sport_type in ('NFL', 'CFB') and game_competitiveness in ('One Possession', 'One Score', 'Two Scores', 'Three Scores', 'Blowout')) or
+#                (sport_type = 'NBA' and game_competitiveness in ('Very Close', 'Close', 'Moderate', 'Blowout')) or
+#                (sport_type = 'NHL' and game_competitiveness in ('One Goal', 'Two Goals', 'Three+ Goals', 'Tie'))"

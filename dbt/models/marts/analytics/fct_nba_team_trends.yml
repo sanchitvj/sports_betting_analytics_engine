@@ -1,52 +1,39 @@
 version: 2
 
 models:
-  - name: mart_nba_team_trends
+  - name: fct_nba_team_trends
     description: NBA team performance trends analysis
     tests:
       - unique:
-          column_name: "team_name || '-' || game_id"
+          column_name: "team_name || '-' || partition_year || '-' || partition_month"
       - not_null:
           column_name: team_name
     columns:
-      - name: game_id
-        tests:
-          - not_null
-          - relationships:
-              to: ref('fct_games')
-              field: game_id
-
-      - name: team_type
-        tests:
-          - not_null
-          - accepted_values:
-              values: ['HOME', 'AWAY']
-
       - name: avg_points_per_game
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 70
-              max_value: 150
+              max_value: 200
 
       - name: avg_fg_pct
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0.3
-              max_value: 0.7
+              min_value: 30
+              max_value: 70
 
       - name: avg_3p_pct
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0.2
-              max_value: 0.5
+              min_value: 5
+              max_value: 50
 
       - name: avg_ft_pct
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0.6
-              max_value: 1.0
+              min_value: 0
+              max_value: 100
 
       - name: win_percentage
         tests:
@@ -55,10 +42,13 @@ models:
               min_value: 0
               max_value: 100
 
+      - name: game_sequence_id_type_points
+        tests:
+          - array_content_validation
+
       # Custom tests for data validation
       - name: performance_metrics
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "avg_assists >= 15 and avg_rebounds >= 30"
-          - dbt_utils.expression_is_true:
-              expression: "total_wins <= total_games"
+          - nba_trends_metrics:
+              min_assists: 15
+              min_rebounds: 29

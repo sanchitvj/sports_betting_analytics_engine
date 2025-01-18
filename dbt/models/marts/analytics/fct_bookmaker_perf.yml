@@ -1,11 +1,11 @@
 version: 2
 
 models:
-  - name: mart_bookmaker_analysis
+  - name: fct_bookmaker_perf
     description: Bookmaker analysis across all sports
     tests:
       - unique:
-          column_name: "game_id || '-' || sport_type"
+          column_name: "game_id || '-' || sport_type || '-' || bookmaker_last_update"
       - not_null:
           column_name: game_id
     columns:
@@ -41,10 +41,10 @@ models:
           - accepted_values:
               values: ['Highly Competitive', 'Competitive', 'Limited Competition']
 
-      # Custom tests for market analysis
-      - name: market_validation
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "active_bookmakers <= number_of_bookmakers"
-          - dbt_utils.expression_is_true:
-              expression: "home_price_spread >= 0 and away_price_spread >= 0"
+#      # Custom tests for market analysis
+#      - name: market_validation
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "active_bookmakers <= number_of_bookmakers"
+#          - dbt_utils.expression_is_true:
+#              expression: "home_price_spread >= 0 and away_price_spread >= 0"

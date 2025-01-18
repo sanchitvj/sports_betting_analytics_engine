@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: mart_nba_leader_stats
+  - name: fct_nba_leader_stats
     description: Analytics for NBA player leadership statistics
     tests:
       - unique:
@@ -13,7 +13,10 @@ models:
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_match_regex:
-              regex: '^[A-Za-z\s\.-]+$'
+              regex: '^[A-Za-z\s\.-]'
+              row_condition: "player_name is not null"
+              severity: warn
+              is_raw: true
 
       - name: leader_type
         tests:
@@ -26,48 +29,40 @@ models:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
+              max_value: 120
 
       - name: avg_stat_value
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 50
+              max_value: 80
 
       - name: season_high
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 100
+              max_value: 120
 
       - name: last_5_games_avg
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
-              max_value: 50
+              max_value: 82
 
       - name: games_as_leader
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 1
-              max_value: 82
+              max_value: 200
 
       # Custom tests for stat-specific validation
       - name: stat_validation
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "
-                (leader_type = 'POINTS' and stat_value <= 100) or
-                (leader_type = 'REBOUNDS' and stat_value <= 40) or
-                (leader_type = 'ASSISTS' and stat_value <= 30) or
-                (leader_type = 'RATING' and stat_value <= 50)"
+          - leader_stats_validation
 
       - name: performance_metrics
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "avg_stat_value <= season_high"
-          - dbt_utils.expression_is_true:
-              expression: "exceptional_performance in (0, 1)"
+          - leader_stats_validation

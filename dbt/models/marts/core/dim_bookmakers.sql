@@ -1,13 +1,13 @@
 {{ config(
     materialized='table',
-    unique_key='bookmaker_key',
+    unique_key=['bookmaker_key', 'bookmaker_name'],
     schema='mart_core'
 ) }}
 
 with bookmakers_list as (
     select distinct
         bookmaker_key,
-        bookmaker_title as bookmaker_name,
+        bookmaker_title,
         'NBA' as sport_type
     from {{ ref('stg_nba_odds') }}
 
@@ -38,7 +38,7 @@ with bookmakers_list as (
 
 select
     bookmaker_key,
-    bookmaker_name,
+    bookmaker_title as bookmaker_name,
     array_construct_compact(array_agg(distinct sport_type)) as supported_sports,
     current_timestamp() as valid_from
 from bookmakers_list

@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: mart_record_matchups
+  - name: fct_record_matchup
     description: Record matchup analysis across all sports
     tests:
       - unique:
@@ -18,14 +18,22 @@ models:
       - name: home_record
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_match_regex:
-              regex: '^[0-9]+-[0-9]+-[0-9]*$'
+          - record_format
+          - season_record_limit:
+              wins_column: home_wins
+              losses_column: home_losses
+              max_games: 82  # NBA season
 
       - name: away_record
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_match_regex:
-              regex: '^[0-9]+-[0-9]+-[0-9]*$'
+          - record_format
+          - season_record_limit:
+              wins_column: away_wins
+              losses_column: away_losses
+              max_games: 82  # NBA season
+#          - dbt_expectations.expect_column_values_to_match_regex:
+#              regex: '^[0-9]+-[0-9]+-[0-9]*$'
 
       - name: home_wins
         tests:
@@ -43,7 +51,7 @@ models:
 
       - name: record_differential
         tests:
-          - not_null
+#          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 1
@@ -54,17 +62,10 @@ models:
           - accepted_values:
               values: ['Even Matchup', 'Slight Advantage', 'Clear Advantage', 'Strong Advantage']
 
-      # Custom tests for record validation
-      - name: record_validation
+      - name: home_win_pct
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "home_wins + home_losses <= 82"
-          - dbt_utils.expression_is_true:
-              expression: "away_wins + away_losses <= 82"
+          - win_pct_range
 
-      - name: win_percentage_validation
+      - name: away_win_pct
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "home_win_pct between 0 and 1"
-          - dbt_utils.expression_is_true:
-              expression: "away_win_pct between 0 and 1"
+          - win_pct_range

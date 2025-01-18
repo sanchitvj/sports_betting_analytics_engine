@@ -1,6 +1,6 @@
 {{ config(
     materialized='table',
-    unique_key='venue_key',
+    unique_key=['venue_key', 'sport_type'],
     schema='mart_core'
 ) }}
 
@@ -70,6 +70,7 @@ select
     venue_city,
     venue_state,
     is_indoor,
+    sport_type,
     current_timestamp() as valid_from
 from venue_info
 where venue_name is not null

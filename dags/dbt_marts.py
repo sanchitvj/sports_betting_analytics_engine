@@ -28,7 +28,7 @@ with DAG(
     default_args=default_args,
     description="dbt models for mart layer",
     schedule_interval="@daily",
-    start_date=datetime(2025, 1, 12),  # due to parent DAG
+    start_date=datetime(2025, 1, 14),  # due to parent DAG
     catchup=True,
 ) as dag:
     start = EmptyOperator(task_id="start")

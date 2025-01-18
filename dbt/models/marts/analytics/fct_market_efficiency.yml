@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: mart_market_efficiency
+  - name: fct_market_efficiency
     description: Market efficiency analysis across all sports
     tests:
       - unique:

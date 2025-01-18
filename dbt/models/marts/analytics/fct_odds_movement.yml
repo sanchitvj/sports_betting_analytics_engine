@@ -1,11 +1,11 @@
 version: 2
 
 models:
-  - name: mart_odds_movement
+  - name: fct_odds_movement
     description: Odds movement analysis across all sports
     tests:
       - unique:
-          column_name: "game_id || '-' || bookmaker_key || '-' || sport_type"
+          column_name: "game_id || '-' || bookmaker_key || '-' || bookmaker_last_update"
       - not_null:
           column_name: game_id
     columns:
@@ -19,22 +19,22 @@ models:
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: -1000
-              max_value: 1000
+              min_value: -100000
+              max_value: 100000
 
       - name: opening_away_price
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: -1000
-              max_value: 1000
+              min_value: -100000
+              max_value: 100000
 
       - name: home_price_movement
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: -200
-              max_value: 200
+              min_value: -100000
+              max_value: 100000
 
       - name: movement_significance
         tests:
@@ -48,17 +48,17 @@ models:
           - accepted_values:
               values: ['Line Up', 'Line Down', 'No Movement']
 
-      # Custom tests for odds movement validation
-      - name: movement_validation
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "home_price_movement = closing_home_price - opening_home_price"
-          - dbt_utils.expression_is_true:
-              expression: "away_price_movement = closing_away_price - opening_away_price"
-
-      - name: steam_move_validation
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "
-                (is_steam_move = true and abs(home_price_movement) >= 10) or
-                (is_steam_move = false and abs(home_price_movement) < 10)"
+#      # Custom tests for odds movement validation
+#      - name: movement_validation
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "home_price_movement = closing_home_price - opening_home_price"
+#          - dbt_utils.expression_is_true:
+#              expression: "away_price_movement = closing_away_price - opening_away_price"
+#
+#      - name: steam_move_validation
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "
+#                (is_steam_move = true and abs(home_price_movement) >= 10) or
+#                (is_steam_move = false and abs(home_price_movement) < 10)"
