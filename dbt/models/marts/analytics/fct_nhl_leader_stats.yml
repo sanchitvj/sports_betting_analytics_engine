@@ -55,7 +55,3 @@ models:
       - name: performance_validation
         tests:
           - nhl_performance_validation
-
-      - name: achievement_validation
-        tests:
-          - nhl_performance_validation

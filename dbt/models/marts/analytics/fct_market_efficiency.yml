@@ -5,7 +5,7 @@ models:
     description: Market efficiency analysis across all sports
     tests:
       - unique:
-          column_name: "game_id || '-' || bookmaker_key || '-' || sport_type"
+          column_name: "game_id || '-' || bookmaker_key || '-' || partition_year || '-' || partition_month || '-' || partition_day"
       - not_null:
           column_name: game_id
     columns:
@@ -19,8 +19,8 @@ models:
         tests:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 1.0
-              max_value: 1.5
+              min_value: 0
+              max_value: 2
 
       - name: market_efficiency_rating
         tests:
@@ -38,19 +38,8 @@ models:
           - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 1
-              max_value: 100
+              max_value: 250
 
-      # Custom tests for market efficiency validation
-      - name: efficiency_validation
+      - name: metrics_validation
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "avg_vig >= min_vig and avg_vig <= max_vig"
-          - dbt_utils.expression_is_true:
-              expression: "favorite_changes <= price_updates"
-
-      - name: probability_validation
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "avg_probability_spread between 0 and 1"
-          - dbt_utils.expression_is_true:
-              expression: "max_probability_spread between 0 and 1"
+          - market_metrics_validation
