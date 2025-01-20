@@ -1,0 +1,45 @@
+name: 'betflow'
+version: '1.0.0'
+config-version: 2
+
+profile: 'betflow'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+    - "target"
+    - "dbt_modules"
+    - "logs"
+
+require-dbt-version: [">=1.0.0", "<2.0.0"]
+
+models:
+  betflow:
+    staging:
+      games:
+        +materialized: incremental
+        +schema: staging
+      odds:
+        +materialized: incremental
+        +schema: staging
+    int:
+      games:
+        +materialized: incremental
+        +schema: int_layer
+      odds:
+        +materialized: incremental
+        +schema: int_layer
+    marts:
+      analytics:
+        +materialized: incremental
+        +schema: mart_analytics
+      core:
+        +materialized: incremental
+        +schema: mart_core
+
+tests:
+  +schema: silver_layer
+  +database: SPORTS_DB

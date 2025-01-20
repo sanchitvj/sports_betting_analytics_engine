@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: fct_nba_leader_stats
+    description: Analytics for NBA player leadership statistics
+    tests:
+      - unique:
+          column_name: "game_id || '-' || player_name || '-' || leader_type"
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: player_name
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: '^[A-Za-z\s\.-]'
+              row_condition: "player_name is not null"
+              severity: warn
+              is_raw: true
+
+      - name: leader_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['POINTS', 'REBOUNDS', 'ASSISTS', 'RATING']
+
+      - name: stat_value
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 120
+
+      - name: avg_stat_value
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 80
+
+      - name: season_high
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 120
+
+      - name: last_5_games_avg
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 82
+
+      - name: games_as_leader
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+
+      # Custom tests for stat-specific validation
+      - name: stat_validation
+        tests:
+          - leader_stats_validation
+
+      - name: performance_metrics
+        tests:
+          - leader_stats_validation

@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: int_nba_odds_movement
+    tests: &movement_tests
+      - unique:
+          column_name: "game_id || '-' || bookmaker_key || '-' || bookmaker_last_update"
+    columns: &movement_columns
+      - name: opening_home_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: opening_away_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: closing_home_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: closing_away_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: home_price_movement
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: away_price_movement
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: bookmaker_key
+        tests:
+          - not_null
+
+  - name: int_nfl_odds_movement
+    tests: *movement_tests
+    columns: *movement_columns
+
+  - name: int_nhl_odds_movement
+    tests: *movement_tests
+    columns: *movement_columns
+
+  - name: int_cfb_odds_movement
+    tests: *movement_tests
+    columns: *movement_columns
+
+#models:
+#  - name: int_odds_movement_cross_validation
+#    tests:
+#      - dbt_expectations.expect_column_values_to_match_regex:
+#          column_name: bookmaker_key
+#          regex: '^[a-z0-9_]+$'
+#      - dbt_expectations.expect_compound_columns_to_be_unique:
+#          column_list: ['game_id', 'bookmaker_key', 'bookmaker_last_update']

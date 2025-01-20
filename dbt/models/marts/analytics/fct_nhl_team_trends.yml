@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: fct_nhl_team_trends
+    description: NHL team performance trends analysis
+    tests:
+      - unique:
+          column_name: "team_name || '-' || partition_year || '-' || partition_month"
+      - not_null:
+          column_name: team_name
+          severity: error
+          error_if: ">10"
+          warn_if: "<10"
+    columns:
+      - name: avg_goals_per_month
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10
+
+      - name: avg_assists_per_month
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 15
+
+      - name: avg_save_percentage
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 65
+              max_value: 100
+
+      - name: win_percentage
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: total_overtime_games
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 82
+
+      # Custom tests for hockey-specific metrics
+      - name: hockey_metrics
+        tests:
+          - nhl_metrics_validation:
+              config:
+                severity: error
+                error_if: ">10"
+                warn_if: "<10"

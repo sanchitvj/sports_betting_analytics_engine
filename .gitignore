@@ -164,5 +164,5 @@ cython_debug/
 others/
 **.zip
 **.DS_Store
-package-lock.yml
+others/package-lock.yml
 .astro

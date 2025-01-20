@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: fct_nba_team_trends
+    description: NBA team performance trends analysis
+    tests:
+      - unique:
+          column_name: "team_name || '-' || partition_year || '-' || partition_month"
+      - not_null:
+          column_name: team_name
+    columns:
+      - name: avg_points_per_game
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 70
+              max_value: 200
+
+      - name: avg_fg_pct
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 30
+              max_value: 70
+
+      - name: avg_3p_pct
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 5
+              max_value: 50
+
+      - name: avg_ft_pct
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: win_percentage
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+
+      - name: game_sequence_id_type_points
+        tests:
+          - array_content_validation
+
+      # Custom tests for data validation
+      - name: performance_metrics
+        tests:
+          - nba_trends_metrics:
+              min_assists: 15
+              min_rebounds: 29

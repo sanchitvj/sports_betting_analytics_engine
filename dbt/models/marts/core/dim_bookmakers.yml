@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: dim_bookmakers
+    description: Dimension table for all bookmakers across sports
+    tests:
+      - unique:
+          column_name: "bookmaker_key || '-' || bookmaker_name"
+    columns:
+      - name: bookmaker_key
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: '^[a-z0-9_-]+$'
+
+      - name: bookmaker_name
+        tests:
+          - not_null
+#          - dbt_expectations.expect_column_values_to_match_regex:
+#              regex: '^[A-Za-z0-9\s\.\(\)]+(\s\([A-Za-z]+\))?(\.[a-z]+)?$'
+#              row_condition: "bookmaker_name is not null"
+
+      - name: supported_sports
+        tests:
+          - not_null
+#          - dbt_expectations.expect_column_values_to_be_in_set:
+#              value_set: [ "NBA", "NFL", "NHL", "CFB" ]
+#              quote_values: true
+
+      - name: valid_from
+        tests:
+          - not_null
+#
+#      # Cross-validation tests
+#      - name: bookmaker_consistency
+#        tests:
+#          - dbt_utils.expression_is_true:
+#              expression: "array_size(supported_sports) > 0"

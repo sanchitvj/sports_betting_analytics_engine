@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: int_nba_bookmakers
+    tests: &bookmaker_tests
+      - unique:
+          column_name: "game_id || '-' || market_key || '-' || last_update"
+    columns: &bookmaker_columns
+      - name: avg_home_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: avg_away_price
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: home_price_spread
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: away_price_spread
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -100000
+              max_value: 100000
+
+      - name: number_of_bookmakers
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 30
+
+      - name: participating_bookmakers
+        tests:
+          - not_null
+#          - dbt_utils.expression_is_true:
+#              expression: "array_contains(participating_bookmakers) AND cardinality(participating_bookmakers) BETWEEN 1 AND 30"
+
+  - name: int_nfl_bookmakers
+    tests: *bookmaker_tests
+    columns: *bookmaker_columns
+
+  - name: int_nhl_bookmakers
+    tests: *bookmaker_tests
+    columns: *bookmaker_columns
+
+  - name: int_cfb_bookmakers
+    tests: *bookmaker_tests
+    columns: *bookmaker_columns

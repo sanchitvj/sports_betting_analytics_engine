@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: int_cfb_leader_stats
+    description: Leader statistics by game for CFB
+    tests: &leader_tests
+      - unique:
+          column_name: "game_id || '-' || leader_type"
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_cfb_games')
+              field: game_id
+
+      - name: leader_type
+        tests: &leader_type_tests
+          - not_null
+          - accepted_values:
+              values: ['PASSING', 'RUSHING', 'RECEIVING']
+
+
+  - name: int_nfl_leader_stats
+    description: Leader statistics by game for NFL
+    tests: *leader_tests
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nfl_games')
+              field: game_id
+
+      - name: leader_type
+        tests: *leader_type_tests

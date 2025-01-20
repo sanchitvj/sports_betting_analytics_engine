@@ -1,0 +1,1 @@
+{{ odds_movement('nfl') }}

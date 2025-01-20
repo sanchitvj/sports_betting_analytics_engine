@@ -39,3 +39,11 @@
 
 Use this to check if connections is successful.
 `LIST @SPORTS_DB.RAW_LAYER.GAMES_STAGE;`
+
+### Snowflake MFA (where A stands for annoying)  
+To disable MFA:  
+`ALTER USER sanchitvj set DISABLE_MFA=true`
+
+snowflake MFA + dbt ([doc](https://docs.getdbt.com/docs/core/connect-data-platform/snowflake-setup#user--password--duo-mfa-authentication))  
+add `authenticator: username_password_mfa` to your dbt `profiles.yml` and in your snowflake warehouse run:  
+`alter account set allow_client_mfa_caching = true`

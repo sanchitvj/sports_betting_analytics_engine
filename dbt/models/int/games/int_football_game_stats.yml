@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: int_cfb_game_stats
+    description: Game-level statistics for CFB games
+    tests: &game_stats_tests
+      - unique:
+          column_name: game_id
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nfl_games')
+              field: game_id
+
+      - name: score_difference
+        tests: &score_diff
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 90
+
+      - name: total_periods
+        tests: &tp
+          - not_null
+          - periods_match_linescores
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 12
+
+      - name: winner
+        tests: &win
+          - not_null
+          - accepted_values:
+              values: ['HOME', 'AWAY']
+
+      - name: is_indoor
+        tests: &indoor
+          - accepted_values:
+              values: [ true, false ]
+
+      - name: number_of_overtimes
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 8
+
+  - name: int_nfl_game_stats
+    description: Game-level statistics for CFB games
+    tests: *game_stats_tests
+    columns:
+      - name: game_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_nfl_games')
+              field: game_id
+
+      - name : score_difference
+        tests: *score_diff
+
+      - name: total_periods
+        tests: *tp
+
+      - name: winner
+        tests: *win
+
+      - name: is_indoor
+        tests: *indoor

@@ -29,6 +29,7 @@ betflow:
 
       user: snowflake_user
       password: snowflake_password
+      authenticator: username_password_mfa
 
       role: snowflake_role
       database: database_name
@@ -99,3 +100,6 @@ models:
 `dbt deps`
 
 6. Run `dbt debug` to test connection with Snowflake. If you get `All checks passed!` at end then you are good to go.
+
+For permission denied issues when doing `dbt deps`:
+`sudo chown -R $USER:$USER <project_root>`

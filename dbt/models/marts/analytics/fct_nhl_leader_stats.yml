@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: fct_nhl_leader_stats
+    description: Analytics for NHL player leadership statistics
+    tests:
+      - unique:
+          column_name: "game_id || '-' || player_name || '-' || leader_type"
+      - not_null:
+          column_name: game_id
+    columns:
+      - name: player_name
+        tests:
+#          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: '^[A-Za-z\s\.-]'
+              row_condition: "player_name is not null"
+              severity: warn
+              is_raw: true
+
+      - name: leader_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['GOALS', 'ASSISTS', 'POINTS']
+
+      - name: stat_value
+        tests:
+#          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10
+
+      - name: avg_stat_value
+        tests:
+#          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 5
+
+      - name: season_high
+        tests:
+#          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10
+
+      - name: games_as_leader
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 500
+
+      - name: performance_validation
+        tests:
+          - nhl_performance_validation
