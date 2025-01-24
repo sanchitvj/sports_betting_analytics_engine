@@ -4,6 +4,7 @@
     unique_key='game_id',
     schema='int_layer',
     incremental_strategy='merge',
+    cluster_by=['partition_year', 'partition_month', 'partition_day'],
     alias='int_' ~ sport ~ '_record_match'
 ) }}
 
@@ -35,6 +36,9 @@ with record_analysis as (
         end as record_favorite,
         -- Actual Result
         case when home_score > away_score then 'HOME' else 'AWAY' end as winner,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('stg_' ~ sport ~ '_games') }}
     where home_record != '-'

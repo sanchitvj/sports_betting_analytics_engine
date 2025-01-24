@@ -4,6 +4,7 @@
     unique_key='game_id',
     schema='int_layer',
     incremental_strategy='merge',
+    cluster_by=['partition_year', 'partition_month', 'partition_day'],
     alias='int_' ~ sport ~ '_overtime'
 ) }}
 
@@ -30,6 +31,9 @@ with overtime_analysis as (
             when array_size(home_linescores) > {{ default_periods }}  and away_score > home_score then 'AWAY'
             else null
         end as ot_winner,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('stg_' ~ sport ~ '_games') }}
     where status_detail not in ('Postponed', 'Canceled') and

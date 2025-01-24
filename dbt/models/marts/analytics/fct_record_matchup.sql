@@ -2,6 +2,7 @@
     materialized='incremental',
     unique_key=['game_id', 'sport_type'],
     schema='mart_analytics',
+    cluster_by=['partition_year', 'partition_month', 'partition_day'],
     incremental_strategy='merge',
 ) }}
 
@@ -32,6 +33,9 @@ with matchup_metrics as (
             when abs(home_wins - away_wins) <= 10 then 'Clear Advantage'
             else 'Strong Advantage'
         end as matchup_type,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_nba_record_matchup') }}
 
@@ -61,6 +65,9 @@ with matchup_metrics as (
             when abs(home_wins - away_wins) <= 4 then 'Clear Advantage'
             else 'Strong Advantage'
         end as matchup_type,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_nfl_record_matchup') }}
 
@@ -90,6 +97,9 @@ with matchup_metrics as (
             when abs(home_wins - away_wins) <= 12 then 'Clear Advantage'
             else 'Strong Advantage'
         end as matchup_type,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_nhl_record_matchup') }}
 
@@ -119,6 +129,9 @@ with matchup_metrics as (
             when abs(home_wins - away_wins) <= 5 then 'Clear Advantage'
             else 'Strong Advantage'
         end as matchup_type,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_cfb_record_matchup') }}
 )
