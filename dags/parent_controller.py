@@ -67,9 +67,9 @@ with DAG(
         trigger_rule="all_success",
     )
 
-    trigger_snowflake_staging = TriggerDagRunOperator(
-        task_id="trigger_games_staging",
-        trigger_dag_id="snowflake_raw_to_staging",
+    trigger_warehousing = TriggerDagRunOperator(
+        task_id="trigger_warehousing",
+        trigger_dag_id="snowflake_dbt_staging_marts",
         wait_for_completion=True,
         poke_interval=60,
         execution_date="{{ ds }}",
@@ -86,4 +86,4 @@ with DAG(
     trigger_odds_ingestion >> trigger_odds_batch
 
     # Third layer - Staging
-    [trigger_sports_batch, trigger_odds_batch] >> trigger_snowflake_staging
+    [trigger_sports_batch, trigger_odds_batch] >> trigger_warehousing

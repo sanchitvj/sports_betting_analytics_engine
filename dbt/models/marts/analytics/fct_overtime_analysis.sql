@@ -4,6 +4,7 @@
     schema='mart_analytics',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
     incremental_strategy='merge',
+    on_schema_change='append_new_columns'
 ) }}
 
 with overtime_metrics as (

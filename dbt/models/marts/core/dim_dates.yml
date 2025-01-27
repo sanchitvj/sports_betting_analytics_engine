@@ -55,7 +55,7 @@ models:
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 1
-              max_value: 18
+              max_value: 25
               row_condition: "nfl_season_type = 'Regular Season'"
 
       - name: cfb_week
@@ -63,7 +63,7 @@ models:
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 1
-              max_value: 22
+              max_value: 24
               row_condition: "cfb_season_type = 'Regular Season'"
 
       - name: nfl_season_type

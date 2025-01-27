@@ -5,6 +5,7 @@
     schema='int_layer',
     incremental_strategy='merge',
     cluster_by=['partition_year', 'partition_month', 'partition_day'],
+    on_schema_change='append_new_columns',
     alias='int_' ~ sport ~ '_overtime'
 ) }}
 
