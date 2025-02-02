@@ -11,7 +11,7 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_nfl_games')
+              to: ref('stg_cfb_games')
               field: game_id
 
       - name: score_difference

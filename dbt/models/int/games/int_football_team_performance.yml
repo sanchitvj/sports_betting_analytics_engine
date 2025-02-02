@@ -13,6 +13,11 @@ models:
           - relationships:
               to: ref('stg_cfb_games')
               field: home_id
+              severity: warn
+          - relationships:
+              to: ref('stg_cfb_games')
+              field: away_id
+              severity: warn
 
       - name: team_type
         tests: &team_type
@@ -69,6 +74,9 @@ models:
           - relationships:
               to: ref('stg_nfl_games')
               field: home_id
+          - relationships:
+              to: ref('stg_nfl_games')
+              field: away_id
 
       - name: team_type
         tests: *team_type

@@ -28,6 +28,9 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 5
               max_value: 50
+              severity: error
+              error_if: ">10"
+              warn_if: "<10"
 
       - name: avg_ft_pct
         tests:
@@ -52,3 +55,6 @@ models:
           - nba_trends_metrics:
               min_assists: 15
               min_rebounds: 29
+              severity: error
+              error_if: ">10"
+              warn_if: "<10"

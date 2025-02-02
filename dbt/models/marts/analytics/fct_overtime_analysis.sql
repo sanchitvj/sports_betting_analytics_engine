@@ -2,7 +2,9 @@
     materialized='incremental',
     unique_key=['game_id', 'sport_type'],
     schema='mart_analytics',
+    cluster_by=['partition_year', 'partition_month', 'partition_day'],
     incremental_strategy='merge',
+    on_schema_change='append_new_columns'
 ) }}
 
 with overtime_metrics as (
@@ -20,6 +22,9 @@ with overtime_metrics as (
         -- NBA-specific OT metrics
         array_size(home_ot_scores) * 5 as ot_duration_minutes,
         reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_nba_overtime') }}
 
@@ -38,6 +43,9 @@ with overtime_metrics as (
         ot_winner,
         array_size(home_ot_scores) * 15 as ot_duration_minutes,
         reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_nfl_overtime') }}
 
@@ -56,6 +64,9 @@ with overtime_metrics as (
         ot_winner,
         array_size(home_ot_scores) * 20 as ot_duration_minutes,
         reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_nhl_overtime') }}
 
@@ -74,6 +85,9 @@ with overtime_metrics as (
         ot_winner,
         array_size(home_ot_scores) * 15 as ot_duration_minutes,
         reduce(home_ot_scores, 0, (acc, val) -> acc + val) + reduce(away_ot_scores, 0, (acc, val) -> acc + val) as total_ot_points,
+        partition_year,
+        partition_month,
+        partition_day,
         ingestion_timestamp
     from {{ ref('int_cfb_overtime') }}
 ),

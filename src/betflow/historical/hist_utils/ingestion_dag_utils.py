@@ -17,6 +17,10 @@ from betflow.api_connectors.raw_game_transformers import (
     api_raw_nhl_data,
     api_raw_cfb_data,
 )
+from dotenv import load_dotenv, find_dotenv
+
+
+load_dotenv(find_dotenv("my.env"), override=True)
 
 
 def check_games_data(sport_key, **context):
