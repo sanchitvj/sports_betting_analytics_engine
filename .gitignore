@@ -166,3 +166,5 @@ others/
 **.DS_Store
 others/package-lock.yml
 .astro
+**.p8
+**.pub
