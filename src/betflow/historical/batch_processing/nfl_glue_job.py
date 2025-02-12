@@ -249,7 +249,6 @@ else:
                 *,
                 CASE 
                     WHEN home_team.score IS NULL OR away_team.score IS NULL THEN 'Invalid Score'
-                    WHEN home_team.name IS NULL OR away_team.name IS NULL THEN 'Invalid Name'
                     WHEN partition_year IS NULL OR partition_month IS NULL OR 
                          partition_day IS NULL THEN 'Invalid Partition'
                     WHEN game_id IS NULL OR start_time IS NULL THEN 'Invalid Required Fields'
