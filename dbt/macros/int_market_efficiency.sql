@@ -13,41 +13,19 @@ with efficiency_metrics as (
         game_id,
         bookmaker_key,
         bookmaker_last_update,
-        -- Implied probabilities
         case
-            when home_price > 0 then 100/(home_price + 100) * 100
-            else abs(home_price)/(abs(home_price) + 100) * 100
+            when home_price > 0 then round(100/(home_price + 100) * 100, 3)
+            else round(abs(home_price)/(abs(home_price) + 100) * 100, 3)
         end as home_implied_prob,
         case
-            when away_price > 0 then 100/(away_price + 100) * 100
-            else abs(away_price)/(abs(away_price) + 100) * 100
+            when away_price > 0 then round(100/(away_price + 100) * 100, 3)
+            else round(abs(away_price)/(abs(away_price) + 100) * 100, 3)
         end as away_implied_prob,
-        -- Market efficiency metrics
---         case
---             -- For negative odds (favorites)
---             when home_price < 0 then abs(home_price)/(abs(home_price) + 100)
---             -- For positive odds (underdogs)
---             else 100/(home_price + 100)
---         end +
---         case
---             when away_price < 0 then abs(away_price)/(abs(away_price) + 100)
---             else 100/(away_price + 100)
---         end as market_vig,
         home_implied_prob + away_implied_prob - 100 as market_vig,
         case
             when home_implied_prob > away_implied_prob then 'HOME'
             else 'AWAY'
         end as market_favorite,
---         abs(
---             case
---                 when home_price > 0 then abs(100/(home_price + 100))
---                 else abs(abs(home_price)/(abs(home_price) + 100))
---             end -
---             case
---                 when away_price > 0 then abs(100/(away_price + 100))
---                 else abs(abs(away_price)/(abs(away_price) + 100))
---             end
---         ) as probability_delta,
         abs(home_implied_prob - away_implied_prob) as probability_delta,
         partition_year,
         partition_month,

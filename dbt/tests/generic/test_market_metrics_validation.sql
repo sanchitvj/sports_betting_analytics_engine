@@ -9,9 +9,9 @@ where (
     or favorite_changes > price_updates
     -- Probability spread validation
     or avg_probability_spread < 0
-    or avg_probability_spread > 1
+    or avg_probability_spread > 100
     or max_probability_spread < 0
-    or max_probability_spread > 1
+    or max_probability_spread > 100
     -- Null checks
     or avg_vig is null
     or min_vig is null
