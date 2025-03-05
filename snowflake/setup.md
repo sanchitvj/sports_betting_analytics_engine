@@ -47,3 +47,31 @@ Use this to check if connections is successful.
 
 > Possible error  
 > *Message: External table NHL_ODDS marked invalid. Missing or invalid file format 'PARQUET_FORMAT'*
+
+
+## Connect Snowflake with Grafana using key-pair
+[Check this](https://docs.snowflake.com/en/user-guide/key-pair-auth#generate-the-private-key)  
+```
+SHOW GRANTS TO ROLE GRAFANA_ROLE;
+
+ALTER USER GRAFANA_USER SET DEFAULT_ROLE = GRAFANA_ROLE;
+GRANT ROLE grafana_role TO USER grafana_user;
+
+
+-- Grant database access
+GRANT USAGE ON DATABASE SPORTS_DB TO ROLE grafana_role;
+
+-- Grant schema access
+GRANT USAGE ON SCHEMA SPORTS_DB.BETFLOW_MART_ANALYTICS TO ROLE grafana_role;
+GRANT USAGE ON SCHEMA SPORTS_DB.BETFLOW_MART_CORE TO ROLE grafana_role;
+
+-- Grant table access
+GRANT SELECT ON ALL TABLES IN SCHEMA SPORTS_DB.BETFLOW_MART_CORE TO ROLE grafana_role;
+
+
+
+USE ROLE GRAFANA_ROLE;
+USE WAREHOUSE SPORTS_ANALYTICS_WH;
+SELECT * FROM SPORTS_DB.betflow_mart_analytics.fct_betting_value LIMIT 1;
+
+```

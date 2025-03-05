@@ -1,10 +1,9 @@
 import asyncio
 from pyspark.sql import SparkSession
 from betflow.api_connectors import ESPNConnector
+from typing import Optional
 import logging
-import json
 import shutil
-from datetime import datetime
 from betflow.spark_streaming.event_processor import (
     CFBProcessor,
     NBAProcessor,
@@ -14,23 +13,42 @@ from betflow.spark_streaming.event_processor import (
 from betflow.pipeline_utils import get_live_games
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    """Custom JSON encoder for datetime objects."""
-
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-
-
 class GamesPipeline:
-    def __init__(self):
+    """Orchestrates real-time sports game data processing pipelines.
+
+    Attributes:
+        league_status: Tracks active/inactive status for different sports leagues
+        logger: Configured logger instance for pipeline operations
+    """
+
+    def __init__(self) -> None:
+        """Initialize GamesPipeline with default league statuses and logging config."""
         self.league_status = {"nba": True, "nhl": True, "nfl": True, "cfb": True}
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-    async def run_sports_pipeline(self, base_ckpt, sport, league, spark=None):
-        """Run the full basketball game streaming pipeline."""
+    async def run_sports_pipeline(
+        self,
+        base_ckpt: str,
+        sport: str,
+        league: str,
+        spark: Optional[SparkSession] = None,
+    ) -> None:
+        """Execute real-time game data processing pipeline for a specific sport/league.
+
+        Args:
+            base_ckpt: Base path for Spark checkpoint directory
+            sport: Sport category (e.g., 'basketball', 'football')
+            league: League identifier (e.g., 'nba', 'cfb')
+            spark: Optional existing Spark session (creates new if None)
+
+        Raises:
+            ValueError: If unsupported league is specified
+            Exception: For any critical pipeline failures
+
+        Note:
+            Automatically creates Spark session if none provided
+        """
         if not spark:
             spark = (
                 SparkSession.builder.appName("games_pipeline")
@@ -129,8 +147,12 @@ class GamesPipeline:
             spark.stop()
 
 
-async def main(base_ckpt):
-    """Run all sports pipelines concurrently."""
+async def main(base_ckpt: str) -> None:
+    """Coordinate concurrent execution of game pipelines for multiple sports/leagues.
+
+    Args:
+        base_ckpt: Base path for Spark checkpoint directory
+    """
     pipeline = GamesPipeline()
     sports_config = [
         ("basketball", "nba"),

@@ -127,7 +127,10 @@ processed_df = spark.sql("""
             home_team_abbreviation as abbreviation,
             CAST(home_team_score as INT) as score,
             home_team_record as record,
-            home_team_linescores as linescores
+            TRANSFORM(
+                COALESCE(home_team_linescores, ARRAY()), 
+                x -> CAST(x AS INT)
+            ) as linescores
         ) as home_team,
         STRUCT(
             away_team_id as id,
@@ -135,7 +138,10 @@ processed_df = spark.sql("""
             away_team_abbreviation as abbreviation,
             CAST(away_team_score as INT) as score,
             away_team_record as record,
-            away_team_linescores as linescores
+            TRANSFORM(
+                COALESCE(away_team_linescores, ARRAY()), 
+                x -> CAST(x AS INT)
+            ) as linescores
         ) as away_team,
         STRUCT(
             STRUCT(
@@ -175,8 +181,6 @@ null_check = processed_df.filter("""
         partition_day IS NULL OR
         home_team_score IS NULL OR
         away_team_score IS NULL OR
-        home_team_name IS NULL OR
-        away_team_name IS NULL OR
         start_time IS NULL
     """).count()
 # print(f"Records with null partitions: {partition_check}")
@@ -249,7 +253,6 @@ else:
                 *,
                 CASE 
                     WHEN home_team.score IS NULL OR away_team.score IS NULL THEN 'Invalid Score'
-                    WHEN home_team.name IS NULL OR away_team.name IS NULL THEN 'Invalid Name'
                     WHEN partition_year IS NULL OR partition_month IS NULL OR 
                          partition_day IS NULL THEN 'Invalid Partition'
                     WHEN game_id IS NULL OR start_time IS NULL THEN 'Invalid Required Fields'

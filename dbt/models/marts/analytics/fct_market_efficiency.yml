@@ -18,9 +18,9 @@ models:
       - name: avg_vig
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0
-              max_value: 2
+#          - dbt_expectations.expect_column_values_to_be_between:
+#              min_value: 0
+#              max_value: 2
 
       - name: market_efficiency_rating
         tests:

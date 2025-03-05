@@ -1,6 +1,7 @@
 import asyncio
 from pyspark.sql import SparkSession
 from betflow.api_connectors import OddsAPIConnector
+from typing import List, Tuple, Dict
 import logging
 import shutil
 from betflow.spark_streaming.event_processor import OddsProcessor
@@ -12,8 +13,21 @@ import os
 load_dotenv(find_dotenv("my.env"), override=True)
 
 
-def calculate_pipeline_timing(odds_data: list) -> tuple:
-    """Calculate pipeline timing based on closest game start time."""
+def calculate_pipeline_timing(odds_data: List[Dict]) -> Tuple[int, int]:
+    """Calculate pipeline timing based on closest game start time.
+
+    Args:
+        odds_data: List of game dictionaries containing 'commence_time' and 'status' keys
+
+    Returns:
+        Tuple containing:
+        - pipeline_sleep_time_seconds: Sleep duration between pipeline runs
+        - window_duration_minutes: Aggregation window size for streaming
+
+    Example:
+        >>> calculate_pipeline_timing([{"commence_time": "2023-01-01T20:00Z"}])
+        (1800, 35)
+    """
     if not odds_data:
         return 1800, 35  # Default 30 mins, 35 mins window
 
@@ -40,7 +54,15 @@ def calculate_pipeline_timing(odds_data: list) -> tuple:
 
 
 class OddsPipeline:
-    def __init__(self):
+    """Main class for managing real-time odds processing pipelines.
+
+    Attributes:
+        league_status: Dictionary tracking active/inactive status for sports leagues
+        logger: Configured logger instance for the class
+    """
+
+    def __init__(self) -> None:
+        """Initialize OddsPipeline with default league statuses and logging."""
         self.league_status = {
             "basketball_nba": True,
             "icehockey_nhl": True,
@@ -50,8 +72,16 @@ class OddsPipeline:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-    async def run_odds_pipeline(self, base_ckpt: str, sport: str):
-        """Run the full odds streaming pipeline."""
+    async def run_odds_pipeline(self, base_ckpt: str, sport: str) -> None:
+        """Execute the complete odds processing pipeline for a specific sport.
+
+        Args:
+            base_ckpt: Base path for Spark checkpoint directory
+            sport: Sport identifier in format <category>_<league> (e.g., 'basketball_nba')
+
+        Raises:
+            Exception: If fatal error occurs during pipeline execution
+        """
         spark = (
             SparkSession.builder.appName("odds_pipeline")
             .master("local[4]")
@@ -150,8 +180,12 @@ class OddsPipeline:
             spark.stop()
 
 
-async def main(base_ckpt):
-    """Run odds pipelines for multiple sports concurrently."""
+async def main(base_ckpt: str) -> None:
+    """Orchestrate concurrent execution of odds pipelines for multiple sports.
+
+    Args:
+        base_ckpt: Base path for Spark checkpoint directory
+    """
     pipeline = OddsPipeline()
     sports_config = [
         "basketball_nba",

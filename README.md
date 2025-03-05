@@ -4,6 +4,26 @@
 
 BetFlow is a modern data and analytics engineering platform designed for real-time sports betting analytics, combining streaming and batch processing capabilities to provide comprehensive insights for sports betting decisions.
 
+> Note:
+> 1. This project in any capacity **does not endorse or encourage gambling**. The
+> goal of this project is to learn and apply Data Engineering and Analytics
+> Engineering concepts and understand open-source tech stack. The purpose of this 
+> project is to simply offer data-as-a-product for analyzing transient data at huge scale.
+> 
+> 2. UI or dashboards are not publicly available for two big reasons: 
+>    1. It may raise legal concerns for me as there is an analysis pointing towards arbitrage.
+>    2. Current architecture requires EC2 instance to
+>    keep running and hitting APIs at high rate, which is very expensive for me as I am 
+>    paying for everything by myself.  
+> 
+> If you are curious to see how dashboards look like, feel free to checkout the below two links for video explanation. 
+> For recruiters, for hiring purposes, please email me that you want to see UI, it takes just 5 minutes to get 
+> the pipeline running, I will share the link with you. 
+> 
+> 1. [Zach Wilson's Capstone Showcase](https://youtu.be/XD2b8V_RfFc?t=1493)  
+> 2. [Data Engineering DC meetup](https://www.youtube.com/watch?v=aaCbpYvjolk&ab_channel=SanchitVijay)
+> 
+
 ### Key Features
 - Real-time odds movement tracking and analysis  
 - Live game statistics processing
